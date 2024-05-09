@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encrypt and Set Cookie</title>
+</head>
+<body>
+    <h2>Submit Tenant, Namespace, and Key</h2>
+    <form id="encryptForm">
+        <div id="inputs">
+            <div>
+                <label for="tenant">Tenant:</label>
+                <input type="text" name="tenant" required>
+                <label for="namespace">Namespace:</label>
+                <input type="text" name="namespace" required>
+                <label for="key">Key:</label>
+                <input type="text" name="key" required>
+            </div>
+        </div>
+        <button type="button" onclick="addInput()">Add more</button>
+        <button type="submit">Encrypt and Set Cookie</button>
+    </form>
+
+    <script>
+        function addInput() {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <label for="tenant">Tenant:</label>
+                <input type="text" name="tenant" required>
+                <label for="namespace">Namespace:</label>
+                <input type="text" name="namespace" required>
+                <label for="key">Key:</label>
+                <input type="text" name="key" required>
+            `;
+            document.getElementById('inputs').appendChild(div);
+        }
+
+        document.getElementById('encryptForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(this);
+            const data = [];
+
+            for (let entry of formData.entries()) {
+                const [name, value] = entry;
+                data.push({ [name]: value });
+            }
+
+            fetch('/encryptAndSetCookie', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Values encrypted and cookie set successfully.');
+                } else {
+                    alert('Failed to encrypt and set cookie.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to encrypt and set cookie.');
+            });
+        });
+    </script>
+</body>
+</html>

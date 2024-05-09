@@ -1,0 +1,70 @@
+/* Overall styles */
+body {
+    font-family: Inter, Helvetica Neue, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    background-color: #f3f4fa;
+}
+
+.divider {
+    border-right: 1px solid #e7e9f3;
+}
+
+/* Left side styles */
+#navigation-panel {
+    max-width: 260px; /* Limit the maximum width */
+    width: 100%; /* Ensure it takes up the full available width */
+    background-color: #f3f4fa;
+    border-right: 1px solid #e7e9f3;
+    padding-right: 5px; /* Adjusted padding */
+    padding-left: 5px; /* Adjusted padding */
+}
+
+
+#logo {
+    padding: 20px 5px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e7e9f3;
+}
+
+#service-target {
+    padding: 20px 5px;
+    margin-bottom: 20px;
+    border-top: 1px solid #e7e9f3;
+    border-bottom: 1px solid #e7e9f3;
+}
+
+.nav-link {
+    color: black;
+}
+
+.nav-link:hover {
+    color: blue;
+}
+
+.navigation-header {
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+
+/* Right side styles */
+#main {
+    border-left: 1px solid #e7e9f3;
+}
+
+#breadcrumbs {
+    padding: 10px 20px;
+    border-bottom: 1px solid #e7e9f3;
+}
+
+#spacer {
+    height: 20px;
+    border-bottom: 1px solid #e7e9f3;
+}
+
+#subcontent {
+    background-color: white;
+    min-height: calc(100vh - 63px - 20px - 20px);
+    padding: 20px;
+}
