@@ -1,8 +1,9 @@
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
+const util = require('util');
 
-const { fetchNamespaces, fetchLbs, fetchHealthchecks } = require('./xcapi');
+const { fetchNamespaces, fetchConfig, fetchLbs, fetchHealthchecks, uploadCertificate } = require('./xcapi');
 
 // Authorization header value
 const authToken = 'DE25+WuCfoVb5QWuldejOhD0ji4=';
@@ -50,23 +51,38 @@ const lb1 = 'juice-shop-https';
 //     });    
 
 
-fetchHealthchecks(xcTenant1, authToken, namespace1, lb1)
-.then(data => {
+// fetchHealthchecks(xcTenant1, authToken, namespace1, lb1)
+// .then(data => {
 
 
-    console.log(data);
-    // // Iterate through the lb object
-    // for (const uid in data) {
-    //     // Check if the property is directly owned by the object (not inherited)
+//     console.log(data);
+//     // // Iterate through the lb object
+//     // for (const uid in data) {
+//     //     // Check if the property is directly owned by the object (not inherited)
 
-    //     console.log(`"${uid}" - "${data[uid].name}" - "${data[uid].namespace}" - "${data[uid].description}" - "${data[uid].domains}"`);
-    //     // if (data.hasOwnProperty(name)) {
-    //     //     const description = data[name];
-    //     //     console.log(`"${name}" - "${description}"`);
-    //     // }
-    // }
+//     //     console.log(`"${uid}" - "${data[uid].name}" - "${data[uid].namespace}" - "${data[uid].description}" - "${data[uid].domains}"`);
+//     //     // if (data.hasOwnProperty(name)) {
+//     //     //     const description = data[name];
+//     //     //     console.log(`"${name}" - "${description}"`);
+//     //     // }
+//     // }
 
-})
-.catch(error => {
-    console.error('Error:', error);
-});     
+// })
+// .catch(error => {
+//     console.error('Error:', error);
+// });     
+
+
+// fetchConfig(xcTenant1, authToken, namespace1, 'origin_pools', 'jc-demo-dc1')
+//     .then(data => {
+
+//             console.log(data);
+//             //console.log(util.inspect(data, {depth: null}));
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);
+//     }); 
+
+
+// Usage example
+uploadCertificate(xcTenant1, authToken, namespace1, 'test-cert', './testcert.pem', './testkey.key');

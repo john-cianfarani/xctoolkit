@@ -1,4 +1,5 @@
 const axios = require('axios');
+const fs = require('fs');
 
 // Function to make Pull list of Namespaces
 async function fetchNamespaces(tenant, apikey) {
@@ -73,6 +74,34 @@ async function fetchLbs(tenant, apikey, namespace) {
     }
 }
 
+async function fetchConfig(tenant, apikey, namespace, type, objname) {
+    try {
+
+        // types examples
+        //http_loadbalancers, app_firewalls, origin_pools, healthchecks, ip_prefix_sets, rate_limiter, rate_limiter_policys, routes
+
+        // Construct the URL with variables using string interpolation
+        const url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespace}/${type}/${objname}`;
+
+
+
+        // Make GET request to the constructed URL with Authorization header
+        const response = await axios.get(url, {
+            headers: {
+                'Authorization': `APIToken ${apikey}`,
+                'accept': 'application/json'
+            }
+        });
+
+        return response.data;
+
+    } catch (error) {
+        // Handle any errors that occur during the request
+        console.error('Error fetching data:', error);
+        throw error; // Re-throw the error to be caught by the caller if necessary
+    }
+}
+
 
 async function fetchHealthchecks(tenant, apikey, namespace, lbname ) {
     try {
@@ -114,9 +143,6 @@ async function fetchHealthchecks(tenant, apikey, namespace, lbname ) {
         // Initialize an empty object to store the parsed data
         const obj = {};
 
-        //console.log(response.data.data);
-
-
         // // Iterate over the instances array
         response.data.data.instances.forEach(instance => {
             const { id, data } = instance;
@@ -155,12 +181,59 @@ async function fetchHealthchecks(tenant, apikey, namespace, lbname ) {
     }
 }
 
+async function uploadCertificate(tenant, apiKey, namespace, certName, certUrlPath, privateKeyPath) {
+    try {
+        // Read certificate and private key files and encode them as Base64
+        const certBase64 = fs.readFileSync(certUrlPath, 'base64');
+        const privateKeyBase64 = fs.readFileSync(privateKeyPath, 'base64');
+
+        // Prepare the request body
+        const requestBody = {
+            metadata: {
+                name: certName, 
+                namespace: namespace
+            },
+            spec: {
+                certificate_url: `string:///${certBase64}`,
+                private_key: {
+                    clear_secret_info: {
+                        url: `string:///${privateKeyBase64}`
+                    }
+                }
+            }
+        };
+
+        // Prepare the URL
+        const url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespace}/certificates`;
+
+        // Prepare the headers
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `APIToken ${apiKey}`,
+            'x-volterra-apigw-tenant': tenant
+        };
+
+        // Make the POST request
+        const response = await axios.post(url, requestBody, {
+            headers: headers
+        });
+
+        console.log('Certificate uploaded successfully:', response.data);
+    } catch (error) {
+        console.error('Error uploading certificate:', error);
+    }
+}
+
+
+
 
 //Export Functions
 module.exports = {
     fetchNamespaces,
+    fetchConfig,
     fetchLbs,
-    fetchHealthchecks
+    fetchHealthchecks,
+    uploadCertificate
 
 };
 
