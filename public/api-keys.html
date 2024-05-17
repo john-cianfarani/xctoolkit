@@ -1,0 +1,40 @@
+<h1>Add API Keys</h1>
+<div id="api-keys-form">
+    <div id="api-keys-container">
+        <!-- First APIKey Row -->
+        <div class="row mb-3 api-key-row">
+            <div class="col-auto">
+                <input type="text" class="form-control tenant-name" placeholder="Tenant Name" aria-label="Tenant Name">
+                <div class="invalid-feedback">Please provide a valid Tenant Name.</div>
+            </div>
+            <div class="col-lg-4">
+                <div class="input-group">
+                    <select class="form-select namespace-type" aria-label="Namespace Type">
+                        <option value="all" selected>All Namespaces</option>
+                        <option value="custom">Custom Namespace</option>
+                    </select>
+                    <input type="text" class="form-control namespace-name" placeholder="Namespace" aria-label="Namespace" disabled>
+                    <div class="invalid-feedback">Please provide a valid Namespace.</div>
+                </div>
+            </div>
+            <div class="col-lg-3">
+                <div class="input-group">
+                    <input type="text" class="form-control apikey" placeholder="API Key" aria-label="API Key">
+                    <select class="form-select apikey-type" aria-label="API Key Type">
+                        <option value="write" selected>Write</option>
+                        <option value="read">Read</option>
+                    </select>
+                    <div class="invalid-feedback">Please select API Key Type.</div>
+                </div>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-danger remove-api-key" disabled>Remove</button>
+            </div>
+        </div>
+        <!-- Subsequent APIKey Rows will be dynamically added here -->
+    </div>
+    <div class="mt-3">
+        <button type="button" id="add-api-key" class="btn btn-primary">Add API Key</button>
+        <button type="submit" id="submit-api-keys" class="btn btn-success ms-3">Submit</button>
+    </div>
+</div>

@@ -225,8 +225,6 @@ async function uploadCertificate(tenant, apiKey, namespace, certName, certUrlPat
 }
 
 
-
-
 //Export Functions
 module.exports = {
     fetchNamespaces,

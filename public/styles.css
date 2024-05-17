@@ -67,4 +67,29 @@ body {
     background-color: white;
     min-height: calc(100vh - 63px - 20px - 20px);
     padding: 20px;
+    min-width: 600px;
+    max-width: 1500px;
+}
+
+
+/* API Keys styles */
+
+.form-inline input:not(.is-invalid),
+.form-inline input:not(.is-valid) {
+    padding-right: calc(1.5em + 0.75rem);
+}
+
+.tenant-name {
+    width: 250px;
+    max-width: 250px;
+}
+
+.namespace-name {
+    width: 300px;
+    max-width: 300px;
+}
+
+.apikey {
+    width: 300px;
+    max-width: 300px;
 }

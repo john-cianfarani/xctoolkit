@@ -1,0 +1,28 @@
+/* styles.css */
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.invalid-feedback {
+    color: red;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+#api-keys-message {
+    margin-top: 20px;
+}
+
+#api-keys-message.success {
+    color: green;
+}
+
+#api-keys-message.error {
+    color: red;
+}
