@@ -10,8 +10,8 @@
             <div class="col-lg-4">
                 <div class="input-group">
                     <select class="form-select namespace-type" aria-label="Namespace Type">
-                        <option value="all" selected>All Namespaces</option>
-                        <option value="custom">Custom Namespace</option>
+                        <option value="all" selected>All</option>
+                        <option value="custom">Custom</option>
                     </select>
                     <input type="text" class="form-control namespace-name" placeholder="Namespace" aria-label="Namespace" disabled>
                     <div class="invalid-feedback">Please provide a valid Namespace.</div>
@@ -20,6 +20,10 @@
             <div class="col-lg-3">
                 <div class="input-group">
                     <input type="text" class="form-control apikey" placeholder="API Key" aria-label="API Key">
+                    <select class="form-select apikey-format" aria-label="API Key Format">
+                        <option value="clear" selected>Clear</option>
+                        <option value="enc">Enc</option>
+                    </select>
                     <select class="form-select apikey-type" aria-label="API Key Type">
                         <option value="write" selected>Write</option>
                         <option value="read">Read</option>
@@ -36,5 +40,7 @@
     <div class="mt-3">
         <button type="button" id="add-api-key" class="btn btn-primary">Add API Key</button>
         <button type="submit" id="submit-api-keys" class="btn btn-success ms-3">Submit</button>
+        <button type="button" id="edit-existing-keys" class="btn btn-info ms-3">Edit Existing Keys</button>
+   
     </div>
 </div>
