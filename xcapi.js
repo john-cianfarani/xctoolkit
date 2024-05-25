@@ -224,6 +224,64 @@ async function uploadCertificate(tenant, apiKey, namespace, certName, certUrlPat
     }
 }
 
+/**
+ * Stores the given data in the browser's local storage, under the specified key.
+ * Also adds a timestamp to the data.
+ * @param {string} key - The key under which the data will be stored in local storage.
+ * @param {any} data - The data to be stored in local storage.
+ */
+function cacheData(key, data) {
+    // Get the current timestamp
+    const timestamp = new Date().getTime();
+
+    // Create the cache entry object
+    const cacheEntry = {
+        data: data,
+        timestamp: timestamp
+    };
+
+    // Stringify the cache entry and store it in local storage
+    localStorage.setItem(key, JSON.stringify(cacheEntry));
+
+    // Log a message indicating the data has been stored in local storage
+    console.log(`Data stored in LocalStorage under key '${key}'`);
+}
+
+/**
+ * Retrieves data from the browser's local storage, under the specified key.
+ * If the data is present and not older than the specified maximum age, it is returned.
+ * Otherwise, null is returned.
+ * @param {string} key - The key under which the data is stored in local storage.
+ * @param {number} maxAgeInSeconds - The maximum age (in seconds) of the cached data.
+ * @returns {any|null} - The retrieved data if it is not older than the maximum age, null otherwise.
+ */
+function getCachedData(key, maxAgeInSeconds) {
+    // Retrieve the cache entry from local storage
+    const cacheEntry = localStorage.getItem(key);
+    if (cacheEntry) {
+        // Parse the cache entry
+        const parsedEntry = JSON.parse(cacheEntry);
+        const currentTime = new Date().getTime();
+        const ageInSeconds = (currentTime - parsedEntry.timestamp) / 1000;
+        // Check if the data is not older than the maximum age
+        if (ageInSeconds <= maxAgeInSeconds) {
+            // Log a message indicating the use of cached data
+            console.log(`Using cached data for key '${key}'`);
+            // Return the cached data
+            return parsedEntry.data;
+        } else {
+            // Log a message indicating that the cached data is older than the maximum age
+            console.log(`Cached data for key '${key}' is older than ${maxAgeInSeconds} seconds`);
+            // Remove the cache entry from local storage
+            localStorage.removeItem(key);
+        }
+    }
+    // Return null if the cached data is not available or is older than the maximum age
+    return null;
+}
+
+
+
 
 //Export Functions
 module.exports = {
@@ -231,7 +289,9 @@ module.exports = {
     fetchConfig,
     fetchLbs,
     fetchHealthchecks,
-    uploadCertificate
+    uploadCertificate,
+    cacheData,
+    getCachedData
 
 };
 
