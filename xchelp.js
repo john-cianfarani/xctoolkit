@@ -1,14 +1,22 @@
-const express = require('express');
-const app = express();
+// const express = require('express');
+// const app = express();
 const bodyParser = require('body-parser');
 const util = require('util');
 
-const { fetchNamespaces, fetchConfig, fetchLbs, fetchHealthchecks, uploadCertificate } = require('./xcapi');
+const { fetchNamespaces, fetchConfig, fetchLbs, fetchHealthchecks, fetchStats, uploadCertificate, generateCertificate, encryptApiKeys, fetchUsers, fetchConfigItems, fetchInventory } = require('./xcapi');
+
+const ONE_MINUTE = 60; // 1 minute
+const FIVE_MINUTES = 5 * 60; // 5 minutes
+const ONE_HOUR = 60 * 60; // 1 hour
+const SIX_HOURS = 6 * 60 * 60; // 6 hours
+const ONE_DAY = 24 * 60 * 60; // 1 day
+const ONE_WEEK = 7 * 24 * 60 * 60; // 1 week
 
 // Authorization header value
 const authToken = 'DE25+WuCfoVb5QWuldejOhD0ji4=';
 const xcTenant1 = 'f5-amer-ent';
 const namespace1 = 'j-cianfarani';
+const namespace2 = 'demo-shop';
 const lb1 = 'juice-shop-https';
 
 
@@ -83,6 +91,66 @@ const lb1 = 'juice-shop-https';
 //         console.error('Error:', error);
 //     }); 
 
+// fetchConfigItems(xcTenant1, authToken, namespace1, 'ip_prefix_sets')
+//     .then(data => {
+
+//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+//         //console.log(util.inspect(data, {depth: null}));
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);
+//     });
 
 // Usage example
-uploadCertificate(xcTenant1, authToken, namespace1, 'test-cert', './testcert.pem', './testkey.key');
+//uploadCertificate(xcTenant1, authToken, namespace1, 'test-cert', './testcert.pem', './testkey.key');
+
+// fetchStats(xcTenant1, authToken, namespace1, 7200, lb1)
+//     .then(data => {
+//         console.log(data);
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);
+//     });
+
+
+// fetchStats(xcTenant1, authToken, namespace2, FIVE_MINUTES)
+//     .then(data => {
+//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);
+//     });
+
+// fetchUsers(xcTenant1, authToken, 5)
+//     .then(data => {
+//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);gr
+//     });
+
+
+// Usage example
+// (async () => {
+//     try {
+//         const commonName = 'example.com';
+//         const altNames = ['example.com', 'www.example.net', 'IP:10.0.0.1'];
+//         const { key, cert } = await generateCertificate(commonName, altNames);
+
+//         console.log('Key:', key);
+//         console.log('Certificate:', cert);
+//     } catch (error) {
+//         console.error('Failed to generate certificate:', error);
+//     }
+// })();
+
+
+fetchInventory(xcTenant1, authToken, false, namespace1)
+    .then(data => {
+
+        console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+        //console.log(util.inspect(data, {depth: null}));
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });

@@ -11,12 +11,16 @@ body {
 
 /* Left side styles */
 #navigation-panel {
-    max-width: 260px; /* Limit the maximum width */
-    width: 100%; /* Ensure it takes up the full available width */
+    max-width: 260px;
+    /* Limit the maximum width */
+    width: 100%;
+    /* Ensure it takes up the full available width */
     background-color: #f3f4fa;
     border-right: 1px solid #e7e9f3;
-    padding-right: 5px; /* Adjusted padding */
-    padding-left: 5px; /* Adjusted padding */
+    padding-right: 5px;
+    /* Adjusted padding */
+    padding-left: 5px;
+    /* Adjusted padding */
 }
 
 
@@ -92,4 +96,10 @@ body {
 .apikey {
     width: 300px;
     max-width: 300px;
+}
+
+.api-key-row {
+    background-color: rgb(250, 249, 249);
+    padding-top: 10px;
+    padding-bottom: 10px;
 }

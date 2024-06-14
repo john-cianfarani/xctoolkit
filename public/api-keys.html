@@ -7,17 +7,18 @@
                 <input type="text" class="form-control tenant-name" placeholder="Tenant Name" aria-label="Tenant Name">
                 <div class="invalid-feedback">Please provide a valid Tenant Name.</div>
             </div>
-            <div class="col-lg-4">
+            <div class="col-lg-3">
                 <div class="input-group">
                     <select class="form-select namespace-type" aria-label="Namespace Type">
                         <option value="all" selected>All</option>
                         <option value="custom">Custom</option>
                     </select>
-                    <input type="text" class="form-control namespace-name" placeholder="Namespace" aria-label="Namespace" disabled>
+                    <input type="text" class="form-control namespace-name" placeholder="Namespace"
+                        aria-label="Namespace" disabled>
                     <div class="invalid-feedback">Please provide a valid Namespace.</div>
                 </div>
             </div>
-            <div class="col-lg-3">
+            <div class="col-lg-5">
                 <div class="input-group">
                     <input type="text" class="form-control apikey" placeholder="API Key" aria-label="API Key">
                     <select class="form-select apikey-format" aria-label="API Key Format">
@@ -28,11 +29,20 @@
                         <option value="write" selected>Write</option>
                         <option value="read">Read</option>
                     </select>
+                    <select class="form-select apikey-rights" aria-label="API Rights">
+                        <option value="allns" selected>All NS</option>
+                        <option value="perns">Per NS</option>
+                    </select>
+                    <select class="form-select apikey-state" aria-label="API Status">
+                        <option value="enabled" selected>Enabled</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
                     <div class="invalid-feedback">Please select API Key Type.</div>
                 </div>
             </div>
+
             <div class="col-auto">
-                <button type="button" class="btn btn-danger remove-api-key" disabled>Remove</button>
+                <button type="button" class="btn btn-danger remove-api-key" disabled>X</button>
             </div>
         </div>
         <!-- Subsequent APIKey Rows will be dynamically added here -->
@@ -41,6 +51,6 @@
         <button type="button" id="add-api-key" class="btn btn-primary">Add API Key</button>
         <button type="submit" id="submit-api-keys" class="btn btn-success ms-3">Submit</button>
         <button type="button" id="edit-existing-keys" class="btn btn-info ms-3">Edit Existing Keys</button>
-   
+
     </div>
 </div>

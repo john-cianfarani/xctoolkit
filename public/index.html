@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,78 +10,85 @@
     <!-- Custom CSS -->
     <link href="styles.css?v=1.1" rel="stylesheet">
 </head>
+
 <body onload="checkCookie()">
 
-<div class="container-fluid">
-    <div class="row">
-        <!-- Left Side (Navigation Panel) -->
-        <div id="navigation-panel" class="col-md-3">
-            <div id="logo" class="text-center">
-                <div class="logo-placeholder">Logo</div>
-            </div>
-            <div id="service-target">
-                <select id="service-select" class="form-control mb-3">
-                    <option>Select Service</option>
-                    <!-- Add options here -->
-                </select>
-                <select id="target-select" class="form-control">
-                    <option>Select Target</option>
-                    <!-- Add options here -->
-                </select>
-            </div>
-            <div id="main-navigation" class="px-2">
-                <h5 class="navigation-header">Overview</h5>
-                <ul class="nav flex-column">
-                    <li class="nav-item"><a class="nav-link" href="#" id="global-lbs-link" onclick="loadContent('global-lbs.html')">Global LBs</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#" id="active-origin-pools-link" onclick="loadContent('active-origin-pools.html')">Active Origin Pools</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#" id="reqid-finder-link" onclick="loadContent('reqid-finder.html')">ReqID Finder</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#" id="path-latency-link" onclick="loadContent('path-latency.html')">Path Latency</a></li>
-                </ul>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Left Side (Navigation Panel) -->
+            <div id="navigation-panel" class="col-md-3">
+                <div id="logo" class="text-center">
+                    <div class="logo-placeholder">Logo</div>
+                </div>
+                <div id="service-target">
+                    <select id="service-tenant" class="form-control mb-3">
+                        <option>Select Tenant</option>
+                        <!-- Add options here -->
+                    </select>
 
-                <h5 class="navigation-header mt-4">Configuration</h5>
-                <ul class="nav flex-column">
-                    <li class="nav-item"><a class="nav-link" href="#" id="move-link" onclick="loadContent('move.html')">Move</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#" id="clone-link" onclick="loadContent('clone.html')">Clone</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#" id="backup-link" onclick="loadContent('backup.html')">Backup</a></li>
-                </ul>
+                </div>
+                <div id="main-navigation" class="px-2">
+                    <h5 class="navigation-header">Overview</h5>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" href="#" id="global-lbs-link"
+                                onclick="loadContent('overview')">LB Overview</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" id="active-origin-pools-link"
+                                onclick="loadContent('active-origin-pools.html')">Active Origin Pools</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" id="reqid-finder-link"
+                                onclick="loadContent('reqid-finder.html')">ReqID Finder</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" id="path-latency-link"
+                                onclick="loadContent('path-latency.html')">Path Latency</a></li>
+                    </ul>
 
-                <h5 class="navigation-header mt-4">Settings</h5>
-                <ul class="nav flex-column">
-                    <li class="nav-item"><a class="nav-link" href="#" id="api-keys-link" onclick="loadContent('api-keys.html')">API Keys</a></li>
-                </ul>
-            </div>
-        </div>
+                    <h5 class="navigation-header mt-4">Configuration</h5>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" href="#" id="move-link"
+                                onclick="loadContent('move.html')">Move</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" id="clone-link"
+                                onclick="loadContent('clone.html')">Clone</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" id="backup-link"
+                                onclick="loadContent('backup.html')">Backup</a></li>
+                    </ul>
 
-        <!-- Right Side (Main Area) -->
-        <div id="main" class="col">
-            <!-- Breadcrumbs -->
-            <div id="breadcrumbs" class="px-3">
-                <span id="breadcrumb-1">Breadcrumb 1</span> >
-                <span id="breadcrumb-2">Breadcrumb 2</span> >
-                <span id="breadcrumb-3">Breadcrumb 3</span> >
-                <span id="breadcrumb-4">Breadcrumb 4</span> >
-                <span id="breadcrumb-5">Breadcrumb 5</span>
+                    <h5 class="navigation-header mt-4">Settings</h5>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" href="#" id="api-keys-link"
+                                onclick="loadContent('apisetup')">API Keys</a></li>
+                    </ul>
+                </div>
             </div>
-            <!-- Spacer -->
-            <div id="spacer" class="spacer"></div>
-            <!-- Content -->
-            <div id="content" class="px-3">
-                <div id="subcontent" class="pb-3">
-                    <h2>Content Area</h2>
-                    <p>This is some placeholder content. Replace it with your actual content.</p>
+
+            <!-- Right Side (Main Area) -->
+            <div id="main" class="col">
+                <!-- Breadcrumbs -->
+                <div id="breadcrumbs" class="px-3">
+                    <span id="breadcrumb-1">Breadcrumb 1</span> >
+                    <span id="breadcrumb-2">Breadcrumb 2</span> >
+                    <span id="breadcrumb-3">Breadcrumb 3</span> >
+                    <span id="breadcrumb-4">Breadcrumb 4</span> >
+                    <span id="breadcrumb-5">Breadcrumb 5</span>
+                </div>
+                <!-- Spacer -->
+                <div id="spacer" class="spacer"></div>
+                <!-- Content -->
+                <div id="content" class="px-3">
+                    <div id="subcontent" class="pb-3">
+                        <h2>Content Area</h2>
+                        <p>This is some placeholder content. Replace it with your actual content.</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Bootstrap JS -->
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-<!-- Custom JS -->
-<script src="script.js"></script>
-<script src="api-keys.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- Custom JS -->
+    <script src="script.js"></script>
+    <!-- <script src="api-keys.js"></script> -->
 
 </body>
+
 </html>

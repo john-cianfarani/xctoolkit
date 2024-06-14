@@ -1,9 +1,11 @@
-$(document).ready(function() {
+/// Deprecated - Moved to script.js
+
+$(document).ready(function () {
     console.log('Document is ready');
 
     // Function to read cookie
     function getCookie(name) {
-        
+
         let value = `; ${document.cookie}`;
         console.log(value);
         let parts = value.split(`; ${name}=`);
@@ -11,30 +13,24 @@ $(document).ready(function() {
         return null;
     }
 
-// Create a new observer
-// const observer = new MutationObserver((mutationsList, observer) => {
-//     // Check if any mutations involve adding nodes to the DOM
-//     for (let mutation of mutationsList) {
-//         if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-//             // Look for the added nodes and perform necessary actions
-//             // For example, if the added nodes contain the elements we're looking for, trigger the script to populate them
-//             populateFormFromCookie();
-//             // Disconnect the observer once the elements are found
-//             observer.disconnect();
-//             break;
-//         }
-//     }
-// });
+    // Create a new observer
+    // const observer = new MutationObserver((mutationsList, observer) => {
+    //     // Check if any mutations involve adding nodes to the DOM
+    //     for (let mutation of mutationsList) {
+    //         if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+    //             // Look for the added nodes and perform necessary actions
+    //             // For example, if the added nodes contain the elements we're looking for, trigger the script to populate them
+    //             populateFormFromCookie();
+    //             // Disconnect the observer once the elements are found
+    //             observer.disconnect();
+    //             break;
+    //         }
+    //     }
+    // });
 
-// Start observing the document body for changes
-// observer.observe(document.body, { childList: true, subtree: true });
-//This MutationObserver will listen for changes to the document body and trigger the populateFormFromCookie() function once it detects new nodes being added. This can help ensure that the script runs after the elements are dynamically loaded into the DOM.
-
-
-
-
-
-
+    // Start observing the document body for changes
+    // observer.observe(document.body, { childList: true, subtree: true });
+    //This MutationObserver will listen for changes to the document body and trigger the populateFormFromCookie() function once it detects new nodes being added. This can help ensure that the script runs after the elements are dynamically loaded into the DOM.
 
 
     // Function to populate the form with API keys from the cookie
@@ -46,7 +42,7 @@ $(document).ready(function() {
                 let decodedCookie = decodeURIComponent(apiKeysCookie);
                 let apiKeys = JSON.parse(decodedCookie);
                 console.log('API Keys from cookie:', apiKeys);
-    
+
                 for (let i = 0; i < apiKeys.length; i++) {
                     let key = apiKeys[i];
                     if (i > 0) {
@@ -59,7 +55,7 @@ $(document).ready(function() {
                     console.log('API Key Type:', key['apikey-type']);
                     console.log('API Key Format:', key['apikey-format']);
                     console.log('API Key:', key['apikey']);
-    
+
                     console.log('Row found:', row.length);
                     let tenantNameElement = row.find('.tenant-name');
                     let namespaceTypeElement = row.find('.namespace-type');
@@ -67,21 +63,21 @@ $(document).ready(function() {
                     let apiKeyTypeElement = row.find('.apikey-type');
                     let apiKeyFormatElement = row.find('.apikey-format');
                     let apiKeyElement = row.find('.apikey');
-    
+
                     console.log('Tenant Name element found:', tenantNameElement.length);
                     console.log('Namespace Type element found:', namespaceTypeElement.length);
                     console.log('Namespace Name element found:', namespaceNameElement.length);
                     console.log('API Key Type element found:', apiKeyTypeElement.length);
                     console.log('API Key Format element found:', apiKeyFormatElement.length);
                     console.log('API Key element found:', apiKeyElement.length);
-    
+
                     tenantNameElement.val(key['tenant-name']);
                     namespaceTypeElement.val(key['namespace-type']);
                     namespaceNameElement.val(key['namespace-name']);
                     apiKeyTypeElement.val(key['apikey-type']);
                     apiKeyFormatElement.val(key['apikey-format']);
                     apiKeyElement.val(key['apikey']);
-    
+
                     console.log('Tenant Name set to:', tenantNameElement.val());
                     console.log('Namespace Type set to:', namespaceTypeElement.val());
                     console.log('Namespace Name set to:', namespaceNameElement.val());
@@ -102,22 +98,17 @@ $(document).ready(function() {
     }
 
 
-    function testfunc() {
-        alert('works!');
-        console.log('Test');
-    }
 
+    // Attach the click event to the "Edit Existing Keys" button
+    $(document).on('click', '#edit-existing-keys', function () {
+        console.log('Edit Entered');
+        populateFormFromCookie();
+    });
 
- // Attach the click event to the "Edit Existing Keys" button
- $(document).on('click', '#edit-existing-keys', function() {
-    console.log('Edit Entered');
-    populateFormFromCookie();
-});
-
-//  $('#edit-existing-keys').on('click', testfunc);
+    //  $('#edit-existing-keys').on('click', testfunc);
 
     // Add API Key Button Click Event
-    $(document).on('click', '#add-api-key', function() {
+    $(document).on('click', '#add-api-key', function () {
         console.log('Add API Key button clicked');
         var newRow = $(".api-key-row").first().clone(); // Clone the first row
         newRow.find('input, select').val(''); // Clear input values
@@ -131,7 +122,7 @@ $(document).ready(function() {
     });
 
     // Remove API Key Button Click Event
-    $(document).on('click', '.remove-api-key', function() {
+    $(document).on('click', '.remove-api-key', function () {
         var row = $(this).closest('.api-key-row');
         if (!row.is(':first-child')) { // Check if it's not the first row
             row.remove(); // Remove the row
@@ -140,7 +131,7 @@ $(document).ready(function() {
     });
 
     // Namespace Type Change Event
-    $(document).on('change', '.namespace-type', function() {
+    $(document).on('change', '.namespace-type', function () {
         var namespaceType = $(this).val();
         var namespaceNameInput = $(this).closest('.api-key-row').find('.namespace-name');
         if (namespaceType === 'all') {
@@ -153,18 +144,18 @@ $(document).ready(function() {
     });
 
     // Form Field Blur Event for Validation
-    $(document).on('blur', '.tenant-name, .namespace-name, .apikey', function() {
+    $(document).on('blur', '.tenant-name, .namespace-name, .apikey', function () {
         validateField($(this)); // Validate the blurred field
     });
 
     // Form Submission
-    $(document).on('click', '#submit-api-keys', function(event) {
+    $(document).on('click', '#submit-api-keys', function (event) {
         event.preventDefault(); // Prevent default form submission
         console.log('Submit button clicked');
 
         // Validate all fields
         var isValidForm = true;
-        $(".api-key-row input, .api-key-row select").each(function() {
+        $(".api-key-row input, .api-key-row select").each(function () {
             if (!validateField($(this))) {
                 isValidForm = false;
             }
@@ -173,7 +164,7 @@ $(document).ready(function() {
         if (isValidForm) {
             // Construct JSON object from form data
             var apiKeys = [];
-            $(".api-key-row").each(function() {
+            $(".api-key-row").each(function () {
                 var apiKey = {
                     "apikey-type": $(this).find(".apikey-type").val(),
                     "tenant-name": $(this).find(".tenant-name").val(),
@@ -190,19 +181,20 @@ $(document).ready(function() {
             // Send JSON object to server via POST request
             $.ajax({
                 type: "POST",
-                url: "/setapikey",
+                url: "/api/v1/setapikey",
                 contentType: "application/json",
                 data: JSON.stringify(apiKeys),
-                success: function(response) {
+                success: function (response) {
                     console.log('Server response:', response);
                     if (response.success) {
                         alert("API keys set successfully!");
                         loadContent('api-keys.html', 'Settings > API Keys');
+                        populateTenantSelect();
                     } else {
                         alert("Failed to set API keys.");
                     }
                 },
-                error: function() {
+                error: function () {
                     console.log('AJAX request failed');
                     alert("An error occurred while setting API keys.");
                 }
@@ -238,7 +230,7 @@ $(document).ready(function() {
             } else {
                 switch (true) {
                     case field.hasClass('tenant-name'):
-                        isValid = /^[a-zA-Z0-9\-]{5,20}$/.test(value);
+                        isValid = /^[a-z0-9\-]{5,20}$/.test(value);
                         console.log('Tenant name validation result:', isValid);
                         break;
                     case field.hasClass('apikey'):
