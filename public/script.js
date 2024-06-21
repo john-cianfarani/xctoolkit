@@ -1,7 +1,22 @@
 // script.js v1.2
 
+
+// validateX - To validate input fields
+// renderX - To render updates to the DOM
+
+// import transitions from "bootstrap";
+
+
 //// Initial Variables ///
-const keysToClear = ['dataResources', 'dataStats', 'item3'];
+
+const ONE_MINUTE = 60; // 1 minute
+const FIVE_MINUTES = 5 * 60; // 5 minutes
+const ONE_HOUR = 60 * 60; // 1 hour
+const SIX_HOURS = 6 * 60 * 60; // 6 hours
+const ONE_DAY = 24 * 60 * 60; // 1 day
+const ONE_WEEK = 7 * 24 * 60 * 60; // 1 week
+
+const keysToClear = ['dataInventory', 'dataStats', 'item3'];
 
 const pageConfig = {
     default: {
@@ -157,23 +172,6 @@ function populateTenantSelect() {
     }
 }
 
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-}
-
-function clearLocalStorage(keys) {
-    // Check if the provided input is an array
-    if (!Array.isArray(keys)) {
-        throw new Error('Input must be an array');
-    }
-
-    // Iterate over the array of keys and remove each item from localStorage
-    keys.forEach(key => {
-        localStorage.removeItem(key);
-    });
-}
 
 
 /////////////// API KEYS PAGE CODE BELOW //////////////////
@@ -183,31 +181,11 @@ function clearLocalStorage(keys) {
 function getCookie(name) {
 
     let value = `; ${document.cookie}`;
-    console.log(value);
+    //console.log(value);
     let parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop().split(';').shift();
     return null;
 }
-
-// Create a new observer
-// const observer = new MutationObserver((mutationsList, observer) => {
-//     // Check if any mutations involve adding nodes to the DOM
-//     for (let mutation of mutationsList) {
-//         if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-//             // Look for the added nodes and perform necessary actions
-//             // For example, if the added nodes contain the elements we're looking for, trigger the script to populate them
-//             populateFormFromCookie();
-//             // Disconnect the observer once the elements are found
-//             observer.disconnect();
-//             break;
-//         }
-//     }
-// });
-
-// Start observing the document body for changes
-// observer.observe(document.body, { childList: true, subtree: true });
-//This MutationObserver will listen for changes to the document body and trigger the populateFormFromCookie() function once it detects new nodes being added. This can help ensure that the script runs after the elements are dynamically loaded into the DOM.
-
 
 // Function to populate the form with API keys from the cookie
 function populateFormFromCookie() {
@@ -404,7 +382,7 @@ function validateField(field) {
             field.removeClass('is-invalid');
             return isValid;
         } else {
-            isValid = /^[a-z0-9\-]{5,20}$/.test(value);
+            isValid = /^[a-z0-9\-]{3,20}$/.test(value);
             console.log('Namespace name validation result:', isValid);
         }
     } else {
@@ -414,11 +392,11 @@ function validateField(field) {
         } else {
             switch (true) {
                 case field.hasClass('tenant-name'):
-                    isValid = /^[a-z0-9\-]{5,20}$/.test(value);
+                    isValid = /^[a-z0-9\-]{5,16}$/.test(value);
                     console.log('Tenant name validation result:', isValid);
                     break;
                 case field.hasClass('apikey'):
-                    isValid = /^[a-zA-Z0-9!@#$%^&*()_+={}\[\]:;"'<>,.?\/\\|-]{10,40}$/.test(value);
+                    isValid = /^[a-zA-Z0-9!@#$%^&*()_+={}\[\]:;"'<>,.?\/\\|-]{10,80}$/.test(value);
                     console.log('API key validation result:', isValid);
                     break;
                 default:
@@ -441,4 +419,299 @@ function validateField(field) {
     console.log('Field validation complete:', field.attr('class'), 'ValidState:', isValid);
 
     return isValid;
+}
+
+
+/**
+ * Fetches inventory from the API with caching.
+ * @param {boolean} forcerefresh - If true, forces a fresh API call, otherwise uses cached data if available.
+ * @returns {Promise} - A promise that resolves with the inventory data.
+ */
+function getApiInventory(forcerefresh) {
+    // Set the cache key and maximum age for the data
+    const cacheKey = 'dataInventory';
+    const maxAgeInSeconds = 10 * 60; // 10 minutes
+
+    return new Promise((resolve, reject) => {
+        // Check if the data should be fetched from cache
+        if (!forcerefresh) {
+            const cachedData = cacheGetData(cacheKey, maxAgeInSeconds);
+            if (cachedData !== null) {
+                resolve(cachedData);
+                return;
+            }
+        }
+
+        // Make AJAX call to /api/v1/getInventory endpoint
+        $.ajax({
+            url: '/api/v1/getInventory',
+            method: 'POST',
+            success: function (response) {
+                if (response.success) {
+                    const inventory = response.inventory;
+                    cacheSetData(cacheKey, inventory); // Cache the data
+                    resolve(inventory);
+                } else {
+                    reject(new Error(response.message));
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                reject(new Error(`${textStatus} - ${errorThrown}`));
+            }
+        });
+    });
+}
+
+/**
+ * Fetches stats from the API with caching.
+ * @param {boolean} forcerefresh - If true, forces a fresh API call, otherwise uses cached data if available.
+ * @param {number} secondsback - The time range in seconds to fetch stats for.
+ * @param {string} [lbname=null] - The load balancer name to filter results (optional).
+ * @returns {Promise} - A promise that resolves with the stats data.
+ * TODO - cache per time interval
+ */
+function getApiStats(forcerefresh, secondsback, lbname = null) {
+    // Set the cache key and maximum age for the data
+    const cacheKey = 'dataStats';
+    const maxAgeInSeconds = 10 * 60; // 10 minutes
+
+    return new Promise((resolve, reject) => {
+        // Check if the data should be fetched from cache
+        if (!forcerefresh) {
+            const cachedData = cacheGetData(cacheKey, maxAgeInSeconds);
+            if (cachedData !== null) {
+                resolve(cachedData);
+                return;
+            }
+        }
+
+        // Make AJAX call to /api/v1/getStats endpoint
+        $.ajax({
+            url: '/api/v1/getStats',
+            method: 'POST',
+            data: JSON.stringify({ secondsback, lbname }),
+            contentType: 'application/json',
+            success: function (response) {
+                if (response.success) {
+                    const stats = response.stats;
+                    cacheSetData(cacheKey, stats); // Cache the data
+                    resolve(stats);
+                } else {
+                    reject(new Error(response.message));
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                reject(new Error(`${textStatus} - ${errorThrown}`));
+            }
+        });
+    });
+}
+
+
+/**
+ * Fetches security events from the API with caching.
+ * @param {boolean} forcerefresh - If true, forces a fresh API call, otherwise uses cached data if available.
+ * @param {number} secondsback - The time range in seconds for the security events query.
+ * @param {string} sec_event_type - The type of security event to query (or 'all' for all types).
+ * @returns {Promise} - A promise that resolves with the security events data.
+ */
+function getApiSecurityEvents(forcerefresh, secondsback, sec_event_type) {
+    // Set the cache key based on the secondsback parameter
+    const cacheKey = `dataSecEvents_${secondsback}`;
+    const maxAgeInSeconds = 10 * 60; // 10 minutes
+
+    return new Promise((resolve, reject) => {
+        // Check if the data should be fetched from cache
+        if (!forcerefresh) {
+            const cachedData = cacheGetData(cacheKey, maxAgeInSeconds);
+            if (cachedData !== null) {
+                resolve(cachedData);
+                return;
+            }
+        }
+
+        // Make AJAX call to /api/v1/getSecurityEvents endpoint
+        $.ajax({
+            url: '/api/v1/getSecurityEvents',
+            method: 'POST',
+            data: JSON.stringify({ secondsback, sec_event_type }),
+            contentType: 'application/json',
+            success: function (response) {
+                if (response.success) {
+                    const securityEvents = response.securityEvents;
+                    cacheSetData(cacheKey, securityEvents); // Cache the data
+                    resolve(securityEvents);
+                } else {
+                    reject(new Error(response.message));
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                reject(new Error(`${textStatus} - ${errorThrown}`));
+            }
+        });
+    });
+}
+
+
+$(document).on('click', '#testButton', function () {
+    // Clear previous results
+    $('#results').empty();
+
+    // Call the getApiInventory function with forcerefresh parameter
+    getApiInventory(false)
+        .then(inventory => {
+            // Handle the response
+            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+        })
+        .catch(error => {
+            // Handle the error
+            $('#results').append('<p>Error: ' + error.message + '</p>');
+        });
+});
+
+
+
+$(document).on('click', '#testButton2', function () {
+    // Clear previous results
+    $('#results').empty();
+
+    // Call the getApiInventory function with forcerefresh parameter
+    getApiInventory(true)
+        .then(inventory => {
+            // Handle the response
+            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+        })
+        .catch(error => {
+            // Handle the error
+            $('#results').append('<p>Error: ' + error.message + '</p>');
+        });
+});
+
+$(document).on('click', '#testButton3', function () {
+    // Clear previous results
+    $('#results').empty();
+
+    // Call the getApiInventory function with forcerefresh parameter
+    getApiStats(false, FIVE_MINUTES)
+        .then(inventory => {
+            // Handle the response
+            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+        })
+        .catch(error => {
+            // Handle the error
+            $('#results').append('<p>Error: ' + error.message + '</p>');
+        });
+});
+
+$(document).on('click', '#testButton4', function () {
+    // Clear previous results
+    $('#results').empty();
+
+    // Call the getApiInventory function with forcerefresh parameter
+    getApiStats(true, FIVE_MINUTES)
+        .then(inventory => {
+            // Handle the response
+            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+        })
+        .catch(error => {
+            // Handle the error
+            $('#results').append('<p>Error: ' + error.message + '</p>');
+        });
+});
+
+
+$(document).on('click', '#testButton5', function () {
+    // Clear previous results
+    $('#results').empty();
+
+    // Call the getApiInventory function with forcerefresh parameter
+    getApiSecurityEvents(true, ONE_DAY, 'all')
+        .then(inventory => {
+            // Handle the response
+            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+        })
+        .catch(error => {
+            // Handle the error
+            $('#results').append('<p>Error: ' + error.message + '</p>');
+        });
+});
+
+/**
+ * Stores the given data in the browser's local storage, under the specified key.
+ * Also adds a timestamp to the data.
+ * @param {string} key - The key under which the data will be stored in local storage.
+ * @param {any} data - The data to be stored in local storage.
+ */
+function cacheSetData(key, data) {
+    // Get the current timestamp
+    const timestamp = new Date().getTime();
+
+    // Create the cache entry object
+    const cacheEntry = {
+        data: data,
+        timestamp: timestamp
+    };
+
+    // Stringify the cache entry and store it in local storage
+    localStorage.setItem(key, JSON.stringify(cacheEntry));
+
+    // Log a message indicating the data has been stored in local storage
+    console.log(`Data stored in LocalStorage under key '${key}'`);
+}
+
+
+
+/**
+ * Retrieves data from the browser's local storage, under the specified key.
+ * If the data is present and not older than the specified maximum age, it is returned.
+ * Otherwise, null is returned.
+ * @param {string} key - The key under which the data is stored in local storage.
+ * @param {number} maxAgeInSeconds - The maximum age (in seconds) of the cached data.
+ * @returns {any|null} - The retrieved data if it is not older than the maximum age, null otherwise.
+ */
+function cacheGetData(key, maxAgeInSeconds) {
+    // Retrieve the cache entry from local storage
+    const cacheEntry = localStorage.getItem(key);
+    if (cacheEntry) {
+        // Parse the cache entry
+        const parsedEntry = JSON.parse(cacheEntry);
+        const currentTime = new Date().getTime();
+        const ageInSeconds = (currentTime - parsedEntry.timestamp) / 1000;
+        // Check if the data is not older than the maximum age
+        if (ageInSeconds <= maxAgeInSeconds) {
+            // Log a message indicating the use of cached data
+            console.log(`Using cached data for key '${key}'`);
+            // Return the cached data
+            return parsedEntry.data;
+        } else {
+            // Log a message indicating that the cached data is older than the maximum age
+            console.log(`Cached data for key '${key}' is older than ${maxAgeInSeconds} seconds`);
+            // Remove the cache entry from local storage
+            localStorage.removeItem(key);
+        }
+    }
+    // Return null if the cached data is not available or is older than the maximum age
+    return null;
+}
+
+
+/**
+ * Clears the specified keys from the browser's local storage.
+ * Used with variable keysToClear all normally cached data objects, when a major event 
+ * requires data to be purged.
+ * @param {Array} keys - An array of keys to be cleared from local storage.
+ * @throws {Error} Throws an error if the input is not an array.
+ */
+function cacheClear(keys) {
+    // Check if the provided input is an array
+    if (!Array.isArray(keys)) {
+        // Throw an error if the input is not an array
+        throw new Error('Input must be an array');
+    }
+
+    // Iterate over the array of keys and remove each item from localStorage
+    keys.forEach(key => {
+        // Remove the item from localStorage with the specified key
+        localStorage.removeItem(key);
+    });
 }

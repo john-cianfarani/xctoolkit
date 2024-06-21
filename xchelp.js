@@ -3,7 +3,7 @@
 const bodyParser = require('body-parser');
 const util = require('util');
 
-const { fetchNamespaces, fetchConfig, fetchLbs, fetchHealthchecks, fetchStats, uploadCertificate, generateCertificate, encryptApiKeys, fetchUsers, fetchConfigItems, fetchInventory } = require('./xcapi');
+const { fetchNamespaces, fetchConfig, fetchLbs, fetchHealthchecks, fetchStats, uploadCertificate, generateCertificate, encryptApiKeys, fetchUsers, fetchConfigItems, fetchInventory, fetchSecurityEvents } = require('./xcapi');
 
 const ONE_MINUTE = 60; // 1 minute
 const FIVE_MINUTES = 5 * 60; // 5 minutes
@@ -17,6 +17,7 @@ const authToken = 'DE25+WuCfoVb5QWuldejOhD0ji4=';
 const xcTenant1 = 'f5-amer-ent';
 const namespace1 = 'j-cianfarani';
 const namespace2 = 'demo-shop';
+const namespace3 = 'p-ashworth';
 const lb1 = 'juice-shop-https';
 
 
@@ -113,7 +114,7 @@ const lb1 = 'juice-shop-https';
 //     });
 
 
-// fetchStats(xcTenant1, authToken, namespace2, FIVE_MINUTES)
+// fetchStats(xcTenant1, authToken, namespace2, ONE_DAY,)
 //     .then(data => {
 //         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
 //     })
@@ -145,12 +146,64 @@ const lb1 = 'juice-shop-https';
 // })();
 
 
-fetchInventory(xcTenant1, authToken, false, namespace1)
-    .then(data => {
+// fetchInventory(xcTenant1, authToken, false, namespace1)
+//     .then(data => {
 
+//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+//         //console.log(util.inspect(data, {depth: null}));
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);
+//     });
+
+
+// fetchStats(xcTenant1, authToken, true, undefined, ONE_DAY,)
+//     .then(data => {
+//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);
+//     });
+console.log(new Date().getTime());
+fetchSecurityEvents(xcTenant1, authToken, namespace3, ONE_DAY, 'all')
+    .then(data => {
         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
-        //console.log(util.inspect(data, {depth: null}));
     })
     .catch(error => {
         console.error('Error:', error);
     });
+
+// fetchSecurityEvents(xcTenant1, authToken, namespace3, ONE_DAY, 'waf_sec_event')
+//     .then(data => {
+//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);
+//     });
+
+// fetchSecurityEvents(xcTenant1, authToken, namespace3, ONE_DAY, 'bot_sec_event')
+//     .then(data => {
+//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);
+//     });
+// fetchSecurityEvents(xcTenant1, authToken, namespace3, ONE_DAY, 'api_sec_event')
+//     .then(data => {
+//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);
+//     });
+// fetchSecurityEvents(xcTenant1, authToken, namespace3, ONE_DAY, 'svc_sec_event')
+//     .then(data => {
+//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);
+//     });
+
+
+console.log(new Date().getTime());
+
+

@@ -103,3 +103,96 @@ body {
     padding-top: 10px;
     padding-bottom: 10px;
 }
+
+
+/* Custom table for Overview page */
+
+/* Ensure table has no vertical borders except the left and right edges */
+.table-custom {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+/* .table-custom tr {
+    border: 1px solid #dee2e6;
+} */
+
+.table-custom th,
+.table-custom td {
+    border-top: none;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+    vertical-align: middle;
+    /* border: 1px solid #dee2e6; */
+}
+
+.table-custom th:first-child,
+.table-custom td:first-child {
+    text-align: left;
+}
+
+/* Hover highlight for table rows */
+.table-hover tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Different background color for thead and border around it */
+.table-custom thead th {
+    background-color: #f3f4fa;
+    /* border: 1px solid #dee2e6; */
+    /* border-bottom: none; */
+    /* No border at the bottom of the header cells */
+}
+
+
+.table-custom thead {
+    border: 1px solid #dee2e6;
+    /* border-bottom: none; */
+}
+
+/* Border around each tr */
+.table-custom tbody tr,
+.table-custom tbody tr.collapsing,
+.table-custom tbody tr.collapse {
+    border: 1px solid #dee2e6;
+}
+
+/* CSS to toggle icons */
+a[aria-expanded="true"] .bi-chevron-right {
+    display: none;
+}
+
+a[aria-expanded="false"] .bi-chevron-down {
+    display: none;
+}
+
+div[aria-expanded="true"] .bi-chevron-right {
+    display: none;
+}
+
+div[aria-expanded="false"] .bi-chevron-down {
+    display: none;
+}
+
+/* Styles for the collapse header */
+.collapse-header {
+    background-color: #d1e7fd;
+    /* Complementary light blue */
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.collapse-header .tenant-name {
+    flex-grow: 1;
+    margin-left: 10px;
+}
+
+.collapse-body {
+    /* border: 1px solid #dee2e6; */
+    padding-left: 10px;
+    padding-right: 10px;
+}

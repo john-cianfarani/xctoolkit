@@ -1,4 +1,87 @@
-<h1>Overview</h1>
+<h1>Test Console</h1>
 <div id="overview-container">
+
+
+
+    <button id="testButton">Get Inventory</button>
+    <button id="testButton2">RefreshGet Inventory</button>
+
+    <button id="testButton3">Get Statas</button>
+    <button id="testButton4">Refresh Get Statas</button>
+    <div id="results"></div>
+
+
+    <br>
+
+    <div class="container mt-4">
+        <div class="collapse-header" data-bs-toggle="collapse" data-bs-target="#tableCollapse" aria-expanded="true"
+            aria-controls="tableCollapse">
+            <i class="bi bi-chevron-right pull-right"></i>
+            <i class="bi bi-chevron-down pull-right"></i>
+            <span class="tenant-name">Tenant Name</span>
+        </div>
+        <div id="tableCollapse" class="collapse-body collapse show">
+            <br>
+
+            <table class="table table-custom table-hover">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Site</th>
+                        <th>Status</th>
+                        <th>Icon</th>
+                        <th>Col 1</th>
+                        <th>Col 2</th>
+                        <th>Col 3</th>
+                        <th>Col 4</th>
+                        <th>Col 5</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <a class="btn" data-bs-toggle="collapse" href="#row1-details" aria-expanded="false"
+                                aria-controls="row1-details">
+                                <i class="bi bi-chevron-right pull-right"></i>
+                                <i class="bi bi-chevron-down pull-right"></i>
+                            </a>
+                        </td>
+                        <td>fakesite.com</td>
+                        <td><span class="badge bg-secondary">Unknown</span></td>
+                        <td><i class="bi bi-alarm"></i></td>
+                        <td>--</td>
+                        <td>--</td>
+                        <td>--</td>
+                        <td>--</td>
+                        <td>--</td>
+                        <td>
+                            <div class="dropdown">
+
+                                <button class="btn btn-primary btn-sm " type="button" data-bs-toggle="dropdown"
+                                    aria-expanded="false">
+                                    <i class="bi bi-list"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#">Action</a></li>
+                                    <li><a class="dropdown-item" href="#">Another action</a></li>
+                                    <li><a class="dropdown-item" href="#">Something else here</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="collapse" id="row1-details">
+                        <td colspan="10">
+                            <div class="p-3">
+                                <h5>Additional Details for fakesite.com</h5>
+                                <!-- Additional Details Content Here -->
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+    </div>
 
 </div>
