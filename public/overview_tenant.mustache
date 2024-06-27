@@ -1,0 +1,119 @@
+<!-- Tenant Header -->
+<div id="tenant-tableHeader-{{tenantName}}" class="collapse-header" data-bs-toggle="collapse" data-bs-target="#tenant-tableCollapse-{{tenantName}}"
+     aria-expanded="true" aria-controls="tenant-tableCollapse-{{tenantName}}" data-tenantName="{{tenantName}}" >
+    <i class="bi bi-chevron-right pull-right"></i>
+    <i class="bi bi-chevron-down pull-right"></i>
+    <span class="tenant-name selecthover" data-bs-toggle="collapse" data-bs-target="#tenant-tableCollapse-{{tenantName}}"
+          aria-expanded="true" aria-controls="tenant-tableCollapse-{{tenantName}}">{{tenantName}}</span>
+</div>
+    <br />
+<div id="tenant-tableCollapse-{{tenantName}}" class="collapse-body collapse show">
+    <div class="stats-container" data-bs-toggle="collapse" data-bs-target="#tableStatsCollapse-{{tenantName}}" aria-expanded="true"
+         aria-controls="tableStatsCollapse-{{tenantName}}">
+        <i class="bi bi-chevron-right pull-right"></i>
+        <i class="bi bi-chevron-down pull-right"></i>
+        <span class="stats-summary selecthover">Stats Summary</span>
+    </div>
+
+    <div id="tableStatsCollapse-{{tenantName}}" class="collapse-body collapse show">
+        <table class="stats-summary-table">
+            <tr>
+                <th>Total Load Balancers</th>
+                <th></th>
+            </tr>
+            <tr>
+                <td>HTTP LBs:</td>
+                <td>{{httpLbsCount}}</td>
+            </tr>
+            <tr>
+                <td>HTTP Public/Private:</td>
+                <td>{{httpPublic}} / {{httpPrivate}}</td>
+            </tr>
+            <tr>
+                <td>TCP LBs:</td>
+                <td>{{tcpLbsCount}}</td>
+            </tr>
+            <tr>
+                <td>TCP Public/Private:</td>
+                <td>{{tcpPublic}} / {{tcpPrivate}}</td>
+            </tr>
+            <tr>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+            </tr>            
+        </table>
+
+
+                <table class="stats-summary-table">
+                    <tr>
+                        <th>Total HTTP LB Features</th>
+                        <th></th>
+                    </tr>
+                    <tr>
+                        <td>WAF</td>
+                        <td>{{httpTotalWaf}}</td>
+
+                    </tr>
+                    <tr>
+                        <td>Bot Defense</td>
+                        <td>{{httpTotalBot}}</td>
+                    </tr>
+
+                    <tr>
+                    <tr>
+                        <td>API Discovery/Protection </td>
+                        <td>{{httpTotalAPID}} / {{httpTotalAPIP}}</td>
+                    </tr>
+                    </tr>
+                    <tr>
+                        <td>MUD / MUM:</td>
+                        <td>{{httpTotalMUD}} / {{httpTotalMUM}}</td>
+                    </tr>
+                    <tr>
+                        <td>Client Side Defense</td>
+                        <td>{{httpTotalCSD}}</td>
+                    </tr>
+                </table>
+
+                <table class="stats-userlogin-table">
+                    <tr>
+                        <th>Last User Logins</th>
+                        <th></th>
+                    </tr>
+                    {{#loadBalancers}}
+                    <tr>
+                        <td>{{name}}{{{nbsp}}}{{email}}</td>
+                        <td>{{lastLoginTime}}</td>
+
+                    </tr>
+                    {{/loadBalancers}}
+
+                </table>
+
+    </div>
+<br />
+    
+
+    <!-- Placeholder for Tenant Elements -->
+    <table id="tenant-elements-{{tenantName}}" class="table table-custom">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Status</th>
+                <th>Name</th>
+                <th>Namespace</th>
+                <th>Domains</th>
+                <th>Total Requests</th>
+                <th>Req Throughput</th>
+                <th>Res Throughput</th>
+                <th>Error Rate</th>
+                <th>Data Transfer</th>
+                <th>Total Latency</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="tenant-tableBody-{{tenantName}}">
+            <!-- Load balancer rows will be dynamically inserted here -->
+        </tbody>
+    </table>
+</div>

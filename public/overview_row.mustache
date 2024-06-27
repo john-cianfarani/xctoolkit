@@ -1,0 +1,42 @@
+    {{#loadBalancers}}
+    <tr id="row-{{id}}" class="resource-row">
+        <td>
+            <a class="btn collapse-trigger" data-bs-toggle="collapse" href="#details-{{id}}" aria-expanded="false" aria-controls="details-{{id}}" 
+            data-tenant="{{tenantName}}" data-namespace="{{namespace}}" data-lbname="{{name}}" data-rowid="{{id}}">
+                <i class="bi bi-chevron-right pull-right"></i>
+                <i class="bi bi-chevron-down pull-right"></i>
+            </a>
+        </td>
+        <td><span class="badge {{statusClass}}">{{statusPercentage}}</span></td>
+        <td>{{name}} <i class="bi bi-box-arrow-up-right"></i></td>
+        <td>{{namespace}}</td>
+        <td>{{domainsDisplay}} {{additionalDomains}}</td>
+        <td>{{totalRequests}}</td>
+        <td>{{requestThroughput}}</td>
+        <td>{{responseThroughput}}</td>
+        <td>{{errorRate}}</td>
+        <td>{{totalTransfer}}</td>
+        <td>{{totalLatency}}</td>
+        <td>
+            <div class="dropdown">
+                <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-list"></i>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#">Edit Configuration</a></li>
+                    <li><a class="dropdown-item" href="#">Performance Dashboard</a></li>
+                    <li><a class="dropdown-item" href="#">Security Dashboard</a></li>
+                </ul>
+            </div>
+        </td>
+    </tr>
+    <tr class="collapse collapse-row" id="collapse-{{id}}" data-tenant="{{tenantName}}" data-namespace="{{namespace}}" data-lbname="{{name}}" data-rowid="{{id}}">
+        <td colspan="12" style="background-color: #f3f4fa;">
+            <div class="tableDetails p-3" style="background-color: white;" id="details-{{id}}">
+                <!-- Details content will be dynamically injected here -->
+            </div>
+            <br>
+        </td>
+    </tr>
+    {{/loadBalancers}}
+

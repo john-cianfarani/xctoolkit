@@ -60,48 +60,169 @@ async function fetchNamespaces(tenant, apikey) {
     }
 }
 
+// async function fetchLbs(tenant, apikey, namespace) {
+//     const lbs = {};
+//     try {
+//         // Construct the URL with variables using string interpolation
+//         const url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespace}/http_loadbalancers?report_fields=string`;
+
+//         // Make GET request to the constructed URL with Authorization header
+//         const response = await axios.get(url, {
+//             headers: {
+//                 'Authorization': `APIToken ${apikey}`,
+//                 'accept': 'application/json'
+//             }
+//         });
+
+//         //Build return
+//         response.data.items.forEach(item => {
+
+//             const uid = item.uid;
+//             const name = item.name;
+//             const description = item.description;
+//             const namespace = item.namespace;
+//             const domains = item.get_spec.domains;
+
+
+//             const obj = {
+//                 name: name,
+//                 description: description,
+//                 namespace: namespace,
+//                 domains: domains
+//             };
+
+//             lbs[uid] = obj;
+
+//         });
+
+
+//         return lbs;
+
+//     } catch (error) {
+//         // Handle any errors that occur during the request
+//         console.error('Error fetching data:', error);
+//         throw error; // Re-throw the error to be caught by the caller if necessary
+//     }
+// }
+
+/**
+ * Asynchronously fetches the load balancers (LBs) for a given tenant and namespace.
+ * @param {string} tenant - The Volterra tenant ID.
+ * @param {string} apikey - The Volterra API key.
+ * @param {string} namespace - The Volterra namespace.
+ * @returns {Promise<Object>} - A Promise that resolves to an object containing the fetched LBs.
+ * @throws {Error} - If there is an error fetching the data.
+ * 
+ * Output format:
+//  * {
+//   "{tenant}": {
+//     "{namespace}": {
+//       "{loadbalancer_name}": {
+//         "name": "string",
+//         "description": "string",
+//         "labels": { "key": "value" },
+//         "creationTimestamp": "ISO 8601 datetime string",
+//         "modificationTimestamp": "ISO 8601 datetime string",
+//         "creatorId": "string",
+//         "domains": ["string"],
+//         "certExpiration": ["ISO 8601 datetime string"],
+//         "httpsEnabled": "string",
+//         "httpEnabled": "string",
+//         "port": "string or integer",
+//         "ipAddress": "string",
+//         "state": "string",
+//         "certState": "string",
+//         "autoCertState": "string"
+//       }
+//     }
+//   }
+// }
+
+ */
 async function fetchLbs(tenant, apikey, namespace) {
-    const lbs = {};
+    const lbs = {}; // Object to store the fetched LBs
+
     try {
-        // Construct the URL with variables using string interpolation
+        // Construct the URL for the GET request
         const url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespace}/http_loadbalancers?report_fields=string`;
 
         // Make GET request to the constructed URL with Authorization header
         const response = await axios.get(url, {
             headers: {
                 'Authorization': `APIToken ${apikey}`,
-                'accept': 'application/json'
+                'Accept': 'application/json'
             }
         });
 
-        //Build return
+        // Process each LB in the response
         response.data.items.forEach(item => {
+            const metadata = item.metadata;
+            const system_metadata = item.system_metadata;
+            const get_spec = item.get_spec;
 
-            const uid = item.uid;
-            const name = item.name;
-            const description = item.description;
-            const namespace = item.namespace;
-            const domains = item.get_spec.domains;
+            // Determine HTTPS enabled status and port
+            const httpsSpec = get_spec.https || get_spec.https_auto_cert;
+            const httpsEnabled = httpsSpec ? 'enabled' : 'disabled';
+            const httpsPort = httpsSpec ? httpsSpec.port || httpsSpec.port_ranges : 'N/A';
 
+            // Determine HTTP enabled status and port
+            const httpSpec = get_spec.http || get_spec.http_auto_cert;
+            const httpEnabled = httpSpec ? 'enabled' : 'disabled';
+            const httpPort = httpSpec ? httpSpec.port || httpSpec.port_ranges : 'N/A';
 
-            const obj = {
-                name: name,
-                description: description,
-                namespace: namespace,
-                domains: domains
+            // Choose the correct port to display based on availability
+            const port = httpsPort !== 'N/A' ? httpsPort : (httpPort !== 'N/A' ? httpPort : 'N/A');
+
+            // Setup nested structure based on tenant, namespace, and loadbalancer name
+            if (!lbs[tenant]) {
+                lbs[tenant] = {};
+            }
+            if (!lbs[tenant][namespace]) {
+                lbs[tenant][namespace] = {};
+            }
+
+            // Store the LB details in the nested structure
+            lbs[tenant][namespace][metadata.name] = {
+                name: metadata.name,
+                description: metadata.description,
+                labels: metadata.labels,
+                creationTimestamp: system_metadata.creation_timestamp,
+                modificationTimestamp: system_metadata.modification_timestamp,
+                creatorId: system_metadata.creator_id,
+                domains: get_spec.domains,
+                certExpiration: get_spec.downstream_tls_certificate_expiration_timestamps,
+                httpsEnabled: httpsEnabled,
+                httpEnabled: httpEnabled,
+                port: port,
+                ipAddress: get_spec.dns_info ? get_spec.dns_info.map(info => info.ip_address).join(', ') : 'N/A',
+                state: get_spec.state,
+                certState: get_spec.cert_state,
+                autoCertState: get_spec.auto_cert_info ? get_spec.auto_cert_info.auto_cert_state : 'N/A'
             };
-
-            lbs[uid] = obj;
-
         });
 
-
         return lbs;
-
     } catch (error) {
         // Handle any errors that occur during the request
         console.error('Error fetching data:', error);
-        throw error; // Re-throw the error to be caught by the caller if necessary
+        throw error;
+    }
+}
+
+
+// Function to fetch Namespace Details via fetchLbs
+// Modified getNSDetails to use fetchLbs
+async function getNSDetails(req, tenant, namespace) {
+    try {
+        const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+        // Now calling fetchLbs instead of making a new Axios call
+        const lbsDetails = await fetchLbs(tenant, apikey, namespace);
+
+        console.log('Namespace Load Balancer Details:', lbsDetails);
+        return lbsDetails; // This will contain the processed load balancer details
+    } catch (error) {
+        console.error(`Error fetching NS details for tenant ${tenant}, namespace ${namespace}:`, error);
+        throw error; // Propagate the error to be handled by the caller
     }
 }
 
@@ -113,41 +234,30 @@ async function fetchUsers(tenant, apikey, limit = null) {
 
         // Make GET request to the constructed URL with Authorization header
         const response = await axios.get(url, {
-            headers: {
-                'Authorization': `APIToken ${apikey}`,
-                'accept': 'application/json'
-            }
+            headers: headers(tenant, apikey)  // Assuming headers function is defined elsewhere and imported
         });
 
-        //Build return
+        // Build the return array with user details
         response.data.items.forEach(item => {
-            const name = item.name;
-            const email = item.email;
-            const firstname = item.first_name;
-            const lastname = item.last_name;
-            const lastlogin = item.last_login_timestamp;
-
-
             const obj = {
-                name: name,
-                fullname: firstname + ' ' + lastname,
-                email: email,
-                lastlogin: lastlogin
+                name: item.name,
+                fullname: `${item.first_name} ${item.last_name}`,
+                email: item.email,
+                lastlogin: item.last_login_timestamp
             };
 
             users.push(obj);
-
         });
 
         // Sort users by last login time in descending order
         users.sort((a, b) => new Date(b.lastlogin) - new Date(a.lastlogin));
 
-        // If limit is specified, return only the top X users
-        if (limit) {
-            return users.slice(0, limit);
-        }
+        // If a limit is specified, truncate the list to the top 'limit' users
+        const limitedUsers = limit ? users.slice(0, limit) : users;
 
-        return users;
+        //console.log('fetchUsers - User Details for Tenant:', tenant, 'Users:', limitedUsers);
+        // Return the data structured with tenant as the key
+        return { [tenant]: limitedUsers };
 
     } catch (error) {
         // Handle any errors that occur during the request
@@ -155,6 +265,32 @@ async function fetchUsers(tenant, apikey, limit = null) {
         throw error; // Re-throw the error to be caught by the caller if necessary
     }
 }
+
+
+
+/**
+ * Fetches users for a specific tenant. This function abstracts the fetchUsers
+ * function to handle fetching user data for a specific tenant.
+ * @param {Object} req - The request object, used to derive authentication details and other request-specific data.
+ * @param {string} tenant - The identifier for the tenant.
+ * @param {number} [limit=null] - Optional limit for the number of users to return.
+ * @returns {Promise<Object>} - A promise that resolves with the users details.
+ */
+async function getTenantUsers(req, tenant, limit = 5) {
+    try {
+        const apikey = getCorrectApiKey(req, tenant, 'read');
+        // Call fetchUsers to retrieve the user details for the tenant
+        const users = await fetchUsers(tenant, apikey, limit);
+
+        //console.log('getTenantUsers - User Details for Tenant:', tenant, 'Users:', users);
+        // return { [tenant]: users }; // Returning the users wrapped in an object with the tenant as the key
+        return users; // Returning the users wrapped in an object with the tenant as the key
+    } catch (error) {
+        console.error(`Error fetching user details for tenant ${tenant}:`, error);
+        throw error;  // Propagate the error to be handled by the caller
+    }
+}
+
 
 
 async function fetchConfig(tenant, apikey, namespace, type, objname = null) {
@@ -396,6 +532,21 @@ async function fetchStats(tenant, apikey, allnsapi = true, namespace = null, sec
                     const { type, value } = metric;
                     metricsObj[type] = value.raw[0].value;
                 });
+
+                // Calculate data transferred and total number of requests
+                const requestThroughput = metricsObj.REQUEST_THROUGHPUT || 0;
+                const responseThroughput = metricsObj.RESPONSE_THROUGHPUT || 0;
+                const httpRequestRate = metricsObj.HTTP_REQUEST_RATE || 0;
+
+                const requestDataTransferred = (requestThroughput * secondsback) / 8; // Convert bits to bytes
+                const responseDataTransferred = (responseThroughput * secondsback) / 8; // Convert bits to bytes
+                const totalDataTransferred = requestDataTransferred + responseDataTransferred;
+                const totalRequests = httpRequestRate * secondsback;
+
+                metricsObj.REQUEST_DATA_TRANSFERRED = requestDataTransferred;
+                metricsObj.RESPONSE_DATA_TRANSFERRED = responseDataTransferred;
+                metricsObj.TOTAL_DATA_TRANSFERRED = totalDataTransferred;
+                metricsObj.TOTAL_REQUESTS = totalRequests;
             }
 
             // Extract the overall health score with validation
@@ -444,13 +595,14 @@ async function fetchStats(tenant, apikey, allnsapi = true, namespace = null, sec
 
 
 
+
 /**
  * Fetches the inventory of HTTP and TCP load balancers in the specified tenant.
  *
  * @param {string} tenant - The F5XC tenant.
  * @param {string} apikey - The F5XC API key.
  * @param {boolean} [allnsapi=true] - Whether to use the all namespaces api or just the app inventory api for the specified namespace.
- * @param {string} [namespaceFilter=null] - The namespace to filter results or for the inventory api url equired if allnsapi is false).
+ * @param {string} [namespaceFilter=null] - The namespace to filter results or for the inventory api url required if allnsapi is false).
  * @returns {Promise<Object>} - A promise that resolves to an object containing the inventory data.
  * @throws {Error} - If a namespace is provided but allnsapi is set to false.
  */
@@ -517,7 +669,7 @@ async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter =
         //                         "ip_reputation": true,
         //                         "malicious_user_detection": true,
         //                         "private_advertisement": true,
-        //                         "public_advertisment": true,
+        //                         "public_advertisement": true,
         //                         "waf_exclusion": true,
         //                         "ddos_mitigation": true,
         //                         "slow_ddos_mitigation": true,
@@ -582,7 +734,7 @@ async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter =
                         ip_reputation: !!lb.ip_reputation_enabled,
                         malicious_user_detection: !!lb.malicious_user_detection_enabled,
                         private_advertisement: !!lb.private_advertisement_enabled,
-                        public_advertisment: !!lb.public_advertisment_enabled,
+                        public_advertisement: !!lb.public_advertisment_enabled,
                         waf_exclusion: !!lb.waf_exclusion_enabled,
                         ddos_mitigation: !!lb.ddos_mitigation_enabled,
                         slow_ddos_mitigation: !!lb.slow_ddos_mitigation_enabled,
@@ -631,24 +783,212 @@ async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter =
     }
 }
 
+
+// async function fetchSecurityEvents(tenant, apikey, namespace, secondsback, sec_event_type) {
+//     try {
+//         // Define the security event types
+//         const secEventTypes = ['waf_sec_event', 'bot_defense_sec_event', 'api_sec_event', 'svc_policy_sec_event'];
+
+//         // Helper function to construct the query based on sec_event_type
+//         const constructQuery = (type) => {
+//             return `{sec_event_type=~"${type}"}`;
+//         };
+
+//         // Calculate the epoch time for the desired time range
+//         const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+//         const startTime = currentTime - secondsback;
+
+//         // Initialize an empty object to store the parsed data
+//         const obj = {};
+
+//         // Function to fetch events for a specific type
+//         const fetchEventsForType = async (type) => {
+//             const query = constructQuery(type);
+//             const requestData = {
+//                 "namespace": namespace,
+//                 "query": query,
+//                 "aggs": {
+//                     "fieldAggregation_VH_NAME": {
+//                         "field_aggregation": {
+//                             "field": "VH_NAME"
+//                         }
+//                     }
+//                 },
+//                 "end_time": currentTime.toString(),
+//                 "start_time": startTime.toString(),
+//             };
+
+//             console.log('Request:', requestData);
+
+//             const url = `https://${tenant}.console.ves.volterra.io/api/data/namespaces/${namespace}/app_security/events/aggregation`;
+//             const response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
+
+//             const buckets = response.data.aggs.fieldAggregation_VH_NAME.field_aggregation.buckets;
+//             return { type, buckets };
+//         };
+
+//         // Fetch events for all security event types if 'all' is specified, otherwise fetch for the given type
+//         const eventsData = sec_event_type === 'all'
+//             ? await Promise.all(secEventTypes.map(type => fetchEventsForType(type)))
+//             : [await fetchEventsForType(sec_event_type)];
+
+//         // Process the fetched events and combine them into the obj
+//         eventsData.forEach(({ type, buckets }) => {
+//             buckets.forEach(bucket => {
+//                 const { key, count } = bucket;
+//                 const loadbalancer = key.replace('ves-io-http-loadbalancer-', '').replace('ves-io-tcp-loadbalancer-', '');
+//                 const nodeNamespace = namespace;
+
+//                 if (!obj[tenant]) {
+//                     obj[tenant] = {};
+//                 }
+
+//                 if (!obj[tenant][nodeNamespace]) {
+//                     obj[tenant][nodeNamespace] = {};
+//                 }
+
+//                 if (!obj[tenant][nodeNamespace][loadbalancer]) {
+//                     obj[tenant][nodeNamespace][loadbalancer] = {
+//                         waf_sec_event: 0,
+//                         bot_defense_sec_event: 0,
+//                         api_sec_event: 0,
+//                         svc_policy_sec_event: 0,
+//                         total_events: 0
+//                     };
+//                 }
+
+//                 obj[tenant][nodeNamespace][loadbalancer][type] += parseInt(count, 10);
+//                 obj[tenant][nodeNamespace][loadbalancer].total_events += parseInt(count, 10);
+//             });
+//         });
+
+//         return obj;
+//     } catch (error) {
+//         console.error('Error fetching security events:', error);
+//         throw error;
+//     }
+// }
+// XC API for Security Events is not working correctly
+
+async function fetchSecurityEvents(tenant, apikey, allnsapi = true, namespace = null, secondsback, sec_event_type) {
+    try {
+        // Define the security event types
+        const secEventTypes = ['waf_sec_event', 'bot_defense_sec_event', 'api_sec_event', 'svc_policy_sec_event'];
+
+        // Helper function to construct the query based on sec_event_type
+        const constructQuery = (type) => {
+            if (type === 'total') {
+                return `{sec_event_type=~"waf_sec_event|bot_defense_sec_event|api_sec_event|svc_policy_sec_event"}`;
+            }
+            return `{sec_event_type=~"${type}"}`;
+        };
+
+        // If allnsapi is true, set namespace to 'system'
+        if (allnsapi) {
+            namespace = 'system';
+        } else if (!namespace) {
+            throw new Error('Namespace must be provided if allnsapi is set to false');
+        }
+
+        // Construct the URL for the API request
+        const url = allnsapi
+            ? `https://${tenant}.console.ves.volterra.io/api/data/namespaces/system/app_security/all_ns_events/aggregation`
+            : `https://${tenant}.console.ves.volterra.io/api/data/namespaces/${namespace}/app_security/events/aggregation`;
+
+        // Calculate the epoch time for the desired time range
+        const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+        const startTime = currentTime - secondsback;
+
+        // Initialize an empty object to store the parsed data
+        const obj = {};
+
+        // Function to fetch events for a specific type
+        const fetchEventsForType = async (type) => {
+            const query = constructQuery(type);
+            const requestData = {
+                "namespace": namespace,
+                "query": query,
+                "aggs": {
+                    "fieldAggregation_VH_NAME": {
+                        "field_aggregation": {
+                            "field": "VH_NAME"
+                        }
+                    }
+                },
+                "end_time": currentTime.toString(),
+                "start_time": startTime.toString(),
+            };
+
+            console.log(`Request for type ${type}:`, requestData);
+
+            const response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
+
+            const buckets = response.data.aggs.fieldAggregation_VH_NAME.field_aggregation?.buckets ||
+                response.data.aggs.fieldAggregation_VH_NAME.multi_field_aggregation?.buckets || [];
+
+            return { type, buckets };
+        };
+
+        // Fetch events for all security event types if 'all' is specified, otherwise fetch for the given type
+        const eventsData = sec_event_type === 'all' || sec_event_type === 'total'
+            ? await Promise.all((sec_event_type === 'total' ? ['total'] : secEventTypes).map(type => fetchEventsForType(type)))
+            : [await fetchEventsForType(sec_event_type)];
+
+        // Process the fetched events and combine them into the obj
+        eventsData.forEach(({ type, buckets }) => {
+            buckets.forEach(bucket => {
+                const keys = bucket.keys || {};
+                const namespaceKey = keys.namespace || namespace;
+                const vhNameKey = keys.vh_name || bucket.key;
+                const loadbalancer = vhNameKey.replace('ves-io-http-loadbalancer-', '').replace('ves-io-tcp-loadbalancer-', '');
+
+                if (!obj[tenant]) {
+                    obj[tenant] = {};
+                }
+
+                if (!obj[tenant][namespaceKey]) {
+                    obj[tenant][namespaceKey] = {};
+                }
+
+                if (!obj[tenant][namespaceKey][loadbalancer]) {
+                    obj[tenant][namespaceKey][loadbalancer] = {
+                        waf_sec_event: 0,
+                        bot_defense_sec_event: 0,
+                        api_sec_event: 0,
+                        svc_policy_sec_event: 0,
+                        total_events: 0
+                    };
+                }
+
+                const count = parseInt(bucket.count, 10);
+                if (type === 'total') {
+                    obj[tenant][namespaceKey][loadbalancer].total_events += count;
+                } else {
+                    obj[tenant][namespaceKey][loadbalancer][type] += count;
+                    obj[tenant][namespaceKey][loadbalancer].total_events += count;
+                }
+            });
+        });
+
+        return obj;
+    } catch (error) {
+        console.error('Error fetching security events:', error);
+        throw error;
+    }
+}
+
+
+
 /**
- * Fetches security events from the specified tenant and namespace, aggregates the results,
+ * Fetches security events from multiple tenants and namespaces, aggregates the results,
  * and returns them in a structured JSON format.
  *
- * @param {string} tenant - The F5XC tenant.
- * @param {string} apikey - The F5XC API key.
- * @param {string} namespace - The namespace to filter results or for the inventory API URL.
+ * @param {Object} req - The HTTP request object.
+ * @param {Object} inventory - The inventory object containing tenants and namespaces.
  * @param {number} secondsback - The time range in seconds for fetching events (e.g., last hour).
  * @param {string} sec_event_type - The security event type to filter ('all', 'waf_sec_event', 'bot_defense_sec_event', 'api_sec_event', 'svc_policy_sec_event').
  * @returns {Promise<Object>} - A promise that resolves to an object containing the aggregated security events.
  * @throws {Error} - Throws an error if there is an issue fetching the security events.
- *
- * @example
- *
- * fetchSecurityEvents('my-tenant', 'my-apikey', 'my-namespace', 3600, 'all')
- *     .then(data => console.log('Security Events:', data))
- *     .catch(error => console.error('Error:', error));
- *
  * Output format:
  * {
  *   "tenant_name": {
@@ -677,120 +1017,25 @@ async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter =
  * - svc_policy_sec_event: The count of service policy security events.
  * - total_events: The total count of all security events.
  */
-async function fetchSecurityEvents(tenant, apikey, namespace, secondsback, sec_event_type) {
+async function getSecurityEvents(req, inventory, secondsback, sec_event_type) {
     try {
-        // Define the security event types
-        const secEventTypes = ['waf_sec_event', 'bot_defense_sec_event', 'api_sec_event', 'svc_policy_sec_event'];
-
-        // Helper function to construct the query based on sec_event_type
-        const constructQuery = (type) => {
-            return `{sec_event_type=~"${type}"}`;
-        };
-
-        // Calculate the epoch time for the desired time range
-        const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
-        const startTime = currentTime - secondsback;
-
-        // Initialize an empty object to store the parsed data
-        const obj = {};
-
-        // Function to fetch events for a specific type
-        const fetchEventsForType = async (type) => {
-            const query = constructQuery(type);
-            const requestData = {
-                "namespace": namespace,
-                "query": query,
-                "aggs": {
-                    "fieldAggregation_VH_NAME": {
-                        "field_aggregation": {
-                            "field": "VH_NAME"
-                        }
-                    }
-                },
-                "end_time": currentTime.toString(),
-                "start_time": startTime.toString(),
-            };
-
-            console.log('Request:', requestData);
-
-            const url = `https://${tenant}.console.ves.volterra.io/api/data/namespaces/${namespace}/app_security/events/aggregation`;
-            const response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
-
-            const buckets = response.data.aggs.fieldAggregation_VH_NAME.field_aggregation.buckets;
-            return { type, buckets };
-        };
-
-        // Fetch events for all security event types if 'all' is specified, otherwise fetch for the given type
-        const eventsData = sec_event_type === 'all'
-            ? await Promise.all(secEventTypes.map(type => fetchEventsForType(type)))
-            : [await fetchEventsForType(sec_event_type)];
-
-        // Process the fetched events and combine them into the obj
-        eventsData.forEach(({ type, buckets }) => {
-            buckets.forEach(bucket => {
-                const { key, count } = bucket;
-                const loadbalancer = key.replace('ves-io-http-loadbalancer-', '').replace('ves-io-tcp-loadbalancer-', '');
-                const nodeNamespace = namespace;
-
-                if (!obj[tenant]) {
-                    obj[tenant] = {};
-                }
-
-                if (!obj[tenant][nodeNamespace]) {
-                    obj[tenant][nodeNamespace] = {};
-                }
-
-                if (!obj[tenant][nodeNamespace][loadbalancer]) {
-                    obj[tenant][nodeNamespace][loadbalancer] = {
-                        waf_sec_event: 0,
-                        bot_defense_sec_event: 0,
-                        api_sec_event: 0,
-                        svc_policy_sec_event: 0,
-                        total_events: 0
-                    };
-                }
-
-                obj[tenant][nodeNamespace][loadbalancer][type] += parseInt(count, 10);
-                obj[tenant][nodeNamespace][loadbalancer].total_events += parseInt(count, 10);
-            });
-        });
-
-        return obj;
-    } catch (error) {
-        console.error('Error fetching security events:', error);
-        throw error;
-    }
-}
-
-async function getSecurityEvents(req, secondsback, sec_event_type) {
-    try {
-        // Step 1: Retrieve and decrypt API keys from the cookie
-        const decryptedApiKeys = getDecryptedApiKeys(req);
-
-        // Step 2: Remove duplicates and prioritize read keys over write keys
-        const uniqueApiKeys = {};
-        decryptedApiKeys.forEach(apiKey => {
-            // Skip any disabled API keys
-            if (apiKey['apikey-state'] === 'disabled') {
-                return;
-            }
-            // Create a unique key based on tenant name and namespace name
-            const key = `${apiKey['tenant-name']}-${apiKey['namespace-name']}`;
-            // Store the API key if it's the first one we've seen for this tenant-namespace pair
-            // Or if it's a read key and the current stored key is a write key
-            if (!uniqueApiKeys[key] || (uniqueApiKeys[key]['apikey-type'] === 'write' && apiKey['apikey-type'] === 'read')) {
-                uniqueApiKeys[key] = apiKey;
-            }
-        });
-
-        // Step 3: Fetch security events for each unique tenant-namespace pair
-        // `Promise.all` is used to run multiple asynchronous operations in parallel
+        // Step 3: Fetch security events for each tenant-namespace pair in the inventory
         const securityEvents = await Promise.all(
-            // Convert the values of the `uniqueApiKeys` object into an array and map over it
-            Object.values(uniqueApiKeys).map(apiKey => {
-                // Call the `fetchSecurityEvents` function for each API key
-                console.log(`Fetching security events for tenant ${apiKey['tenant-name']} and namespace ${apiKey['namespace-name']}`);
-                return fetchSecurityEvents(apiKey['tenant-name'], apiKey['apikey'], apiKey['namespace-name'], secondsback, sec_event_type);
+            Object.keys(inventory).flatMap(tenant => {
+                const namespaces = Object.keys(inventory[tenant] || {});
+
+                return namespaces.map(namespace => {
+                    try {
+                        const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+                        console.log(`Fetching security events for tenant ${tenant}, namespace ${namespace}, with API key: ${apikey}`);
+                        /// ALLNSAPI disabled for now as it's not working correctly on the XC side.
+                        /// Suboptimal behaviour as this will require more API calls to be made.
+                        return fetchSecurityEvents(tenant, apikey, false, namespace, secondsback, sec_event_type);
+                    } catch (error) {
+                        console.error(`No suitable API key found for tenant ${tenant}, namespace ${namespace}`);
+                        return Promise.resolve({}); // Return an empty object in case of error
+                    }
+                });
             })
         );
 
@@ -806,6 +1051,104 @@ async function getSecurityEvents(req, secondsback, sec_event_type) {
         throw error;
     }
 }
+
+
+
+
+
+
+
+
+
+// async function getSecurityEvents(req, inventory, secondsback, sec_event_type) {
+//     try {
+//         // Create an array of tenant-namespace pairs
+//         const tenantNamespacePairs = [];
+//         Object.keys(inventory).forEach(tenant => {
+//             Object.keys(inventory[tenant]).forEach(namespace => {
+//                 tenantNamespacePairs.push({ tenant, namespace });
+//             });
+//         });
+
+//         // Fetch security events for each tenant-namespace pair
+//         const securityEvents = await Promise.all(
+//             tenantNamespacePairs.map(({ tenant, namespace }) => {
+//                 const apikey = getCorrectApiKey(req, tenant, namespace);
+//                 return fetchSecurityEvents(tenant, apikey, namespace, secondsback, sec_event_type);
+//             })
+//         );
+
+//         // Merge all fetched security events into one
+//         let mergedSecurityEvents = {};
+//         securityEvents.forEach(event => {
+//             mergedSecurityEvents = mergeDeep(mergedSecurityEvents, event);
+//         });
+
+//         return mergedSecurityEvents; // Return the combined security events
+//     } catch (error) {
+//         // Log and re-throw the error
+//         console.error('Error fetching security events:', error);
+//         throw error;
+//     }
+// }
+
+
+/**
+ * Asynchronously retrieves the complete security events by fetching security events for each unique tenant-namespace pair.
+ * @param {Object} req - The request object containing the cookies.
+ * @param {Object} inventory - The inventory object containing the namespaces.
+ * @param {number} secondsback - The time range in seconds to fetch security events.
+ * @param {string} sec_event_type - The type of security events to filter.
+ * @returns {Promise<Object>} A promise that resolves to the combined security events.
+ * @throws {Error} Throws an error if there's an error fetching the security events.
+ */
+// async function getSecurityEvents(req, inventory, secondsback, sec_event_type) {
+//     try {
+//         // Step 1: Retrieve and decrypt API keys from the cookie
+//         // Retrieve and decrypt API keys from the cookie
+//         const decryptedApiKeys = getDecryptedApiKeys(req);
+
+//         // Step 2: Remove duplicates and prioritize read keys over write keys
+//         // Remove duplicates and prioritize read keys over write keys
+//         const uniqueApiKeys = {};
+//         decryptedApiKeys.forEach(apiKey => {
+//             // Skip any disabled API keys
+//             if (apiKey['apikey-state'] === 'disabled') {
+//                 return;
+//             }
+//             // Create a unique key based on tenant name and namespace name
+//             const key = `${apiKey['tenant-name']}-${apiKey['namespace-name']}`;
+//             // Store the API key if it's the first one we've seen for this tenant-namespace pair
+//             // Or if it's a read key and the current stored key is a write key
+//             if (!uniqueApiKeys[key] || (uniqueApiKeys[key]['apikey-type'] === 'write' && apiKey['apikey-type'] === 'read')) {
+//                 uniqueApiKeys[key] = apiKey;
+//             }
+//         });
+
+//         // Step 3: Fetch security events for each unique tenant-namespace pair
+//         // Fetch security events for each unique tenant-namespace pair
+//         const securityEvents = await Promise.all(
+//             Object.values(uniqueApiKeys).map(apiKey => {
+//                 // Call the fetchSecurityEvents function for each API key
+//                 console.log(`Fetching security events for tenant ${apiKey['tenant-name']} and namespace ${apiKey['namespace-name']}`);
+//                 return fetchSecurityEvents(apiKey['tenant-name'], apiKey['apikey'], apiKey['namespace-name'], secondsback, sec_event_type);
+//             })
+//         );
+
+//         // Step 4: Merge all fetched security events into one
+//         // Merge all fetched security events into one
+//         let mergedSecurityEvents = {};
+//         securityEvents.forEach(event => {
+//             mergedSecurityEvents = mergeDeep(mergedSecurityEvents, event);
+//         });
+
+//         return mergedSecurityEvents; // Return the combined security events
+//     } catch (error) {
+//         console.error('Error fetching security events:', error);
+//         throw error;
+//     }
+// }
+
 
 
 /**
@@ -877,12 +1220,13 @@ async function getInventory(req) {
 /**
  * Asynchronously retrieves the complete stats by fetching stats for each unique tenant-namespace pair.
  * @param {Object} req - The request object containing the cookies.
+ * @param {Object} inventory - The inventory object containing the namespaces.
  * @param {number} secondsback - The time range in seconds to fetch stats for.
  * @param {string} [lbname=null] - The load balancer name to filter results.
  * @returns {Promise<Object>} A promise that resolves to the combined stats.
  * @throws {Error} Throws an error if there's an error fetching the stats.
  */
-async function getStats(req, secondsback, lbname = null) {
+async function getStats(req, inventory, secondsback, lbname = null) {
     try {
         // Step 1: Retrieve and decrypt API keys from the cookie
         const decryptedApiKeys = getDecryptedApiKeys(req);
@@ -894,8 +1238,8 @@ async function getStats(req, secondsback, lbname = null) {
             if (apiKey['apikey-state'] === 'disabled') {
                 return;
             }
-            // Create a unique key based on tenant name and namespace name
-            const key = `${apiKey['tenant-name']}-${apiKey['namespace-name']}`;
+            // Create a unique key based on tenant name and namespace name or 'allns' if apikey-rights is allns
+            const key = apiKey['apikey-rights'] === 'allns' ? `${apiKey['tenant-name']}-allns` : `${apiKey['tenant-name']}-${apiKey['namespace-name']}`;
             // Store the API key if it's the first one we've seen for this tenant-namespace pair
             // Or if it's a read key and the current stored key is a write key
             if (!uniqueApiKeys[key] || (uniqueApiKeys[key]['apikey-type'] === 'write' && apiKey['apikey-type'] === 'read')) {
@@ -904,25 +1248,14 @@ async function getStats(req, secondsback, lbname = null) {
         });
 
         // Step 3: Fetch stats for each unique tenant-namespace pair
-        // `Promise.all` is used to run multiple asynchronous operations in parallel
         const stats = await Promise.all(
-            // Convert the values of the `uniqueApiKeys` object into an array and map over it
             Object.values(uniqueApiKeys).map(apiKey => {
                 // Determine if we need to fetch all namespaces or a specific namespace
-                console.log(`apikey-rights: ${apiKey['apikey-rights']}`);
-
-                let allnsapi = {};
-                if (apiKey['apikey-rights'] === 'allns') {
-                    allnsapi = true;
-                } else {
-                    allnsapi = false;
-                }
-                // Call the `fetchStats` function for each API key
-                // `apiKey['tenant-name']` is the tenant
-                // `apiKey['apikey']` is the decrypted API key
-                // `allnsapi ? null : apiKey['namespace-name']` determines if we pass null for all namespaces or a specific namespace
-                console.log(`Fetching stats for tenant ${apiKey['tenant-name']} and namespace ${apiKey['namespace-name']} and allnsapi ${allnsapi}`);
-                return fetchStats(apiKey['tenant-name'], apiKey['apikey'], allnsapi, apiKey['namespace-name'], secondsback, lbname);
+                const allnsapi = apiKey['apikey-rights'] === 'allns';
+                const namespace = allnsapi ? null : apiKey['namespace-name'];
+                // Call the fetchStats function for each API key
+                console.log(`Fetching stats for tenant ${apiKey['tenant-name']} and namespace ${namespace} and allnsapi ${allnsapi}`);
+                return fetchStats(apiKey['tenant-name'], apiKey['apikey'], allnsapi, namespace, secondsback, lbname);
             })
         );
 
@@ -932,12 +1265,14 @@ async function getStats(req, secondsback, lbname = null) {
             mergedStats = mergeDeep(mergedStats, stat);
         });
 
-        return mergedStats; // Return the combined stats
+        // Return the combined stats
+        return mergedStats;
     } catch (error) {
         console.error('Error fetching stats:', error);
         throw error;
     }
 }
+
 
 
 
@@ -1266,22 +1601,58 @@ function mergeDeep(target, source) {
     return target;
 }
 
-// Function to select the correct API key
-/// Do we still need it???
+/**
+ * Function to select the correct API key.
+ * 
+ * @param {Object} req - The request object containing the cookies.
+ * @param {string} tenant - The name of the tenant.
+ * @param {string|null} [namespace=null] - The name of the namespace. Default is null.
+ * @param {string} [need='read'] - The type of API key required. Default is 'read'.
+ * @throws {Error} Throws an error if no suitable API key is found.
+ * @returns {string} The selected API key.
+ * 
+ * Detailed Logic:
+ *  - Initial Filtering Based on Tenant and Namespace:
+ *    • Tenant Match: Key must belong to the specified tenant.
+ *    • Namespace Match: If a namespace is specified, the key must be tied specifically to that namespace or marked as applicable to all namespaces ('all').
+ *    • State Check: Only considers keys that are not disabled.
+ *  
+ *  - Fallback to Any Namespace:
+ *    • If no keys match the tenant and the specific namespace, broadens search to include any keys under the tenant, regardless of namespace, provided they are enabled.
+ *  
+ *  - API Key Type Selection:
+ *    • Attempts to find a key that matches the required type ('read' or 'write').
+ *  
+ *  - Fallback for 'Read' Keys:
+ *    • If 'read' is needed and not found, tries to find a 'write' key.
+ *  
+ *  - Error Handling:
+ *    • Throws an error "No suitable API key found" if no appropriate key is found after all steps.
+ ** 
+ */
 function getCorrectApiKey(req, tenant, namespace = null, need = 'read') {
+    // Get the decrypted API keys from the cookie
     const apiKeys = getDecryptedApiKeys(req);
 
-    // Filter the API keys based on tenant and namespace
-    const filteredKeys = apiKeys.filter(apiKey => {
-        if (apiKey['tenant-name'] !== tenant) return false;
-        if (namespace && apiKey['namespace-name'] !== namespace && apiKey['namespace-type'] !== 'all') return false;
-        return true;
-    });
+    // Filter API keys to find the first matching tenant and namespace or "all"
+    let filteredKeys = apiKeys.filter(apiKey =>
+        apiKey['tenant-name'] === tenant &&
+        (!namespace || apiKey['namespace-name'] === namespace || apiKey['namespace-type'] === 'all') &&
+        apiKey['apikey-state'] !== 'disabled'
+    );
+
+    // If no keys found with exact namespace match, try any namespace for tenant
+    if (!filteredKeys.length) {
+        filteredKeys = apiKeys.filter(apiKey =>
+            apiKey['tenant-name'] === tenant &&
+            apiKey['apikey-state'] !== 'disabled'
+        );
+    }
 
     // Attempt to find the required key type (read/write)
     let selectedKey = filteredKeys.find(apiKey => apiKey['apikey-type'] === need);
 
-    // If no read key found and read is requested, fall back to write key
+    // If no read key found and read is requested, fall back to any write key
     if (!selectedKey && need === 'read') {
         selectedKey = filteredKeys.find(apiKey => apiKey['apikey-type'] === 'write');
     }
@@ -1291,9 +1662,11 @@ function getCorrectApiKey(req, tenant, namespace = null, need = 'read') {
         throw new Error('No suitable API key found');
     }
 
-    // Return the matched key
+    // Return the selected API key
     return selectedKey.apikey;
 }
+
+
 
 
 //Export Functions
@@ -1307,6 +1680,8 @@ module.exports = {
     fetchStats,
     fetchInventory,
     fetchSecurityEvents,
+    getNSDetails,
+    getTenantUsers,
     getSecurityEvents,
     getInventory,
     getStats,

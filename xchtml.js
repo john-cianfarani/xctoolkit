@@ -18,6 +18,8 @@ const {
     fetchStats,
     uploadCertificate,
     fetchInventory,
+    getNSDetails,
+    getTenantUsers,
     getSecurityEvents,
     getInventory,
     getStats,
@@ -34,7 +36,7 @@ const port = 3080;
 const encryptionKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
 // Middleware to parse JSON bodies and cookies
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '50mb' }));
 app.use(cookieParser());
 
 
@@ -77,10 +79,10 @@ app.post('/api/v1/getInventory', async (req, res) => {
 app.post('/api/v1/getStats', async (req, res) => {
     try {
         // Extract the request body
-        const { secondsback, lbname } = req.body;
+        const { inventory, secondsback, lbname } = req.body;
 
         // Call the getStats function to retrieve the stats
-        const stats = await getStats(req, secondsback, lbname);
+        const stats = await getStats(req, inventory, secondsback, lbname);
 
         // Respond with the stats data
         res.json({ success: true, stats });
@@ -91,13 +93,50 @@ app.post('/api/v1/getStats', async (req, res) => {
     }
 });
 
+app.post('/api/v1/getNSDetails', async (req, res) => {
+    try {
+        // Extract the request body
+        const { tenant, namespace } = req.body;
+
+        // Call the getNSDetails function to retrieve the stats
+        const stats = await getNSDetails(req, tenant, namespace);
+
+        // Respond with the stats data
+        res.json({ success: true, stats });
+    } catch (error) {
+        console.error('Error in /api/v1/getNSDetails endpoint:', error);
+        // Handle any errors by responding with an error message
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/api/v1/getTenantUsers', async (req, res) => {
+    try {
+        // Extract the request body
+        const { tenant, limit } = req.body;
+        console.log("API - getTenantUsers: ", tenant, limit);
+
+        const userDetails = await getTenantUsers(req, tenant, limit);
+
+        console.log("API - getTenantUsers: ", userDetails);
+        res.json({ success: true, userDetails });
+    } catch (error) {
+        console.error('Error in /api/v1/getTenantUsers endpoint:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
 app.post('/api/v1/getSecurityEvents', async (req, res) => {
     try {
         // Extract the request body
-        const { secondsback, sec_event_type } = req.body;
+        const { inventory, secondsback, sec_event_type } = req.body;
+        console.log(" getSecurityEvents - API - Inventory: ", inventory);
 
         // Call the getSecurityEvents function to retrieve the security events
-        const securityEvents = await getSecurityEvents(req, secondsback, sec_event_type);
+        const securityEvents = await getSecurityEvents(req, inventory, secondsback, sec_event_type);
+
+        console.log("API - getSecurityEvents: ", securityEvents);
 
         // Respond with the security events data
         res.json({ success: true, securityEvents });
@@ -107,6 +146,9 @@ app.post('/api/v1/getSecurityEvents', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
+
+
 
 
 // Serve static files

@@ -38,6 +38,7 @@ const pageConfig = {
         url: 'overview.html',
         func: function () {
             console.log('Overview page specific function executed.');
+            initPopovers();
             // Add contact page specific logic here
         }
     },
@@ -69,6 +70,14 @@ $(document).ready(function () {
     populateTenantSelect();
 });
 
+function initPopovers() {
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
+}
+
+
 function getCookie(name) {
     let cookieArr = document.cookie.split(";");
     for (let i = 0; i < cookieArr.length; i++) {
@@ -80,6 +89,66 @@ function getCookie(name) {
     return null;
 }
 
+$(document).ready(function () {
+    // Event delegation for all current and future collapse elements of a specific type/class
+    $('body').on('show.bs.collapse', '.collapse .collapse-row', function () {
+        console.log('1. show.bs.collapse triggered for ' + this.id);
+        var tenant = $(this).data('tenant');
+        var namespace = $(this).data('namespace');
+        var lbname = $(this).data('lbname');
+        console.log('1. Data:', tenant, namespace, lbname);
+        // populateRowDetails(this.id, tenant, namespace, lbname);
+    });
+    // $('body').on('shown.bs.collapse', '.collapse .collapse-row', function () {
+    //     console.log('2. shown.bs.collapse triggered for ' + this.id);
+    // }).on('hide.bs.collapse', '.collapse .collapse-row', function () {
+    //     console.log('3. hide.bs.collapse triggered for ' + this.id);
+    // }).on('hidden.bs.collapse', '.collapse .collapse-row', function () {
+    //     console.log('4. hidden.bs.collapse triggered for ' + this.id);
+    // });
+
+    // // Event delegation for clicks on collapse triggers in resource rows
+    // $('body').on('click', '.resource-row .collapse-trigger', function () {
+    //     console.log('Collapse trigger clicked: ' + this.id);
+    //     var tenant = $(this).data('tenant');
+    //     var namespace = $(this).data('namespace');
+    //     var lbname = $(this).data('lbname');
+    //     console.log('Data:', tenant, namespace, lbname);
+    // });
+});
+
+
+// Define the populateRowDetails function to update the details section
+function populateRowDetails(collapseId, tenant, namespace, lbname) {
+    // Placeholder text incorporating data attributes
+    var placeholderText = "Loading details for Tenant: " + tenant + ", Namespace: " + namespace + ", LB Name: " + lbname + "...";
+
+    // Find the collapse element and update its content
+    $('#' + collapseId + ' .tableDetails').html(placeholderText);
+
+    console.log('Populating details for: ' + collapseId + " with Tenant: " + tenant + ", Namespace: " + namespace + ", LB Name: " + lbname);
+}
+
+
+
+
+
+
+
+// $(document).ready(function () {
+//     // This event triggers when a collapse element starts to show
+//     $(document).on('show.bs.collapse', '.collapse', function (event) {
+//         // Get the triggering element, which could be retrieved from the event object
+//         var triggerElement1 = $(event.currentTarget);
+//         var triggerElement = $(event.target).prev('[data-bs-toggle="collapse"]');
+//         var tenant = triggerElement.data('tenant');
+//         var namespace = triggerElement.data('namespace');
+//         var lbname = triggerElement.data('lbname');
+
+//         // Call the function with the parameters
+//         console.log('Collapse Opened:', tenant, namespace, lbname, triggerElement1.attr('id'), event.target.id);
+//     });
+// });
 /**
  * Checks if the "xchelperapi" cookie is valid. If not, it loads the API keys page.
  */
@@ -422,22 +491,89 @@ function validateField(field) {
 }
 
 
+
+
 /**
- * Fetches inventory from the API with caching.
+ * Fetches inventory from the API and summarizes the count of various items per tenant, with caching.
  * @param {boolean} forcerefresh - If true, forces a fresh API call, otherwise uses cached data if available.
- * @returns {Promise} - A promise that resolves with the inventory data.
+ * @returns {Promise} - A promise that resolves with the inventory data and summary.
  */
-function getApiInventory(forcerefresh) {
-    // Set the cache key and maximum age for the data
+// function getApiInventory(forcerefresh = false) {
+//     const cacheKey = 'dataInventory';
+//     const summaryCacheKey = 'dataInventorySummary';
+//     const maxAgeInSeconds = 10 * 60; // 10 minutes for caching the response
+
+//     return new Promise((resolve, reject) => {
+//         // Check if the data should be fetched from cache
+//         if (!forcerefresh) {
+//             const cachedData = cacheGetData(cacheKey, maxAgeInSeconds);
+//             const cachedSummary = cacheGetData(summaryCacheKey, maxAgeInSeconds);
+//             if (cachedData !== null && cachedSummary !== null) {
+//                 resolve({ inventory: cachedData, summary: cachedSummary });
+//                 return;
+//             }
+//         }
+
+//         // Make AJAX call to /api/v1/getInventory endpoint
+//         $.ajax({
+//             url: '/api/v1/getInventory',
+//             method: 'POST',
+//             success: function (response) {
+//                 if (response.success) {
+//                     const inventory = response.inventory;
+//                     const summary = compileInventorySummary(inventory);
+//                     cacheSetData(cacheKey, inventory); // Cache the full inventory data
+//                     cacheSetData(summaryCacheKey, summary); // Cache the summarized inventory data
+//                     resolve({ inventory: inventory, summary: summary });
+//                 } else {
+//                     reject(new Error(response.message));
+//                 }
+//             },
+//             error: function (jqXHR, textStatus, errorThrown) {
+//                 reject(new Error(`${textStatus} - ${errorThrown}`));
+//             }
+//         });
+//     });
+// }
+
+
+function getApiInventory(forcerefresh = false, checkselection = false, tenantFilter = null) {
     const cacheKey = 'dataInventory';
-    const maxAgeInSeconds = 10 * 60; // 10 minutes
+    const summaryCacheKey = 'dataInventorySummary';
+    const maxAgeInSeconds = 30 * 60; // 30 minutes for caching the response
 
     return new Promise((resolve, reject) => {
+        const applyTenantFilter = (inventory) => {
+            let tenantToFilter = null;
+            if (tenantFilter !== null) {
+                tenantToFilter = tenantFilter;
+            } else if (checkselection) {
+                const selectedTenant = $('#service-tenant').val();
+                if (selectedTenant && selectedTenant !== 'all') {
+                    tenantToFilter = selectedTenant;
+                }
+            }
+
+            if (tenantToFilter) {
+                // Create a new object containing only the filtered tenant
+                if (inventory.hasOwnProperty(tenantToFilter)) {
+                    return { [tenantToFilter]: inventory[tenantToFilter] };
+                } else {
+                    console.error('Tenant not found in inventory:', tenantToFilter);
+                    return {};
+                }
+            }
+
+            return inventory;
+        };
+
         // Check if the data should be fetched from cache
         if (!forcerefresh) {
             const cachedData = cacheGetData(cacheKey, maxAgeInSeconds);
-            if (cachedData !== null) {
-                resolve(cachedData);
+            const cachedSummary = cacheGetData(summaryCacheKey, maxAgeInSeconds);
+            if (cachedData !== null && cachedSummary !== null) {
+                const filteredInventory = applyTenantFilter(cachedData);
+                resolve({ inventory: filteredInventory, summary: cachedSummary });
                 return;
             }
         }
@@ -449,8 +585,12 @@ function getApiInventory(forcerefresh) {
             success: function (response) {
                 if (response.success) {
                     const inventory = response.inventory;
-                    cacheSetData(cacheKey, inventory); // Cache the data
-                    resolve(inventory);
+                    const summary = compileInventorySummary(inventory);
+                    cacheSetData(cacheKey, inventory); // Cache the full inventory data
+                    cacheSetData(summaryCacheKey, summary); // Cache the summarized inventory data
+
+                    const filteredInventory = applyTenantFilter(inventory);
+                    resolve({ inventory: filteredInventory, summary: summary });
                 } else {
                     reject(new Error(response.message));
                 }
@@ -462,17 +602,73 @@ function getApiInventory(forcerefresh) {
     });
 }
 
+
+function compileInventorySummary(inventory) {
+    const summary = {};
+
+    // Traverse through the inventory data to compile the summary
+    for (const tenantName in inventory) {
+        const tenantData = inventory[tenantName];
+        const tenantSummary = {
+            http_loadbalancers: { total: 0 },
+            tcp_loadbalancers: { total: 0 }
+        };
+
+        // Initialize counters for each category
+        const httpCategories = ['waf', 'bot_protection', 'api_protection', 'api_discovery', 'client_side_defense', 'private_advertisement', 'public_advertisement', 'malicious_user_mitigation', 'malicious_user_detection', 'api_definition', 'api_scheme_validation'];
+        const tcpCategories = ['private_advertisement', 'public_advertisement'];
+
+        httpCategories.forEach(category => tenantSummary.http_loadbalancers[category] = 0);
+        tcpCategories.forEach(category => tenantSummary.tcp_loadbalancers[category] = 0);
+
+        let httpTotal = 0;
+        let tcpTotal = 0;
+
+        for (const namespaceName in tenantData) {
+            const namespaceData = tenantData[namespaceName];
+            if (namespaceData.http_loadbalancers) {
+                Object.values(namespaceData.http_loadbalancers).forEach(lb => {
+                    httpCategories.forEach(category => {
+                        if (lb.config && lb.config[category]) tenantSummary.http_loadbalancers[category]++;
+                    });
+                });
+                httpTotal += Object.values(namespaceData.http_loadbalancers).length;
+            }
+            if (namespaceData.tcp_loadbalancers) {
+                Object.values(namespaceData.tcp_loadbalancers).forEach(lb => {
+                    tcpCategories.forEach(category => {
+                        if (lb.config && lb.config[category]) tenantSummary.tcp_loadbalancers[category]++;
+                    });
+                });
+                tcpTotal += Object.values(namespaceData.tcp_loadbalancers).length;
+            }
+        }
+
+        // Set the total counts for the tenant
+        tenantSummary.http_loadbalancers.total = httpTotal;
+        tenantSummary.tcp_loadbalancers.total = tcpTotal;
+
+        summary[tenantName] = tenantSummary;
+    }
+
+    return summary;
+}
+
+
+
+
+
 /**
  * Fetches stats from the API with caching.
+ * @param {Object} inventory - The inventory data.
  * @param {boolean} forcerefresh - If true, forces a fresh API call, otherwise uses cached data if available.
  * @param {number} secondsback - The time range in seconds to fetch stats for.
  * @param {string} [lbname=null] - The load balancer name to filter results (optional).
  * @returns {Promise} - A promise that resolves with the stats data.
- * TODO - cache per time interval
  */
-function getApiStats(forcerefresh, secondsback, lbname = null) {
+function getApiStats(inventory, forcerefresh, secondsback, lbname = null) {
     // Set the cache key and maximum age for the data
-    const cacheKey = 'dataStats';
+    const cacheKey = `dataStats_${secondsback}`;
     const maxAgeInSeconds = 10 * 60; // 10 minutes
 
     return new Promise((resolve, reject) => {
@@ -489,7 +685,7 @@ function getApiStats(forcerefresh, secondsback, lbname = null) {
         $.ajax({
             url: '/api/v1/getStats',
             method: 'POST',
-            data: JSON.stringify({ secondsback, lbname }),
+            data: JSON.stringify({ inventory, secondsback, lbname }),
             contentType: 'application/json',
             success: function (response) {
                 if (response.success) {
@@ -508,16 +704,19 @@ function getApiStats(forcerefresh, secondsback, lbname = null) {
 }
 
 
+
 /**
  * Fetches security events from the API with caching.
+ * @param {Object} inventory - The inventory data.
  * @param {boolean} forcerefresh - If true, forces a fresh API call, otherwise uses cached data if available.
  * @param {number} secondsback - The time range in seconds for the security events query.
- * @param {string} sec_event_type - The type of security event to query (or 'all' for all types).
+ * @param {string} sec_event_type - (Disabled for now issues with XC API calls) - The type of security event to query (or 'all' for all types, 'total' to only repot the combined total of all security events). 
  * @returns {Promise} - A promise that resolves with the security events data.
  */
-function getApiSecurityEvents(forcerefresh, secondsback, sec_event_type) {
+function getApiTotalSecurityEvents(inventory, forcerefresh, secondsback) {
+    const sec_event_type = 'total';
     // Set the cache key based on the secondsback parameter
-    const cacheKey = `dataSecEvents_${secondsback}`;
+    const cacheKey = `dataTotalSecEvents_${secondsback}`;
     const maxAgeInSeconds = 10 * 60; // 10 minutes
 
     return new Promise((resolve, reject) => {
@@ -530,11 +729,12 @@ function getApiSecurityEvents(forcerefresh, secondsback, sec_event_type) {
             }
         }
 
+        console.log("JS getApiTotalSecurityEvents: ", inventory);
         // Make AJAX call to /api/v1/getSecurityEvents endpoint
         $.ajax({
             url: '/api/v1/getSecurityEvents',
             method: 'POST',
-            data: JSON.stringify({ secondsback, sec_event_type }),
+            data: JSON.stringify({ inventory, secondsback, sec_event_type }),
             contentType: 'application/json',
             success: function (response) {
                 if (response.success) {
@@ -553,6 +753,266 @@ function getApiSecurityEvents(forcerefresh, secondsback, sec_event_type) {
 }
 
 
+function getApiAllSecurityEvents(tenant, namespace, forcerefresh, secondsback) {
+    const sec_event_type = 'all';
+    // Set the cache key based on the secondsback parameter
+    const cacheKey = `dataAllSecEvents_${tenant}_${namespace}_${secondsback}`;
+    const maxAgeInSeconds = 10 * 60; // 10 minutes
+
+    // Fake an inventory object so I don't have to create multiple downstream functions to work around the XC API call isssue with security events
+    const inventory = {};
+
+    if (!inventory[tenant]) {
+        inventory[tenant] = {};
+    }
+
+    if (!inventory[tenant][namespace]) {
+        inventory[tenant][namespace] = {};
+    }
+
+    return new Promise((resolve, reject) => {
+        // Check if the data should be fetched from cache
+        if (!forcerefresh) {
+            const cachedData = cacheGetData(cacheKey, maxAgeInSeconds);
+            if (cachedData !== null) {
+                resolve(cachedData);
+                return;
+            }
+        }
+
+        console.log("JS getApiAllSecurityEvents: ", inventory);
+        // Make AJAX call to /api/v1/getSecurityEvents endpoint
+        $.ajax({
+            url: '/api/v1/getSecurityEvents',
+            method: 'POST',
+            data: JSON.stringify({ inventory, secondsback, sec_event_type }),
+            contentType: 'application/json',
+            success: function (response) {
+                if (response.success) {
+                    const securityEvents = response.securityEvents;
+                    cacheSetData(cacheKey, securityEvents); // Cache the data
+                    resolve(securityEvents);
+                } else {
+                    reject(new Error(response.message));
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                reject(new Error(`${textStatus} - ${errorThrown}`));
+            }
+        });
+    });
+}
+
+/**
+ * Fetches namespace details from the API with caching.
+ * @param {string} tenant - The tenant identifier.
+ * @param {string} namespace - The namespace identifier.
+ * @param {boolean} forcerefresh - If true, forces a fresh API call, otherwise uses cached data if available.
+ * @returns {Promise} - A promise that resolves with the namespace details.
+ */
+function getApiNSDetails(tenant, namespace, forcerefresh) {
+    // Set the cache key based on tenant and namespace
+    const cacheKey = `dataNSDetails_${tenant}_${namespace}`;
+    const maxAgeInSeconds = 10 * 60; // 10 minutes for caching the response
+
+    return new Promise((resolve, reject) => {
+        // Check if the data should be fetched from cache
+        if (!forcerefresh) {
+            const cachedData = cacheGetData(cacheKey, maxAgeInSeconds);
+            if (cachedData !== null) {
+                resolve(cachedData);
+                return;
+            }
+        }
+
+        console.log("Fetching namespace details for:", tenant, namespace);
+        // Make AJAX call to /api/v1/getNSDetails endpoint
+        $.ajax({
+            url: '/api/v1/getNSDetails',
+            method: 'POST',
+            data: JSON.stringify({ tenant, namespace }),
+            contentType: 'application/json',
+            success: function (response) {
+                if (response.success) {
+                    const namespaceDetails = response.stats; // Assuming the endpoint returns an object with a 'stats' key
+                    cacheSetData(cacheKey, namespaceDetails); // Cache the data
+                    resolve(namespaceDetails);
+                } else {
+                    reject(new Error(response.message));
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                reject(new Error(`${textStatus} - ${errorThrown}`));
+            }
+        });
+    });
+}
+
+/**
+ * Fetches user details for a specific tenant from the API with caching.
+ * @param {string} tenant - The identifier for the tenant.
+ * @param {number} [limit=null] - Optional limit for the number of users to return.
+ * @param {boolean} forcerefresh - If true, forces a fresh API call, otherwise uses cached data if available.
+ * @returns {Promise} - A promise that resolves with the user details.
+ */
+function getApiTenantUsers(tenant, limit, forcerefresh) {
+    // Set the cache key based on tenant and an optional limit
+    const cacheKey = `dataTenantUsers_${tenant}`;
+    const maxAgeInSeconds = 30 * 60; // 10 minutes for caching the response
+
+    return new Promise((resolve, reject) => {
+        // Check if the data should be fetched from cache
+        if (!forcerefresh) {
+            const cachedData = cacheGetData(cacheKey, maxAgeInSeconds);
+            if (cachedData !== null) {
+                resolve(cachedData);
+                return;
+            }
+        }
+
+        console.log("Fetching user details for:", tenant, "Limit:", limit);
+        // Make AJAX call to /api/v1/getTenantUsers endpoint
+        $.ajax({
+            url: '/api/v1/getTenantUsers',
+            method: 'POST',
+            data: JSON.stringify({ tenant, limit }),
+            contentType: 'application/json',
+            success: function (response) {
+                if (response.success) {
+                    const userDetails = response.userDetails; // Assuming the endpoint returns an object with a 'userDetails' key
+                    cacheSetData(cacheKey, userDetails); // Cache the data
+                    resolve(userDetails);
+                } else {
+                    reject(new Error(response.message));
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                reject(new Error(`${textStatus} - ${errorThrown}`));
+            }
+        });
+    });
+}
+
+/**
+ * Initializes and populates the overview section of the application for each tenant.
+ * This function fetches necessary data and then renders the tenant overview using the Mustache template system.
+ */
+// Function to populate the overview of tenants based on inventory data
+function populateOverview() {
+    getApiInventory(false, true)
+        .then(inventory => {
+            const tenants = Object.keys(inventory.inventory);
+            tenants.sort();
+
+            // Map each tenant to a promise that resolves to its HTML
+            const renderPromises = tenants.map(tenantName => populateOverviewTenant(tenantName, inventory));
+
+            // Wait for all promises to resolve and then update the DOM
+            Promise.all(renderPromises)
+                .then(renderedHtmls => {
+                    const overviewHTML = renderedHtmls.join('');  // Join all HTML strings
+                    document.getElementById('overview-container').innerHTML = overviewHTML;  // Update the DOM once
+                })
+                .catch(error => {
+                    console.error("Failed to render some tenant overviews:", error);
+                });
+        })
+        .catch(error => {
+            console.error("Failed to populate overview:", error);
+        });
+}
+
+
+// Function to populate a single tenant's overview using Mustache template
+// Function to populate a single tenant's overview using Mustache template
+function populateOverviewTenant(tenantName, inventory) {
+    const tenantData = inventory.inventory[tenantName]; // Specific tenant's data
+    const summaryData = inventory.summary[tenantName]; // Summary data for the tenant
+
+    // Fetch user data and pad it if necessary
+    return getApiTenantUsers(tenantName, 5, false)
+        .then(data => {
+            // Access the users array inside the tenant key
+            const users = data[tenantName] || [];
+            console.log("Users fetched for tenant:", tenantName, users);
+
+            // Map users data or provide default values if users array is empty
+            let preparedUsers = users.map(user => ({
+                name: user.fullname || ' ',
+                email: ' - (' + user.email + ')' || ' ',
+                nbsp: '&nbsp;',
+                lastLoginTime: user.lastlogin ? convertDateTime(user.lastlogin) : ' '
+            }));
+
+            // Ensure there are always 5 entries for user logins
+            while (preparedUsers.length < 5) {
+                preparedUsers.push({ name: ' ', email: ' ', nbsp: '&nbsp;', lastLoginTime: ' ' });
+            }
+
+            // Prepare data to render in the template
+            const templateData = {
+                tenantName: tenantName,
+                httpLbsCount: summaryData.http_loadbalancers.total,
+                httpPublic: summaryData.http_loadbalancers.public_advertisement,
+                httpPrivate: summaryData.http_loadbalancers.private_advertisement,
+                tcpLbsCount: summaryData.tcp_loadbalancers.total,
+                tcpPublic: summaryData.tcp_loadbalancers.public_advertisement,
+                tcpPrivate: summaryData.tcp_loadbalancers.private_advertisement,
+                httpTotalWaf: summaryData.http_loadbalancers.waf,
+                httpTotalBot: summaryData.http_loadbalancers.bot_protection,
+                httpTotalAPID: summaryData.http_loadbalancers.api_discovery,
+                httpTotalAPIP: summaryData.http_loadbalancers.api_protection,
+                httpTotalMUD: summaryData.http_loadbalancers.malicious_user_detection,
+                httpTotalMUM: summaryData.http_loadbalancers.malicious_user_mitigation,
+                httpTotalCSD: summaryData.http_loadbalancers.client_side_defense,
+                loadBalancers: preparedUsers
+            };
+
+            // Fetch the tenant template from a remote location
+            return fetch('/overview_tenant.mustache')
+                .then(response => response.text())
+                .then(template => {
+                    // Render the template with Mustache
+                    return Mustache.render(template, templateData);
+                })
+                .catch(error => {
+                    console.error('Failed to load tenant template:', error);
+                    throw new Error('Failed to load template');
+                });
+        })
+        .catch(error => {
+            console.error("Error fetching user data for tenant:", tenantName, error);
+            throw new Error('Error processing tenant data');
+        });
+}
+
+
+
+
+
+
+/**
+ * Placeholder function to populate row elements for each tenant.
+ * @param {string} tenantName - The name of the tenant.
+ * @param {Object} tenantData - Data specific to the tenant, possibly including detailed load balancer info.
+ */
+function populateOverviewRow(tenantName, tenantData) {
+    console.log('Populating rows for:', tenantName, tenantData);
+    // This function would handle populating specific load balancer rows for each tenant.
+}
+
+
+
+/// Test functions
+
+$(document).on('click', '#populateOverview', function () {
+    // Clear previous results
+    // $('#results').empty();
+
+    populateOverview();
+});
+
+
 $(document).on('click', '#testButton', function () {
     // Clear previous results
     $('#results').empty();
@@ -561,7 +1021,8 @@ $(document).on('click', '#testButton', function () {
     getApiInventory(false)
         .then(inventory => {
             // Handle the response
-            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+            //const data = inventory.inventory;
+            $('#results').append('<pre>' + JSON.stringify(inventory.inventory, null, 2) + '</pre>');
         })
         .catch(error => {
             // Handle the error
@@ -592,7 +1053,8 @@ $(document).on('click', '#testButton3', function () {
     $('#results').empty();
 
     // Call the getApiInventory function with forcerefresh parameter
-    getApiStats(false, FIVE_MINUTES)
+    const dataInventory = getApiInventory();
+    getApiStats(dataInventory, false, FIVE_MINUTES)
         .then(inventory => {
             // Handle the response
             $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
@@ -608,7 +1070,7 @@ $(document).on('click', '#testButton4', function () {
     $('#results').empty();
 
     // Call the getApiInventory function with forcerefresh parameter
-    getApiStats(true, FIVE_MINUTES)
+    getApiStats(true, ONE_DAY)
         .then(inventory => {
             // Handle the response
             $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
@@ -620,20 +1082,80 @@ $(document).on('click', '#testButton4', function () {
 });
 
 
-$(document).on('click', '#testButton5', function () {
+$(document).on('click', '#testButton5', async function () {
     // Clear previous results
     $('#results').empty();
 
+    console.log('testButton5');
     // Call the getApiInventory function with forcerefresh parameter
-    getApiSecurityEvents(true, ONE_DAY, 'all')
-        .then(inventory => {
-            // Handle the response
-            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
-        })
-        .catch(error => {
-            // Handle the error
-            $('#results').append('<p>Error: ' + error.message + '</p>');
-        });
+    try {
+        const dataInventory = await getApiInventory(false);
+        console.log('dataInventory:', dataInventory);
+
+        const inventory = await getApiTotalSecurityEvents(dataInventory, true, ONE_DAY);
+        // Handle the response
+        console.log('inventory:', inventory);
+        $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+    } catch (error) {
+        // Handle the error
+        $('#results').append('<p>Error: ' + error.message + '</p>');
+    }
+});
+
+$(document).on('click', '#testButton5b', async function () {
+    // Clear previous results
+    $('#results').empty();
+
+    console.log('testButton5b');
+    // Call the getApiInventory function with forcerefresh parameter
+    try {
+        const dataInventory = await getApiInventory(false);
+        console.log('dataInventory:', dataInventory);
+
+        const inventory = await getApiAllSecurityEvents('f5-amer-ent', 'demo-shop', true, ONE_WEEK);
+        // Handle the response
+        console.log('inventory:', inventory);
+        $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+    } catch (error) {
+        // Handle the error
+        $('#results').append('<p>Error: ' + error.message + '</p>');
+    }
+});
+
+$(document).on('click', '#testButton6', async function () {
+    // Clear previous results
+    $('#results').empty();
+
+    console.log('testButton6');
+    // Call the getApiInventory function with forcerefresh parameter
+    try {
+
+        const nsdetails = await getApiNSDetails('f5-amer-ent', 'j-cianfarani', true);
+        // Handle the response
+        console.log('NS details:', nsdetails);
+        $('#results').append('<pre>' + JSON.stringify(nsdetails, null, 2) + '</pre>');
+    } catch (error) {
+        // Handle the error
+        $('#results').append('<p>Error: ' + error.message + '</p>');
+    }
+});
+
+$(document).on('click', '#testButton7', async function () {
+    // Clear previous results
+    $('#results').empty();
+
+    console.log('testButton7');
+    // Call the getApiInventory function with forcerefresh parameter
+    try {
+
+        const users = await getApiTenantUsers('finastra', 5, true);
+        // Handle the response
+        console.log('Tenant users:', users);
+        $('#results').append('<pre>' + JSON.stringify(users, null, 2) + '</pre>');
+    } catch (error) {
+        // Handle the error
+        $('#results').append('<p>Error: ' + error.message + '</p>');
+    }
 });
 
 /**
@@ -715,3 +1237,169 @@ function cacheClear(keys) {
         localStorage.removeItem(key);
     });
 }
+
+/**
+ * Converts a UTC date/time string to the local time or a specified timezone. Can also return just the date.
+ * @param {string} utcDateTime - The UTC date/time string in ISO format.
+ * @param {string} [timezone=''] - Optional. The timezone to convert to (e.g., 'America/New_York').
+ * @param {boolean} [dateOnly=false] - Optional. If true, returns only the date part.
+ * @returns {string} - The converted date/time string in the local or specified timezone.
+ * 
+ * 
+//      'UTC',
+//     'Europe/London',
+//     'Europe/Berlin',
+//     'Europe/Paris',
+//     'America/New_York',
+//     'America/Chicago',
+//     'America/Denver',
+//     'America/Los_Angeles',
+//     'Asia/Tokyo',
+//     'Asia/Hong_Kong',
+//     'Asia/Kolkata',
+//     'Australia/Sydney',
+//     'Pacific/Auckland'
+ * 
+ */
+// // Example usage:
+// const utcDateTime = '2024-01-04T15:25:10.171824380Z';
+// console.log("Local Date and Time:", convertDateTime(utcDateTime));                      // Converts to local date/time
+// console.log("Specific Timezone (e.g., New York) Date and Time:", convertDateTime(utcDateTime, 'America/New_York')); // Converts to New York timezone
+// console.log("Local Date Only:", convertDateTime(utcDateTime, '', true));                // Converts to local date only
+// console.log("Specific Timezone (e.g., New York) Date Only:", convertDateTime(utcDateTime, 'America/New_York', true)); // Converts to New York date only
+function convertDateTime(utcDateTime, timezone = '', dateOnly = false) {
+    const options = {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: dateOnly ? undefined : '2-digit',
+        minute: dateOnly ? undefined : '2-digit',
+        hour12: true, // to get the 12-hour format with am/pm
+        timeZone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+    };
+
+    const dateTime = new Date(utcDateTime);
+    const formattedDate = dateTime.toLocaleString([], options);
+
+    if (dateOnly) {
+        // Return only the date part if dateOnly is true
+        return formattedDate.split(', ')[0];
+    } else {
+        // Extract the date and time parts
+        const [date, time] = formattedDate.split(', ');
+
+        // Remove seconds from the time
+        const [hourMinute, period] = time.split(' ');
+
+        // Return the formatted date and time
+        return `${date} ${hourMinute}${period.toLowerCase()}`;
+    }
+}
+
+/**
+ * Formats the given data throughput value in appropriate units.
+ * 
+ * @param {number} bps - The data throughput value in bits per second.
+ * @returns {string} - The formatted data throughput value with appropriate units.
+ */
+function formatDataThroughput(bps) {
+    // If the data throughput is greater than or equal to 1 billion bits per second, format it as gigabits per second.
+    if (bps >= 1e9) {
+        return `${(bps / 1e9).toFixed(2)} Gbps`; // Return the formatted data throughput value with 'Gbps' units.
+    }
+    // If the data throughput is greater than or equal to 1 million bits per second, format it as megabits per second.
+    else if (bps >= 1e6) {
+        return `${(bps / 1e6).toFixed(2)} Mbps`; // Return the formatted data throughput value with 'Mbps' units.
+    }
+    // If the data throughput is greater than or equal to 1 thousand bits per second, format it as kilobits per second.
+    else if (bps >= 1e3) {
+        return `${(bps / 1e3).toFixed(2)} kbps`; // Return the formatted data throughput value with 'kbps' units.
+    }
+    // If the data throughput is less than 1 thousand bits per second, format it as bits per second.
+    else {
+        return `${bps} bps`; // Return the formatted data throughput value with 'bps' units.
+    }
+}
+
+/**
+ * Formats the given data transfer value in appropriate units.
+ * 
+ * @param {number} bytes - The data transfer value in bytes.
+ * @returns {string} - The formatted data transfer value with appropriate units.
+ */
+function formatDataTransfer(bytes) {
+    // If the data transfer is greater than or equal to 1 terabyte, format it as terabytes.
+    if (bytes >= 1e12) {
+        return `${(bytes / 1e12).toFixed(2)} TB`; // Return the formatted data transfer value with 'TB' units.
+    }
+    // If the data transfer is greater than or equal to 1 gigabyte, format it as gigabytes.
+    else if (bytes >= 1e9) {
+        return `${(bytes / 1e9).toFixed(2)} GB`; // Return the formatted data transfer value with 'GB' units.
+    }
+    // If the data transfer is greater than or equal to 1 megabyte, format it as megabytes.
+    else if (bytes >= 1e6) {
+        return `${(bytes / 1e6).toFixed(2)} MB`; // Return the formatted data transfer value with 'MB' units.
+    }
+    // If the data transfer is greater than or equal to 1 kilobyte, format it as kilobytes.
+    else if (bytes >= 1e3) {
+        return `${(bytes / 1e3).toFixed(2)} KB`; // Return the formatted data transfer value with 'KB' units.
+    }
+    // If the data transfer is less than 1 kilobyte, format it as bytes.
+    else {
+        return `${bytes} bytes`; // Return the formatted data transfer value with 'bytes' units.
+    }
+}
+
+/**
+ * Formats time given in seconds to a more readable format.
+ * If the time is less than one second, it converts it to milliseconds.
+ * If the time is more than 60 seconds, it converts it to minutes.
+ * @param {number} seconds - The time in seconds.
+ * @returns {string} - The time formatted in seconds or milliseconds.
+ */
+function formatTime(seconds) {
+    if (seconds < 1) {  // If the time is less than one second, show it in milliseconds
+        return `${(seconds * 1000).toFixed(1)} ms`;
+    } else if (seconds >= 60) {  // If the time is one minute or more, convert it to minutes
+        return `${(seconds / 60).toFixed(2)} min`;
+    } else {  // Otherwise, display seconds
+        return `${seconds.toFixed(2)} s`;
+    }
+}
+
+
+/**
+ * Formats a generic number to a more readable format.
+ * If the number is more than 1 billion, it converts it to billions.
+ * If the number is more than 1 million, it converts it to millions.
+ * If the number is more than 1 thousand, it converts it to thousands.
+ * Otherwise, it shows the number as is.
+ * 
+ * @param {number} number - The number to format.
+ * @returns {string} - The formatted number with appropriate units.
+ */
+function formatGenericNumber(number) {
+    // If the number is more than 1 billion, convert it to billions.
+    if (number >= 1e9) {
+        return `${(number / 1e9).toFixed(1)}B`;
+    }
+    // If the number is more than 1 million, convert it to millions.
+    else if (number >= 1e6) {
+        return `${(number / 1e6).toFixed(1)}M`;
+    }
+    // If the number is more than 1 thousand, convert it to thousands.
+    else if (number >= 1e3) {
+        return `${(number / 1e3).toFixed(1)}K`;
+    }
+    // If the number is less than 1 thousand, show it as is.
+    else {
+        return `${number}`;
+    }
+}
+
+
+// // Example usage:
+const utcDateTime = '2024-01-04T15:25:10.171824380Z';
+console.log("Local Date and Time:", convertDateTime(utcDateTime));                      // Converts to local date/time
+console.log("Specific Timezone (e.g., New York) Date and Time:", convertDateTime(utcDateTime, 'America/New_York')); // Converts to New York timezone
+console.log("Local Date Only:", convertDateTime(utcDateTime, '', true));                // Converts to local date only
+console.log("Specific Timezone (e.g., New York) Date Only:", convertDateTime(utcDateTime, 'America/New_York', true)); // Converts to New York date only
+

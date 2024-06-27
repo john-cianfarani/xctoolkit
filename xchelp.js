@@ -14,7 +14,9 @@ const ONE_WEEK = 7 * 24 * 60 * 60; // 1 week
 
 // Authorization header value
 const authToken = 'DE25+WuCfoVb5QWuldejOhD0ji4=';
+const authToken_finastra = 'noaUI6nxp9FsCi1hGjVtzZONUUc=';
 const xcTenant1 = 'f5-amer-ent';
+const finastra = 'finastra';
 const namespace1 = 'j-cianfarani';
 const namespace2 = 'demo-shop';
 const namespace3 = 'p-ashworth';
@@ -41,23 +43,12 @@ const lb1 = 'juice-shop-https';
 
 
 // fetchLbs(xcTenant1, authToken, namespace1)
-//     .then(data => {
-
-//         // Iterate through the lb object
-//         for (const uid in data) {
-//             // Check if the property is directly owned by the object (not inherited)
-
-//             console.log(`"${uid}" - "${data[uid].name}" - "${data[uid].namespace}" - "${data[uid].description}" - "${data[uid].domains}"`);
-//             // if (data.hasOwnProperty(name)) {
-//             //     const description = data[name];
-//             //     console.log(`"${name}" - "${description}"`);
-//             // }
-//         }
-
+//     .then(lbs => {
+//         console.log('Load Balancers:', JSON.stringify(lbs, null, 2));
 //     })
 //     .catch(error => {
-//         console.error('Error:', error);
-//     });    
+//         console.error('Failed to fetch load balancers:', error);
+//     });
 
 
 // fetchHealthchecks(xcTenant1, authToken, namespace1, lb1)
@@ -122,13 +113,13 @@ const lb1 = 'juice-shop-https';
 //         console.error('Error:', error);
 //     });
 
-// fetchUsers(xcTenant1, authToken, 5)
-//     .then(data => {
-//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
-//     })
-//     .catch(error => {
-//         console.error('Error:', error);gr
-//     });
+fetchUsers(finastra, authToken_finastra, 5)
+    .then(data => {
+        console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+    })
+    .catch(error => {
+        console.error('Error:', error); gr
+    });
 
 
 // Usage example
@@ -164,14 +155,14 @@ const lb1 = 'juice-shop-https';
 //     .catch(error => {
 //         console.error('Error:', error);
 //     });
-console.log(new Date().getTime());
-fetchSecurityEvents(xcTenant1, authToken, namespace3, ONE_DAY, 'all')
-    .then(data => {
-        console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
+// console.log(new Date().getTime());
+// fetchSecurityEvents(xcTenant1, authToken, false, namespace3, ONE_DAY, 'total')
+//     .then(data => {
+//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);
+//     });
 
 // fetchSecurityEvents(xcTenant1, authToken, namespace3, ONE_DAY, 'waf_sec_event')
 //     .then(data => {

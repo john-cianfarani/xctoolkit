@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Latency Diagram</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/bootstrap-icons.min.css">
+    <style>
+        /* Styling for the diagram */
+        .latency-table {
+            width: 100%;
+            table-layout: fixed;
+            /* Ensures uniform column width */
+        }
+
+        .latency-table td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .icon-box {
+            padding: 10px;
+            border: 1px solid #ccc;
+            /* Box around the icons */
+            display: inline-block;
+
+            width: 90px;
+            height: 90px;
+            /* Ensures boxes are of sufficient width */
+        }
+
+        .arrow-cell {
+            width: 120px;
+            /* Fixed width for arrows */
+        }
+
+        .arrow {
+            display: inline-block;
+            width: 100%;
+            text-align: center;
+        }
+
+        .arrow span {
+            font-size: 50px;
+        }
+
+        .arrow i {
+            transform: rotate(0deg);
+            /* Corrects arrow orientation if needed */
+            font-size: 24px;
+            /* Larger icon size for visibility */
+        }
+
+        .latency-label {
+            margin-top: -20px;
+            font-size: 24px;
+            /* Adjusts position relative to arrow */
+        }
+
+        .text-under {
+            display: block;
+            font-size: 0.75rem;
+            /* Smaller font size for descriptions */
+            color: gray;
+            /* Color for descriptive text */
+        }
+
+        .lg-icon {
+            font-size: 24px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <table class="latency-table">
+            <tr>
+                <!-- Client -->
+                <td>
+                    <div class="icon-box">
+                        <i class="bi bi-person lg-icon"></i>
+                        <div>Client</div>
+                    </div>
+                </td>
+                <!-- Arrow to Load Balancer -->
+                <td class="arrow-cell">
+                    <div class="arrow">
+
+                        <div class="latency-label">10 ms</div>
+                        <img src="dbl_arrow_green.png" class="arrow">
+
+
+
+                    </div>
+                    <div class="text-under">Client Latency</div>
+                </td>
+                <!-- Load Balancer -->
+                <td>
+                    <div class="icon-box">
+                        <i class="bi bi-diagram-2 lg-icon rotate-icon"></i>
+                        <div>LB</div>
+                    </div>
+                </td>
+                <!-- Arrow to Server -->
+                <td class="arrow-cell">
+                    <div class="arrow">
+
+                        <div class="latency-label">10 ms</div>
+                        <img src="dbl_arrow_green.png" class="arrow">
+                    </div>
+                    <div class="text-under">Server Latency</div>
+                </td>
+                <!-- Server -->
+                <td>
+                    <div class="icon-box">
+                        <i class="bi bi-server lg-icon "></i>
+                        <div>Server</div>
+                    </div>
+                </td>
+                <!-- Arrow to App -->
+                <td class="arrow-cell">
+                    <div class="arrow">
+
+                        <div class="latency-label">10 ms</div>
+                        <img src="dbl_arrow_green.png" class="arrow">
+                    </div>
+                    <div class="text-under">App Latency</div>
+                </td>
+                <!-- App -->
+                <td>
+                    <div class="icon-box">
+                        <i class="bi bi-code-square lg-icon"></i>
+                        <div>App</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+</body>
+
+</html>

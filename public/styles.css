@@ -3,17 +3,26 @@ body {
     font-family: Inter, Helvetica Neue, Helvetica, Arial, sans-serif;
     font-size: 14px;
     background-color: #f3f4fa;
+    display: flex;
 }
 
 .divider {
     border-right: 1px solid #e7e9f3;
 }
 
+/* Generic styles */
+.padding-topbottom-5px {
+    padding: 5px;
+
+}
+
 /* Left side styles */
 #navigation-panel {
-    max-width: 260px;
+    /* max-width: 250px; */
     /* Limit the maximum width */
-    width: 100%;
+    min-width: 250px;
+    width: 250px;
+    height: 100%;
     /* Ensure it takes up the full available width */
     background-color: #f3f4fa;
     border-right: 1px solid #e7e9f3;
@@ -55,6 +64,9 @@ body {
 /* Right side styles */
 #main {
     border-left: 1px solid #e7e9f3;
+    min-width: 1300px;
+    overflow-x: auto;
+    /* display: inline-block; */
 }
 
 #breadcrumbs {
@@ -76,6 +88,7 @@ body {
 }
 
 
+
 /* API Keys styles */
 
 .form-inline input:not(.is-invalid),
@@ -83,20 +96,50 @@ body {
     padding-right: calc(1.5em + 0.75rem);
 }
 
+.api-key-row {
+    font-size: 8px !important;
+
+}
+
 .tenant-name {
-    width: 250px;
-    max-width: 250px;
+    width: 200px;
+    max-width: 200px;
+    font-size: 14px !important;
+}
+
+.namespace-type {
+    width: 110px;
+    max-width: 110px;
+    font-size: 14px !important;
 }
 
 .namespace-name {
-    width: 300px;
-    max-width: 300px;
+    width: 200px;
+    max-width: 200px;
+    font-size: 14px !important;
 }
 
 .apikey {
-    width: 300px;
-    max-width: 300px;
+    width: 400px;
+    max-width: 400px;
+    font-size: 14px !important;
 }
+
+.apikey-rights,
+.apikey-type,
+.apikey-format {
+    width: 95px;
+    max-width: 95px;
+    font-size: 14px !important;
+}
+
+.apikey-state,
+.apikey-rights {
+    width: 115px;
+    max-width: 115px;
+    font-size: 14px !important;
+}
+
 
 .api-key-row {
     background-color: rgb(250, 249, 249);
@@ -111,6 +154,7 @@ body {
 .table-custom {
     border-collapse: collapse;
     width: 100%;
+    font-size: 12px;
 }
 
 /* .table-custom tr {
@@ -127,8 +171,11 @@ body {
     /* border: 1px solid #dee2e6; */
 }
 
-.table-custom th:first-child,
+/* .table-custom th:first-child,
 .table-custom td:first-child {
+    text-align: left;
+} */
+.table-align-left {
     text-align: left;
 }
 
@@ -158,6 +205,11 @@ body {
     border: 1px solid #dee2e6;
 }
 
+
+.tableDetails {
+    padding: 10px;
+}
+
 /* CSS to toggle icons */
 a[aria-expanded="true"] .bi-chevron-right {
     display: none;
@@ -173,6 +225,11 @@ div[aria-expanded="true"] .bi-chevron-right {
 
 div[aria-expanded="false"] .bi-chevron-down {
     display: none;
+}
+
+
+table.collapse.in {
+    display: table;
 }
 
 /* Styles for the collapse header */
@@ -195,4 +252,141 @@ div[aria-expanded="false"] .bi-chevron-down {
     /* border: 1px solid #dee2e6; */
     padding-left: 10px;
     padding-right: 10px;
+}
+
+.first-td {
+    width: 75px;
+    background-color: aqua;
+}
+
+/* Styles for the Latency diagram */
+.latency-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    /* Ensures uniform column width */
+}
+
+.latency-table td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.icon-box {
+    padding: 10px;
+    border: 1px solid #ccc;
+    /* Box around the icons */
+    display: inline-block;
+
+    width: 90px;
+    height: 90px;
+    /* Ensures boxes are of sufficient width */
+}
+
+.arrow-cell {
+    width: 120px;
+    /* Fixed width for arrows */
+}
+
+.arrow {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+}
+
+.arrow span {
+    font-size: 50px;
+}
+
+.arrow i {
+    transform: rotate(0deg);
+    /* Corrects arrow orientation if needed */
+    font-size: 24px;
+    /* Larger icon size for visibility */
+}
+
+.latency-label {
+    margin-top: -20px;
+    font-size: 24px;
+    /* Adjusts position relative to arrow */
+}
+
+.text-under {
+    display: block;
+    font-size: 0.75rem;
+    /* Smaller font size for descriptions */
+    color: gray;
+    /* Color for descriptive text */
+}
+
+.lg-icon {
+    font-size: 24px;
+}
+
+/* Styling for the stats table */
+
+
+.stats-table {
+    width: 22%;
+    table-layout: fixed;
+    display: inline-block;
+    border-collapse: separate;
+    /* float: left; */
+    margin-right: 20px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    /* Ensures uniform column width */
+}
+
+.stats-summary-table td:first-child,
+.stats-table td:first-child {
+    /* width: 100px; */
+    padding-right: 20px;
+
+    /* background-color: aqua; */
+}
+
+.stats-table td:nth-child(2) {
+    /* width: 125px; */
+
+    /* background-color: aqua; */
+}
+
+.selecthover:hover {
+    cursor: pointer;
+    font-style: italic;
+    font-weight: bold;
+}
+
+.stats-summary-table {
+    min-width: 20%;
+    max-width: 25%;
+    table-layout: fixed;
+    display: inline-block;
+    border-collapse: separate;
+
+    margin-right: 20px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    /* Ensures uniform column width */
+}
+
+.stats-userlogin-table {
+    min-width: 25%;
+    max-width: 50%;
+    table-layout: fixed;
+    display: inline-block;
+    border-collapse: separate;
+
+    /* margin-right: 20px; */
+    border: 1px solid #ccc;
+    padding: 10px;
+    /* Ensures uniform column width */
+}
+
+.stats-userlogin-table td:first-child {
+    /* width: 100px; */
+    padding-right: 20px;
+
+    /* background-color: aqua; */
 }
