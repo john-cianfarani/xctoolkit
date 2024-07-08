@@ -1,6 +1,15 @@
 <h1>Tenant Overview</h1>
 
 <button id="populateOverview">populate</button>
+
+<select id="overviewSecondsBack" class="form-control w-25">
+    <option value="604800">Last Week</option>
+    <option value="172800">Last 48hrs</option>
+    <option value="86400" selected>Last 24hrs</option>
+    <option value="43200">Last 12hrs</option>
+    <option value="3600">Last Hour</option>
+    <!-- Add options here -->
+</select>
 <div id="overview-container">
 
 
@@ -152,8 +161,15 @@
                                 <i class="bi bi-chevron-down pull-right"></i>
                             </a>
                         </td>
-                        <td><span class="badge bg-success ">23%</span></td>
-                        <td>www_fakesite_com &nbsp;<i class="bi bi-box-arrow-up-right"></i></td>
+                        <td>
+                            <h6><span class="badge bg-success ">23%</span></h6>
+                            </td>
+                        <td>www_fakesite_com &nbsp; 
+                            <a href="https://f5-amer-ent.console.ves.volterra.io/web/workspaces/web-app-and-api-protection/namespaces/demo-shop/overview/performance/http/ves-io-http-loadbalancer-demo-shop-fe/performance_monitoring/dashboard"
+                            title="Perfmance Dashboard" target="_blank">
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                        </td>
 
                         <td>namespace1</td>
                         <td>www.fakesite.com

@@ -669,7 +669,7 @@ function compileInventorySummary(inventory) {
 function getApiStats(inventory, forcerefresh, secondsback, lbname = null) {
     // Set the cache key and maximum age for the data
     const cacheKey = `dataStats_${secondsback}`;
-    const maxAgeInSeconds = 10 * 60; // 10 minutes
+    const maxAgeInSeconds = 60 * 60; // 60 minutes
 
     return new Promise((resolve, reject) => {
         // Check if the data should be fetched from cache
@@ -898,58 +898,154 @@ function getApiTenantUsers(tenant, limit, forcerefresh) {
  * This function fetches necessary data and then renders the tenant overview using the Mustache template system.
  */
 // Function to populate the overview of tenants based on inventory data
+// function populateOverview() {
+
+//     const secondsback = document.getElementById('overviewSecondsBack').value || '86400';
+
+//     getApiInventory(false, true)
+//         .then(inventory => {
+//             const tenants = Object.keys(inventory.inventory);
+//             tenants.sort();
+
+//             // Map each tenant to a promise that resolves to its HTML
+//             const renderPromises = tenants.map(tenantName => populateOverviewTenant(tenantName, inventory));
+
+//             // Wait for all promises to resolve and then update the DOM
+//             Promise.all(renderPromises)
+//                 .then(renderedHtmls => {
+//                     const overviewHTML = renderedHtmls.join('');  // Join all HTML strings
+//                     document.getElementById('overview-container').innerHTML = overviewHTML;  // Update the DOM once
+//                 })
+//                 .catch(error => {
+//                     console.error("Failed to render some tenant overviews:", error);
+//                 });
+//         })
+//         .catch(error => {
+//             console.error("Failed to populate overview:", error);
+//         });
+// }
+
 function populateOverview() {
-    getApiInventory(false, true)
-        .then(inventory => {
+    const secondsback = document.getElementById('overviewSecondsBack').value || '86400'; // Default to last 24 hours if no value selected
+
+    // First, fetch the inventory
+    getApiInventory(false, true).then(inventory => {
+        // After inventory is fetched, fetch the stats
+        getApiStats(inventory, false, secondsback).then(stats => {
             const tenants = Object.keys(inventory.inventory);
             tenants.sort();
 
             // Map each tenant to a promise that resolves to its HTML
-            const renderPromises = tenants.map(tenantName => populateOverviewTenant(tenantName, inventory));
+            const renderPromises = tenants.map(tenantName => {
+                return populateOverviewTenant(tenantName, inventory, stats);
+            });
 
             // Wait for all promises to resolve and then update the DOM
             Promise.all(renderPromises)
                 .then(renderedHtmls => {
-                    const overviewHTML = renderedHtmls.join('');  // Join all HTML strings
-                    document.getElementById('overview-container').innerHTML = overviewHTML;  // Update the DOM once
+                    const overviewHTML = renderedHtmls.join(''); // Join all HTML strings
+                    document.getElementById('overview-container').innerHTML = overviewHTML; // Update the DOM once
+                    initPopovers(); // Initialize popovers after HTML is inserted
                 })
                 .catch(error => {
                     console.error("Failed to render some tenant overviews:", error);
                 });
-        })
-        .catch(error => {
-            console.error("Failed to populate overview:", error);
+        }).catch(error => {
+            console.error("Failed to fetch stats:", error);
         });
+    }).catch(error => {
+        console.error("Failed to fetch inventory:", error);
+    });
 }
 
 
-// Function to populate a single tenant's overview using Mustache template
-// Function to populate a single tenant's overview using Mustache template
-function populateOverviewTenant(tenantName, inventory) {
+
+
+// // Function to populate a single tenant's overview using Mustache template
+// // Function to populate a single tenant's overview using Mustache template
+// function populateOverviewTenant(tenantName, inventory) {
+//     const tenantData = inventory.inventory[tenantName]; // Specific tenant's data
+//     const summaryData = inventory.summary[tenantName]; // Summary data for the tenant
+
+//     // Fetch user data and pad it if necessary
+//     return getApiTenantUsers(tenantName, 5, false)
+//         .then(data => {
+//             // Access the users array inside the tenant key
+//             const users = data[tenantName] || [];
+//             console.log("Users fetched for tenant:", tenantName, users);
+
+//             // Map users data or provide default values if users array is empty
+//             let preparedUsers = users.map(user => ({
+//                 name: user.fullname || ' ',
+//                 email: ' - (' + user.email + ')' || ' ',
+//                 nbsp: '&nbsp;',
+//                 lastLoginTime: user.lastlogin ? convertDateTime(user.lastlogin) : ' '
+//             }));
+
+//             // Ensure there are always 5 entries for user logins
+//             while (preparedUsers.length < 5) {
+//                 preparedUsers.push({ name: ' ', email: ' ', nbsp: '&nbsp;', lastLoginTime: ' ' });
+//             }
+
+//             // Prepare data to render in the template
+//             const templateData = {
+//                 tenantName: tenantName,
+//                 httpLbsCount: summaryData.http_loadbalancers.total,
+//                 httpPublic: summaryData.http_loadbalancers.public_advertisement,
+//                 httpPrivate: summaryData.http_loadbalancers.private_advertisement,
+//                 tcpLbsCount: summaryData.tcp_loadbalancers.total,
+//                 tcpPublic: summaryData.tcp_loadbalancers.public_advertisement,
+//                 tcpPrivate: summaryData.tcp_loadbalancers.private_advertisement,
+//                 httpTotalWaf: summaryData.http_loadbalancers.waf,
+//                 httpTotalBot: summaryData.http_loadbalancers.bot_protection,
+//                 httpTotalAPID: summaryData.http_loadbalancers.api_discovery,
+//                 httpTotalAPIP: summaryData.http_loadbalancers.api_protection,
+//                 httpTotalMUD: summaryData.http_loadbalancers.malicious_user_detection,
+//                 httpTotalMUM: summaryData.http_loadbalancers.malicious_user_mitigation,
+//                 httpTotalCSD: summaryData.http_loadbalancers.client_side_defense,
+//                 loadBalancers: preparedUsers
+//             };
+
+
+//             // Use the getTemplate function to fetch the tenant template
+//             return getTemplate('overview_tenant', false)
+//                 .then(template => {
+//                     // Render the template with Mustache
+//                     return Mustache.render(template, templateData);
+//                 })
+//                 .catch(error => {
+//                     console.error('Failed to load tenant template:', error);
+//                     throw new Error('Failed to load template');
+//                 });
+
+//         })
+//         .catch(error => {
+//             console.error("Error fetching user data for tenant:", tenantName, error);
+//             throw new Error('Error processing tenant data');
+//         });
+// }
+
+
+function populateOverviewTenant(tenantName, inventory, stats) {
     const tenantData = inventory.inventory[tenantName]; // Specific tenant's data
     const summaryData = inventory.summary[tenantName]; // Summary data for the tenant
 
     // Fetch user data and pad it if necessary
     return getApiTenantUsers(tenantName, 5, false)
         .then(data => {
-            // Access the users array inside the tenant key
             const users = data[tenantName] || [];
             console.log("Users fetched for tenant:", tenantName, users);
 
-            // Map users data or provide default values if users array is empty
             let preparedUsers = users.map(user => ({
                 name: user.fullname || ' ',
-                email: ' - (' + user.email + ')' || ' ',
-                nbsp: '&nbsp;',
+                email: '(' + user.email + ')' || ' ',
                 lastLoginTime: user.lastlogin ? convertDateTime(user.lastlogin) : ' '
             }));
 
-            // Ensure there are always 5 entries for user logins
             while (preparedUsers.length < 5) {
-                preparedUsers.push({ name: ' ', email: ' ', nbsp: '&nbsp;', lastLoginTime: ' ' });
+                preparedUsers.push({ name: ' ', email: ' ', lastLoginTime: ' ' });
             }
 
-            // Prepare data to render in the template
             const templateData = {
                 tenantName: tenantName,
                 httpLbsCount: summaryData.http_loadbalancers.total,
@@ -968,12 +1064,25 @@ function populateOverviewTenant(tenantName, inventory) {
                 loadBalancers: preparedUsers
             };
 
-            // Fetch the tenant template from a remote location
-            return fetch('/overview_tenant.mustache')
-                .then(response => response.text())
+            // Use the getTemplate function to fetch the tenant template
+            return getTemplate('overview_tenant', false)
                 .then(template => {
-                    // Render the template with Mustache
-                    return Mustache.render(template, templateData);
+                    let renderedHTML = Mustache.render(template, templateData);
+
+                    // Prepare to add load balancer rows by iterating through namespaces and load balancers
+                    const rowsPromises = Object.entries(tenantData).flatMap(([namespace, lbDetails]) => {
+                        return Object.keys(lbDetails.http_loadbalancers).map(lbName => {
+                            return populateOverviewRow(inventory, stats, tenantName, namespace, lbName);
+                        });
+                    });
+
+                    // Wait for all load balancer rows to be generated and concatenated
+                    return Promise.all(rowsPromises).then(rowsHTML => {
+                        // Concatenate all rows HTML and replace the placeholder
+                        const allRowsHTML = rowsHTML.join('');
+                        renderedHTML = renderedHTML.replace('<!-- OVERVIEW_ROW -->', allRowsHTML);
+                        return renderedHTML;
+                    });
                 })
                 .catch(error => {
                     console.error('Failed to load tenant template:', error);
@@ -991,172 +1100,185 @@ function populateOverviewTenant(tenantName, inventory) {
 
 
 
-/**
- * Placeholder function to populate row elements for each tenant.
- * @param {string} tenantName - The name of the tenant.
- * @param {Object} tenantData - Data specific to the tenant, possibly including detailed load balancer info.
- */
-function populateOverviewRow(tenantName, tenantData) {
-    console.log('Populating rows for:', tenantName, tenantData);
-    // This function would handle populating specific load balancer rows for each tenant.
+
+// function populateOverviewRow(inventory, tenantName, namespace, lbName) {
+
+//     const tenantData = inventory.inventory; // Specific tenant's data
+//     const summaryData = inventory.summary; // Summary data for the tenant
+
+//     // Placeholder for the data that will be used in the template
+//     const rowData = {
+//         tenantName,
+//         namespace,
+//         name: lbName,
+//         statusClass: 'bg-success', // Placeholder for status color
+//         statusPercentage: '100%', // Placeholder for status percentage
+//         domainsDisplay: 'www.example.com', // Placeholder for primary domain
+//         additionalDomains: '+ 2 more', // Placeholder for additional domains
+//         totalRequests: '1200', // Placeholder for total requests
+//         requestThroughput: '1.5 Mbps', // Placeholder for request throughput
+//         responseThroughput: '1.2 Mbps', // Placeholder for response throughput
+//         errorRate: '0.1%', // Placeholder for error rate
+//         totalTransfer: '1.2 GB', // Placeholder for total data transfer
+//         totalLatency: '50 ms' // Placeholder for total latency
+//     };
+
+//     // Log the data being processed
+//     console.log("Processing LB Row for:", tenantName, namespace, lbName, rowData);
+
+//     // Fetch the row template using the getTemplate function
+//     return getTemplate('overview_row', false)
+//         .then(template => {
+//             // Render the template with Mustache
+//             const renderedHtml = Mustache.render(template, { loadBalancers: [rowData] });
+//             console.log("Rendered LB Row HTML:", renderedHtml);
+//             return renderedHtml;
+//         })
+//         .catch(error => {
+//             console.error('Failed to load LB row template:', error);
+//             throw new Error('Failed to load LB row template');
+//         });
+// }
+
+function populateOverviewRow(inventory, stats, tenantName, namespace, lbName) {
+    console.log("Start processing LB Row for:", tenantName, namespace, lbName);
+
+    // Safely access stats
+    const lbStats = ((stats[tenantName] || {})[namespace] || {})[lbName] || {};
+    console.log("Stats fetched for LB Row:", lbStats);
+
+    const lbData = (((inventory.inventory[tenantName] || {})[namespace] || {}).http_loadbalancers || {})[lbName];
+    if (!lbData) {
+        console.error('Load balancer data not found', tenantName, namespace, lbName);
+        throw new Error('Load balancer data not found');
+    }
+
+    const domains = lbData.config.domains || [];
+
+    // Prepare row data with checks for null values
+    const rowData = {
+        tenantName: tenantName,
+        namespace: namespace,
+        name: lbName,
+        statusClass: determineStatusClass(lbStats.HEALTHSCORE_OVERALL),
+        statusPercentage: formatHealth(lbStats.HEALTHSCORE_OVERALL),
+        domainsDisplay: domains.length > 0 ? domains[0] : 'N/A',
+        additionalDomains: formatAdditionalDomains(domains),
+        totalRequests: formatGenericNumber(lbStats.TOTAL_REQUESTS),
+        requestThroughput: formatDataThroughput(lbStats.REQUEST_THROUGHPUT),
+        responseThroughput: formatDataThroughput(lbStats.RESPONSE_THROUGHPUT),
+        errorRate: lbStats.HTTP_ERROR_RATE ? parseFloat(lbStats.HTTP_ERROR_RATE).toFixed(2) + '%' : '-',
+        totalTransfer: formatDataTransfer(lbStats.TOTAL_DATA_TRANSFERRED),
+        totalLatency: formatLatency(lbStats.HTTP_RESPONSE_LATENCY)
+    };
+
+    console.log("Processed LB Row Data:", rowData);
+
+    // Fetch the row template using the getTemplate function
+    return getTemplate('overview_row', false)
+        .then(template => {
+            // Render the template with Mustache
+            const renderedHtml = Mustache.render(template, { loadBalancers: [rowData] });
+            //console.log("Rendered LB Row HTML:", renderedHtml);
+            return renderedHtml;
+        })
+        .catch(error => {
+            console.error('Failed to load LB row template:', error);
+            throw new Error('Failed to load LB row template');
+        });
 }
 
 
+function determineStatusClass(healthScore) {
+    if (healthScore >= 95) return 'bg-success';
+    else if (healthScore >= 75) return 'bg-warning';
+    else if (healthScore > 0) return 'bg-danger';
+    return 'bg-secondary'; // Default case
+}
 
-/// Test functions
-
-$(document).on('click', '#populateOverview', function () {
-    // Clear previous results
-    // $('#results').empty();
-
-    populateOverview();
-});
-
-
-$(document).on('click', '#testButton', function () {
-    // Clear previous results
-    $('#results').empty();
-
-    // Call the getApiInventory function with forcerefresh parameter
-    getApiInventory(false)
-        .then(inventory => {
-            // Handle the response
-            //const data = inventory.inventory;
-            $('#results').append('<pre>' + JSON.stringify(inventory.inventory, null, 2) + '</pre>');
-        })
-        .catch(error => {
-            // Handle the error
-            $('#results').append('<p>Error: ' + error.message + '</p>');
-        });
-});
-
-
-
-$(document).on('click', '#testButton2', function () {
-    // Clear previous results
-    $('#results').empty();
-
-    // Call the getApiInventory function with forcerefresh parameter
-    getApiInventory(true)
-        .then(inventory => {
-            // Handle the response
-            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
-        })
-        .catch(error => {
-            // Handle the error
-            $('#results').append('<p>Error: ' + error.message + '</p>');
-        });
-});
-
-$(document).on('click', '#testButton3', function () {
-    // Clear previous results
-    $('#results').empty();
-
-    // Call the getApiInventory function with forcerefresh parameter
-    const dataInventory = getApiInventory();
-    getApiStats(dataInventory, false, FIVE_MINUTES)
-        .then(inventory => {
-            // Handle the response
-            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
-        })
-        .catch(error => {
-            // Handle the error
-            $('#results').append('<p>Error: ' + error.message + '</p>');
-        });
-});
-
-$(document).on('click', '#testButton4', function () {
-    // Clear previous results
-    $('#results').empty();
-
-    // Call the getApiInventory function with forcerefresh parameter
-    getApiStats(true, ONE_DAY)
-        .then(inventory => {
-            // Handle the response
-            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
-        })
-        .catch(error => {
-            // Handle the error
-            $('#results').append('<p>Error: ' + error.message + '</p>');
-        });
-});
-
-
-$(document).on('click', '#testButton5', async function () {
-    // Clear previous results
-    $('#results').empty();
-
-    console.log('testButton5');
-    // Call the getApiInventory function with forcerefresh parameter
-    try {
-        const dataInventory = await getApiInventory(false);
-        console.log('dataInventory:', dataInventory);
-
-        const inventory = await getApiTotalSecurityEvents(dataInventory, true, ONE_DAY);
-        // Handle the response
-        console.log('inventory:', inventory);
-        $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
-    } catch (error) {
-        // Handle the error
-        $('#results').append('<p>Error: ' + error.message + '</p>');
+function formatAdditionalDomains(domains) {
+    if (domains.length > 1) {
+        return `<br><span class="selecthover" title="All Domains" data-bs-toggle="popover" data-bs-placement="auto" data-bs-content="${domains.join(', ')}">+ All Domains</span>`;
     }
+    return '';
+}
+
+
+// $(document).ready(function () {
+//     // Attach event handler using delegation
+//     $(document).on('show.bs.collapse', '.details-collapse-trigger', function () {
+//         const tenant = $(this).data('tenant');
+//         const namespace = $(this).data('namespace');
+//         const lbname = $(this).data('lbname');
+//         console.log('Opening:', tenant, namespace, lbname);
+//     });
+
+// });
+
+
+// populateRow Details on Click.
+$(document).ready(function () {
+    $(document).on('show.bs.collapse', '.details-collapse-trigger', function () {
+        const tenant = $(this).data('tenant');
+        const namespace = $(this).data('namespace');
+        const lbname = $(this).data('lbname');
+        console.log('Opening:', tenant, namespace, lbname);
+
+        // Fetch additional data if necessary, for now we assume it's static or already available
+        const detailsData = {
+            // This should be filled with actual data required by the template
+        };
+
+
+        // $(`#details-${lbname}`).html('<h6>It works!</h6>');
+        // Fetch and render the row details template
+        getTemplate('overview_rowdetails_temp', false).then(template => {
+            const renderedHtml = Mustache.render(template, detailsData);
+            $(`#details-${lbname}`).html(renderedHtml);
+        }).catch(error => {
+            console.error('Failed to load row details template:', error);
+        });
+    });
 });
 
-$(document).on('click', '#testButton5b', async function () {
-    // Clear previous results
-    $('#results').empty();
 
-    console.log('testButton5b');
-    // Call the getApiInventory function with forcerefresh parameter
-    try {
-        const dataInventory = await getApiInventory(false);
-        console.log('dataInventory:', dataInventory);
 
-        const inventory = await getApiAllSecurityEvents('f5-amer-ent', 'demo-shop', true, ONE_WEEK);
-        // Handle the response
-        console.log('inventory:', inventory);
-        $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
-    } catch (error) {
-        // Handle the error
-        $('#results').append('<p>Error: ' + error.message + '</p>');
-    }
-});
+function getTemplate(templateName, forcerefresh = false) {
+    const cacheKey = `template_${templateName}`;
+    // const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
+    const maxAgeInSeconds = 1; // Cache for 60 minutes
 
-$(document).on('click', '#testButton6', async function () {
-    // Clear previous results
-    $('#results').empty();
+    return new Promise((resolve, reject) => {
+        // Check if the data should be fetched from cache
+        if (!forcerefresh) {
+            const cachedTemplate = cacheGetData(cacheKey, maxAgeInSeconds);
+            if (cachedTemplate !== null) {
+                console.log("Using cached template for:", templateName);
+                resolve(cachedTemplate);
+                return;
+            }
+        }
 
-    console.log('testButton6');
-    // Call the getApiInventory function with forcerefresh parameter
-    try {
+        // Fetch the template from the remote location
+        console.log("Fetching new template for:", templateName);
+        fetch(`/${templateName}.mustache`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch template: ' + response.statusText);
+                }
+                return response.text();
+            })
+            .then(template => {
+                cacheSetData(cacheKey, template); // Cache the fetched template
+                resolve(template);
+            })
+            .catch(error => {
+                console.error('Error fetching template:', templateName, error);
+                reject(error);
+            });
+    });
+}
 
-        const nsdetails = await getApiNSDetails('f5-amer-ent', 'j-cianfarani', true);
-        // Handle the response
-        console.log('NS details:', nsdetails);
-        $('#results').append('<pre>' + JSON.stringify(nsdetails, null, 2) + '</pre>');
-    } catch (error) {
-        // Handle the error
-        $('#results').append('<p>Error: ' + error.message + '</p>');
-    }
-});
-
-$(document).on('click', '#testButton7', async function () {
-    // Clear previous results
-    $('#results').empty();
-
-    console.log('testButton7');
-    // Call the getApiInventory function with forcerefresh parameter
-    try {
-
-        const users = await getApiTenantUsers('finastra', 5, true);
-        // Handle the response
-        console.log('Tenant users:', users);
-        $('#results').append('<pre>' + JSON.stringify(users, null, 2) + '</pre>');
-    } catch (error) {
-        // Handle the error
-        $('#results').append('<p>Error: ' + error.message + '</p>');
-    }
-});
 
 /**
  * Stores the given data in the browser's local storage, under the specified key.
@@ -1300,22 +1422,28 @@ function convertDateTime(utcDateTime, timezone = '', dateOnly = false) {
  * @param {number} bps - The data throughput value in bits per second.
  * @returns {string} - The formatted data throughput value with appropriate units.
  */
-function formatDataThroughput(bps) {
+function formatDataThroughput(number) {
+    let bps = parseFloat(number);
+
+    if (isNaN(bps)) {
+        return '-';
+    }
+
     // If the data throughput is greater than or equal to 1 billion bits per second, format it as gigabits per second.
     if (bps >= 1e9) {
-        return `${(bps / 1e9).toFixed(2)} Gbps`; // Return the formatted data throughput value with 'Gbps' units.
+        return `${(bps / 1e9).toFixed(1)} Gbps`; // Return the formatted data throughput value with 'Gbps' units.
     }
     // If the data throughput is greater than or equal to 1 million bits per second, format it as megabits per second.
     else if (bps >= 1e6) {
-        return `${(bps / 1e6).toFixed(2)} Mbps`; // Return the formatted data throughput value with 'Mbps' units.
+        return `${(bps / 1e6).toFixed(1)} Mbps`; // Return the formatted data throughput value with 'Mbps' units.
     }
     // If the data throughput is greater than or equal to 1 thousand bits per second, format it as kilobits per second.
     else if (bps >= 1e3) {
-        return `${(bps / 1e3).toFixed(2)} kbps`; // Return the formatted data throughput value with 'kbps' units.
+        return `${(bps / 1e3).toFixed(1)} kbps`; // Return the formatted data throughput value with 'kbps' units.
     }
     // If the data throughput is less than 1 thousand bits per second, format it as bits per second.
     else {
-        return `${bps} bps`; // Return the formatted data throughput value with 'bps' units.
+        return `${bps.toFixed(1)} bps`; // Return the formatted data throughput value with 'bps' units.
     }
 }
 
@@ -1325,26 +1453,31 @@ function formatDataThroughput(bps) {
  * @param {number} bytes - The data transfer value in bytes.
  * @returns {string} - The formatted data transfer value with appropriate units.
  */
-function formatDataTransfer(bytes) {
+function formatDataTransfer(number) {
+    let bytes = parseFloat(number);
+
+    if (isNaN(bytes)) {
+        return '-';
+    }
     // If the data transfer is greater than or equal to 1 terabyte, format it as terabytes.
     if (bytes >= 1e12) {
-        return `${(bytes / 1e12).toFixed(2)} TB`; // Return the formatted data transfer value with 'TB' units.
+        return `${(bytes / 1e12).toFixed(1)} TB`; // Return the formatted data transfer value with 'TB' units.
     }
     // If the data transfer is greater than or equal to 1 gigabyte, format it as gigabytes.
     else if (bytes >= 1e9) {
-        return `${(bytes / 1e9).toFixed(2)} GB`; // Return the formatted data transfer value with 'GB' units.
+        return `${(bytes / 1e9).toFixed(1)} GB`; // Return the formatted data transfer value with 'GB' units.
     }
     // If the data transfer is greater than or equal to 1 megabyte, format it as megabytes.
     else if (bytes >= 1e6) {
-        return `${(bytes / 1e6).toFixed(2)} MB`; // Return the formatted data transfer value with 'MB' units.
+        return `${(bytes / 1e6).toFixed(1)} MB`; // Return the formatted data transfer value with 'MB' units.
     }
     // If the data transfer is greater than or equal to 1 kilobyte, format it as kilobytes.
     else if (bytes >= 1e3) {
-        return `${(bytes / 1e3).toFixed(2)} KB`; // Return the formatted data transfer value with 'KB' units.
+        return `${(bytes / 1e3).toFixed(1)} KB`; // Return the formatted data transfer value with 'KB' units.
     }
     // If the data transfer is less than 1 kilobyte, format it as bytes.
     else {
-        return `${bytes} bytes`; // Return the formatted data transfer value with 'bytes' units.
+        return `${bytes.toFixed(1)} bytes`; // Return the formatted data transfer value with 'bytes' units.
     }
 }
 
@@ -1355,7 +1488,13 @@ function formatDataTransfer(bytes) {
  * @param {number} seconds - The time in seconds.
  * @returns {string} - The time formatted in seconds or milliseconds.
  */
-function formatTime(seconds) {
+function formatLatency(number) {
+    let seconds = parseFloat(number);
+
+    if (isNaN(seconds)) {
+        return '-';
+    }
+
     if (seconds < 1) {  // If the time is less than one second, show it in milliseconds
         return `${(seconds * 1000).toFixed(1)} ms`;
     } else if (seconds >= 60) {  // If the time is one minute or more, convert it to minutes
@@ -1377,23 +1516,53 @@ function formatTime(seconds) {
  * @returns {string} - The formatted number with appropriate units.
  */
 function formatGenericNumber(number) {
+    let num = parseFloat(number);
+
+    if (isNaN(num)) {
+        return '-';
+    }
+
     // If the number is more than 1 billion, convert it to billions.
-    if (number >= 1e9) {
-        return `${(number / 1e9).toFixed(1)}B`;
+    if (num >= 1e9) {
+        return `${(num / 1e9).toFixed(1)}B`;
     }
     // If the number is more than 1 million, convert it to millions.
-    else if (number >= 1e6) {
-        return `${(number / 1e6).toFixed(1)}M`;
+    else if (num >= 1e6) {
+        return `${(num / 1e6).toFixed(1)}M`;
     }
     // If the number is more than 1 thousand, convert it to thousands.
-    else if (number >= 1e3) {
-        return `${(number / 1e3).toFixed(1)}K`;
+    else if (num >= 1e3) {
+        return `${(num / 1e3).toFixed(1)}K`;
     }
     // If the number is less than 1 thousand, show it as is.
     else {
-        return `${number}`;
+        return `${num}`;
     }
 }
+
+function formatHealth(number) {
+    let num = parseFloat(number);
+
+    if (isNaN(num)) {
+        return 'N/A';
+    }
+
+    // Round to nearest whole number if very close to 100
+    if (num > 99.9) {
+        num = 100;
+    }
+
+    // Apply toFixed only if the number is not a whole number
+    if (num % 1 !== 0) {
+        num = num.toFixed(1);
+    }
+
+    return `${num}%`;
+}
+
+
+
+
 
 
 // // Example usage:
@@ -1403,3 +1572,157 @@ console.log("Specific Timezone (e.g., New York) Date and Time:", convertDateTime
 console.log("Local Date Only:", convertDateTime(utcDateTime, '', true));                // Converts to local date only
 console.log("Specific Timezone (e.g., New York) Date Only:", convertDateTime(utcDateTime, 'America/New_York', true)); // Converts to New York date only
 
+/// Test functions
+
+$(document).on('click', '#populateOverview', function () {
+    // Clear previous results
+    // $('#results').empty();
+
+    populateOverview();
+});
+
+
+$(document).on('click', '#testButton', function () {
+    // Clear previous results
+    $('#results').empty();
+
+    // Call the getApiInventory function with forcerefresh parameter
+    getApiInventory(false)
+        .then(inventory => {
+            // Handle the response
+            //const data = inventory.inventory;
+            $('#results').append('<pre>' + JSON.stringify(inventory.inventory, null, 2) + '</pre>');
+        })
+        .catch(error => {
+            // Handle the error
+            $('#results').append('<p>Error: ' + error.message + '</p>');
+        });
+});
+
+
+
+$(document).on('click', '#testButton2', function () {
+    // Clear previous results
+    $('#results').empty();
+
+    // Call the getApiInventory function with forcerefresh parameter
+    getApiInventory(true)
+        .then(inventory => {
+            // Handle the response
+            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+        })
+        .catch(error => {
+            // Handle the error
+            $('#results').append('<p>Error: ' + error.message + '</p>');
+        });
+});
+
+$(document).on('click', '#testButton3', function () {
+    // Clear previous results
+    $('#results').empty();
+
+    // Call the getApiInventory function with forcerefresh parameter
+    const dataInventory = getApiInventory();
+    getApiStats(dataInventory, false, ONE_DAY)
+        .then(inventory => {
+            // Handle the response
+            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+        })
+        .catch(error => {
+            // Handle the error
+            $('#results').append('<p>Error: ' + error.message + '</p>');
+        });
+});
+
+$(document).on('click', '#testButton4', function () {
+    // Clear previous results
+    $('#results').empty();
+
+    // Call the getApiInventory function with forcerefresh parameter
+    getApiStats(true, ONE_DAY)
+        .then(inventory => {
+            // Handle the response
+            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+        })
+        .catch(error => {
+            // Handle the error
+            $('#results').append('<p>Error: ' + error.message + '</p>');
+        });
+});
+
+
+$(document).on('click', '#testButton5', async function () {
+    // Clear previous results
+    $('#results').empty();
+
+    console.log('testButton5');
+    // Call the getApiInventory function with forcerefresh parameter
+    try {
+        const dataInventory = await getApiInventory(false);
+        console.log('dataInventory:', dataInventory);
+
+        const inventory = await getApiTotalSecurityEvents(dataInventory, true, ONE_DAY);
+        // Handle the response
+        console.log('inventory:', inventory);
+        $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+    } catch (error) {
+        // Handle the error
+        $('#results').append('<p>Error: ' + error.message + '</p>');
+    }
+});
+
+$(document).on('click', '#testButton5b', async function () {
+    // Clear previous results
+    $('#results').empty();
+
+    console.log('testButton5b');
+    // Call the getApiInventory function with forcerefresh parameter
+    try {
+        const dataInventory = await getApiInventory(false);
+        console.log('dataInventory:', dataInventory);
+
+        const inventory = await getApiAllSecurityEvents('f5-amer-ent', 'demo-shop', true, ONE_WEEK);
+        // Handle the response
+        console.log('inventory:', inventory);
+        $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+    } catch (error) {
+        // Handle the error
+        $('#results').append('<p>Error: ' + error.message + '</p>');
+    }
+});
+
+$(document).on('click', '#testButton6', async function () {
+    // Clear previous results
+    $('#results').empty();
+
+    console.log('testButton6');
+    // Call the getApiInventory function with forcerefresh parameter
+    try {
+
+        const nsdetails = await getApiNSDetails('f5-amer-ent', 'j-cianfarani', true);
+        // Handle the response
+        console.log('NS details:', nsdetails);
+        $('#results').append('<pre>' + JSON.stringify(nsdetails, null, 2) + '</pre>');
+    } catch (error) {
+        // Handle the error
+        $('#results').append('<p>Error: ' + error.message + '</p>');
+    }
+});
+
+$(document).on('click', '#testButton7', async function () {
+    // Clear previous results
+    $('#results').empty();
+
+    console.log('testButton7');
+    // Call the getApiInventory function with forcerefresh parameter
+    try {
+
+        const users = await getApiTenantUsers('finastra', 5, true);
+        // Handle the response
+        console.log('Tenant users:', users);
+        $('#results').append('<pre>' + JSON.stringify(users, null, 2) + '</pre>');
+    } catch (error) {
+        // Handle the error
+        $('#results').append('<p>Error: ' + error.message + '</p>');
+    }
+});

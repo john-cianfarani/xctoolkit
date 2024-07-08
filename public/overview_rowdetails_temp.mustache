@@ -6,30 +6,36 @@
         <!-- Additional Details Content Here -->
         <h5>
             <div class="padding-topbottom-5px">
-                <span class="badge {{httpsClass}}">HTTPS</span>
-                <span class="badge {{httpClass}}">HTTP</span>
-                <span class="badge {{autoCertClass}}">AutoCert</span>
-                <span class="badge {{routesClass}}">Routes</span>
-                <span class="badge {{subsetRoutingClass}}">Subset Routing</span>
-                <span class="badge {{corsPolicyClass}}">CORS Policy</span>
-                <span class="badge {{dataGuardClass}}">Data Guard</span>
+                <span class="badge bg-success">HTTPS</span>
+                <span class="badge bg-secondary">HTTP</span>
+                <span class="badge bg-success">AutoCert</span>
+
+                <span class="badge bg-secondary">Routes</span>
+                <span class="badge bg-secondary">Subset Routing</span>
+                <span class="badge bg-secondary">CORS Policy</span>
+                <span class="badge bg-secondary">Data Guard</span>
+
             </div>
             <div class="padding-topbottom-5px">
-                <span class="badge {{wafClass}}">WAF</span>
-                <span class="badge {{botDefenseClass}}">Bot Defense</span>
-                <span class="badge {{ipReputationClass}}">IP Reputation</span>
-                <span class="badge {{clientSideDefenseClass}}">Client Side Defense</span>
-                <span class="badge {{nsServicePolicyClass}}">NS Service Policy</span>
-                <span class="badge {{lbServicePolicyClass}}">LB Service Policy</span>
-                <span class="badge {{cookieProtectionClass}}">Cookie Protection</span>
+
+                <span class="badge bg-success">WAF</span>
+                <span class="badge bg-success">Bot Defense</span>
+                <span class="badge bg-success">IP Reputation</span>
+                <span class="badge bg-secondary">Client Side Defense</span>
+                <span class="badge bg-success">NS Service Policy</span>
+                <span class="badge bg-secondary">LB Service Policy</span>
+                <span class="badge bg-secondary">Cookie Protection</span>
             </div>
             <div class="padding-topbottom-5px">
-                <span class="badge {{apiDiscoveryClass}}">API-Discovery</span>
-                <span class="badge {{apiDefinitionClass}}">API-Definition</span>
-                <span class="badge {{apiValidationClass}}">API-Validation</span>
-                <span class="badge {{apiProtectionClass}}">API-Protection</span>
-                <span class="badge {{maliciousUserDetectionClass}}">Malicious User Detection</span>
-                <span class="badge {{maliciousUserMitigationClass}}">Malicious User Mitigation</span>
+
+                <span class="badge bg-success">API-Discovery</span>
+                <span class="badge bg-secondary">API-Definition</span>
+                <span class="badge bg-secondary">API-Validation</span>
+                <span class="badge bg-secondary">API-Protection</span>
+                <span class="badge bg-success">Malicious User Detection</span>
+                <span class="badge bg-secondary">Malicious User Mitigation</span>
+
+
             </div>
 
         </h5>
@@ -45,49 +51,55 @@
             <th></th>
         </tr>
         <tr>
-            <th>HTTP Error Rate</th>
-            <td>{{errorRate}}</td>
-        </tr>      
-        <tr>
-            <th>Tx Transfer</th>
-            <td>{{txTransfer}}</td>
-        </tr>
-        <tr>
-            <th>Rx Transfer</th>
-            <td>{{rxTransfer}}</td>
-        </tr>
+            <td><span style="float: left;">Tx Throughput:</span></td>
+            <td> 11Mbps</td>
 
-        <tr>
-            <th>VIP</th>
-            <td>{{vip}}</td>
         </tr>
-
+        <tr>
+            <td><span style="float: left;">Rx Throughput:</span></td>
+            <td> 6Mbps</td>
+        </tr>
+        <tr>
+            <td><span style="float: left;">Req Rate:</span></td>
+            <td> 3Mbps</td>
+        </tr>
+        <tr>
+            <td>VIP</td>
+            <td>Public</td>
+        </tr>
+        <tr>
+            <td><span style="float: left;">IP Address</span></td>
+            <td>1.1.1.1</td>
+        </tr>
     </table>
 
 
     <table class="stats-table">
-        <h5>Security</h5>
-        <table class="stats-table">
-            <tr>
-                <th>Total Events</th>
-                <td>{{totalEvents}}</td>
-            </tr>
-            <tr>
-                <th>WAF Events</th>
-                <td>{{wafEvents}}</td>
-            </tr>
-            <tr>
-                <th>Bot Events</th>
-                <td>{{botEvents}}</td>
-            </tr>
-            <tr>
-                <th>SP Events</th>
-                <td>{{spEvents}}</td>
-            </tr>
-            <tr>
-                <th>API Events</th>
-                <td>{{apiEvents}}</td>
-            </tr>
+        <tr>
+            <th>Security</th>
+            <th></th>
+        </tr>
+        <tr>
+            <td><span style="float: left;">WAF Events</span></td>
+            <td> 1100</td>
+
+        </tr>
+        <tr>
+            <td><span style="float: left;">Bot Events</span></td>
+            <td> 350</td>
+        </tr>
+        <tr>
+            <td><span style="float: left;">SP Events</span></td>
+            <td> 475</td>
+        </tr>
+        <tr>
+            <td><span style="float: left;">API Events</span></td>
+            <td> 15</td>
+        </tr>
+        <tr>
+            <td>&nbsp;</td>
+            <td></td>
+        </tr>
     </table>
 
     <table class="stats-table-lg">
@@ -96,20 +108,26 @@
             <th></th>
         </tr>
         <tr>
-            <th>LB Creation</th>
-            <td>{{lbCreation}}</td>
+            <td><span style="float: left;">LB Creation </span></td>
+            <td> 2024-03-28T15:55:22</td>
+
         </tr>
         <tr>
-            <th>LB Last Modified</th>
-            <td>{{lbLastModified}}</td>
+            <td><span style="float: left;">LB Last Modified</span></td>
+            <td>2024-06-20T21:10:11</td>
+        </tr>
+
+        <tr>
+            <td><span style="float: left;">Cert State</span></td>
+            <td> Valid</td>
         </tr>
         <tr>
-            <th>Cert State</th>
-            <td>{{certState}}</td>
+            <td><span style="float: left;">Cert Expiry</span></td>
+            <td> Valid</td>
         </tr>
         <tr>
-            <th>Cert Expiry</th>
-            <td>{{certExpiry}}</td>
+            <td>&nbsp;</td>
+            <td></td>
         </tr>
     </table>
 
@@ -118,7 +136,11 @@
             <th>Domains</th>
         </tr>
         <tr>
-            <td><textarea readonly style="overflow: auto; height: 120px; width: 200px; border: none; outline: none;">{{domains}}</textarea></td>
+            <td><textarea readonly style="overflow: auto; height: 120px; width: 200px; border: none; outline: none;">
+www.fakesite.com, www.fakesite.com,www.fakesite.com
+   
+            
+            </textarea></td>
 
 
         </tr>

@@ -1,0 +1,149 @@
+    <div id="feature-details-{{name}}" class="tableDetails p-3" style="background-color: white;">
+        <h5>Enabled Features</h5>
+        <div class="padding-topbottom-5px">
+            <span class="badge {{httpsClass}}">HTTPS</span>
+            <span class="badge {{httpClass}}">HTTP</span>
+            <span class="badge {{autoCertClass}}">AutoCert</span>
+            <span class="badge {{routesClass}}">Routes</span>
+            <span class="badge {{subsetRoutingClass}}">Subset Routing</span>
+            <span class="badge {{corsPolicyClass}}">CORS Policy</span>
+            <span class="badge {{dataGuardClass}}">Data Guard</span>
+        </div>
+        <div class="padding-topbottom-5px">
+            <span class="badge {{wafClass}}">WAF</span>
+            <span class="badge {{botDefenseClass}}">Bot Defense</span>
+            <span class="badge {{ipReputationClass}}">IP Reputation</span>
+            <span class="badge {{clientSideDefenseClass}}">Client Side Defense</span>
+            <span class="badge {{nsServicePolicyClass}}">NS Service Policy</span>
+            <span class="badge {{lbServicePolicyClass}}">LB Service Policy</span>
+            <span class="badge {{cookieProtectionClass}}">Cookie Protection</span>
+        </div>
+        <div class="padding-topbottom-5px">
+            <span class="badge {{apiDiscoveryClass}}">API-Discovery</span>
+            <span class="badge {{apiDefinitionClass}}">API-Definition</span>
+            <span class="badge {{apiValidationClass}}">API-Validation</span>
+            <span class="badge {{apiProtectionClass}}">API-Protection</span>
+            <span class="badge {{maliciousUserDetectionClass}}">Malicious User Detection</span>
+            <span class="badge {{maliciousUserMitigationClass}}">Malicious User Mitigation</span>
+        </div>
+    </div>
+    <div id="network-details-{{name}}" class="tableDetails p-3" style="background-color: white;">
+        <h5>Network</h5>
+        <table class="stats-table">
+            <tr>
+                <th>Tx Throughput</th>
+                <td>{{txThroughput}}</td>
+            </tr>
+            <tr>
+                <th>Rx Throughput</th>
+                <td>{{rxThroughput}}</td>
+            </tr>
+            <tr>
+                <th>Req Rate</th>
+                <td>{{reqRate}}</td>
+            </tr>
+            <tr>
+                <th>VIP</th>
+                <td>{{vip}}</td>
+            </tr>
+            <tr>
+                <th>IP Address</th>
+                <td>{{ipAddress}}</td>
+            </tr>
+        </table>
+        <h5>Security</h5>
+        <table class="stats-table">
+            <tr>
+                <th>Total Events</th>
+                <td>{{totalEvents}}</td>
+            </tr>
+            <tr>
+                <th>WAF Events</th>
+                <td>{{wafEvents}}</td>
+            </tr>
+            <tr>
+                <th>Bot Events</th>
+                <td>{{botEvents}}</td>
+            </tr>
+            <tr>
+                <th>SP Events</th>
+                <td>{{spEvents}}</td>
+            </tr>
+            <tr>
+                <th>API Events</th>
+                <td>{{apiEvents}}</td>
+            </tr>
+        </table>
+        <h5>Other</h5>
+        <table class="stats-table">
+            <tr>
+                <th>LB Creation</th>
+                <td>{{lbCreation}}</td>
+            </tr>
+            <tr>
+                <th>LB Last Modified</th>
+                <td>{{lbLastModified}}</td>
+            </tr>
+            <tr>
+                <th>Cert State</th>
+                <td>{{certState}}</td>
+            </tr>
+            <tr>
+                <th>Cert Expiry</th>
+                <td>{{certExpiry}}</td>
+            </tr>
+        </table>
+    </div>
+    <div id="latency-details-{{name}}" class="tableDetails p-3" style="background-color: white;">
+        <h5>Latency</h5>
+        <table class="latency-table">
+            <tr>
+                <td>
+                    <div class="icon-box">
+                        <i class="bi bi-person lg-icon"></i>
+                        <div>Client</div>
+                    </div>
+                </td>
+                <td class="arrow-cell">
+                    <div class="arrow">
+                        <div class="latency-label">{{clientLatency}}</div>
+                        <img src="{{clientArrowSrc}}" class="arrow">
+                    </div>
+                    <div class="text-under">Client Latency</div>
+                </td>
+                <td>
+                    <div class="icon-box">
+                        <i class="bi bi-diagram-2 lg-icon rotate-icon"></i>
+                        <div>LB</div>
+                    </div>
+                </td>
+                <td class="arrow-cell">
+                    <div class="arrow">
+                        <div class="latency-label">{{serverLatency}}</div>
+                        <img src="{{serverArrowSrc}}" class="arrow">
+                    </div>
+                    <div class="text-under">Server Latency</div>
+                </td>
+                <td>
+                    <div class="icon-box">
+                        <i class="bi bi-server lg-icon"></i>
+                        <div>Server</div>
+                    </div>
+                </td>
+                <td class="arrow-cell">
+                    <div class="arrow">
+                        <div class="latency-label">{{appLatency}}</div>
+                        <img src="{{appArrowSrc}}" class="arrow">
+                    </div>
+                    <div class="text-under">App Latency</div>
+                </td>
+                <td>
+                    <div class="icon-box">
+                        <i class="bi bi-code-square lg-icon"></i>
+                        <div>App</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+

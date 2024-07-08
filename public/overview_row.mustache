@@ -1,20 +1,25 @@
     {{#loadBalancers}}
-    <tr id="row-{{id}}" class="resource-row">
+    <tr id="row-{{name}}" class="resource-row">
         <td>
-            <a class="btn collapse-trigger" data-bs-toggle="collapse" href="#details-{{id}}" aria-expanded="false" aria-controls="details-{{id}}" 
-            data-tenant="{{tenantName}}" data-namespace="{{namespace}}" data-lbname="{{name}}" data-rowid="{{id}}">
+            <a class="btn collapse-trigger details-collapse-trigger" data-bs-toggle="collapse" href="#details-{{name}}" aria-expanded="false" aria-controls="details-{{name}}" 
+            data-tenant="{{tenantName}}" data-namespace="{{namespace}}" data-lbname="{{name}}" data-rowid="{{name}}">
                 <i class="bi bi-chevron-right pull-right"></i>
                 <i class="bi bi-chevron-down pull-right"></i>
             </a>
         </td>
-        <td><span class="badge {{statusClass}}">{{statusPercentage}}</span></td>
-        <td>{{name}} <i class="bi bi-box-arrow-up-right"></i></td>
+        <td><h6><span class="badge {{statusClass}}">{{statusPercentage}}</span></h6></td>
+        <td><span>
+            {{name}} 
+            &nbsp; <a href="https://{{tenantName}}.console.ves.volterra.io/web/workspaces/web-app-and-api-protection/namespaces/{{namespace}}/overview/performance/http/ves-io-http-loadbalancer-{{name}}/performance_monitoring/dashboard"
+            title="Perfmance Dashboard" target="_blank">
+                <i class="bi bi-box-arrow-up-right"></i>
+            </a></span>
+        </td>
         <td>{{namespace}}</td>
-        <td>{{domainsDisplay}} {{additionalDomains}}</td>
+        <td>{{domainsDisplay}} {{{additionalDomains}}}</td>
         <td>{{totalRequests}}</td>
         <td>{{requestThroughput}}</td>
         <td>{{responseThroughput}}</td>
-        <td>{{errorRate}}</td>
         <td>{{totalTransfer}}</td>
         <td>{{totalLatency}}</td>
         <td>
@@ -23,17 +28,18 @@
                     <i class="bi bi-list"></i>
                 </button>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#">Edit Configuration</a></li>
-                    <li><a class="dropdown-item" href="#">Performance Dashboard</a></li>
-                    <li><a class="dropdown-item" href="#">Security Dashboard</a></li>
+                    <li><a class="dropdown-item" target="_blank" href="https://{{tenantName}}.console.ves.volterra.io/web/workspaces/web-app-and-api-protection/namespaces/{{namespace}}/manage/load_balancers/http_loadbalancers">Edit Configuration</a></li>
+                    <li><a class="dropdown-item" target="_blank" href="https://{{tenantName}}.console.ves.volterra.io/web/workspaces/web-app-and-api-protection/namespaces/{{namespace}}/overview/performance/http/ves-io-http-loadbalancer-{{name}}/performance_monitoring/dashboard">Performance Dashboard</a></li>
+                    <li><a class="dropdown-item" target="_blank" href="https://{{tenantName}}.console.ves.volterra.io/web/workspaces/web-app-and-api-protection/namespaces/{{namespace}}/overview/security/http/ves-io-http-loadbalancer-{{name}}/security_monitoring/app_firewall">Security Dashboard</a></li>
                 </ul>
             </div>
         </td>
     </tr>
-    <tr class="collapse collapse-row" id="collapse-{{id}}" data-tenant="{{tenantName}}" data-namespace="{{namespace}}" data-lbname="{{name}}" data-rowid="{{id}}">
+    <tr class="collapse collapse-row details-collapse-trigger" id="details-{{name}}" data-tenant="{{tenantName}}" data-namespace="{{namespace}}" data-lbname="{{name}}" data-rowid="{{name}}">
         <td colspan="12" style="background-color: #f3f4fa;">
-            <div class="tableDetails p-3" style="background-color: white;" id="details-{{id}}">
+            <div class="tableDetails p-3" style="background-color: white;" id="temp-details-{{name}}">
                 <!-- Details content will be dynamically injected here -->
+                <h5>Content Loading.../h5>
             </div>
             <br>
         </td>

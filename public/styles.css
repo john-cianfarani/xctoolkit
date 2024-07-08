@@ -20,8 +20,8 @@ body {
 #navigation-panel {
     /* max-width: 250px; */
     /* Limit the maximum width */
-    min-width: 250px;
-    width: 250px;
+    min-width: 200px;
+    width: 200px;
     height: 100%;
     /* Ensure it takes up the full available width */
     background-color: #f3f4fa;
@@ -155,6 +155,7 @@ body {
     border-collapse: collapse;
     width: 100%;
     font-size: 12px;
+    table-layout: fixed;
 }
 
 /* .table-custom tr {
@@ -168,6 +169,7 @@ body {
     border-left: none;
     border-right: none;
     vertical-align: middle;
+    word-wrap: break-word;
     /* border: 1px solid #dee2e6; */
 }
 
@@ -208,7 +210,14 @@ body {
 
 .tableDetails {
     padding: 10px;
+    overflow: auto;
 }
+
+/* .resource-row td:first-child {
+    width: 30px;
+    max-width: 30px;
+    background-color: aqua;
+} */
 
 /* CSS to toggle icons */
 a[aria-expanded="true"] .bi-chevron-right {
@@ -327,11 +336,25 @@ table.collapse.in {
 
 
 .stats-table {
-    width: 22%;
+    width: 20%;
+    height: 160px;
     table-layout: fixed;
     display: inline-block;
     border-collapse: separate;
-    /* float: left; */
+    float: left; 
+    margin-right: 20px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    /* Ensures uniform column width */
+}
+
+.stats-table-lg {
+    width: 25%;
+    height: 160px;
+    table-layout: fixed;
+    display: inline-block;
+    border-collapse: separate;
+    float: left; 
     margin-right: 20px;
     border: 1px solid #ccc;
     padding: 10px;
@@ -339,6 +362,7 @@ table.collapse.in {
 }
 
 .stats-summary-table td:first-child,
+.stats-table-lg td:first-child,
 .stats-table td:first-child {
     /* width: 100px; */
     padding-right: 20px;
@@ -346,11 +370,6 @@ table.collapse.in {
     /* background-color: aqua; */
 }
 
-.stats-table td:nth-child(2) {
-    /* width: 125px; */
-
-    /* background-color: aqua; */
-}
 
 .selecthover:hover {
     cursor: pointer;
@@ -384,6 +403,7 @@ table.collapse.in {
     /* Ensures uniform column width */
 }
 
+.stats-userlogin-table td:nth-child(2),
 .stats-userlogin-table td:first-child {
     /* width: 100px; */
     padding-right: 20px;
