@@ -48,22 +48,24 @@
             </select>
         </div>
         <div id="main-navigation" class="px-2">
-            <h5 class="navigation-header">Overview</h5>
+            <h5 class="navigation-header">Monitoring</h5>
             <ul class="nav flex-column">
                 <li class="nav-item"><a class="nav-link" href="#" id="global-lbs-link"
                         onclick="loadContent('overview')">LB Overview</a></li>
-                <li class="nav-item"><a class="nav-link" href="#" id="active-origin-pools-link"
-                        onclick="loadContent('active-origin-pools.html')">Active Origin Pools</a></li>
-                <li class="nav-item"><a class="nav-link" href="#" id="reqid-finder-link"
-                        onclick="loadContent('reqid-finder.html')">ReqID Finder</a></li>
                 <li class="nav-item"><a class="nav-link" href="#" id="path-latency-link"
                         onclick="loadContent('path-latency.html')">Path Latency</a></li>
+                <li class="nav-item"><a class="nav-link" href="#" id="logs-link"
+                        onclick="loadContent('download-logs.html')">Export Logs</a></li>
+                <li class="nav-item"><a class="nav-link" href="#" id="api-link"
+                        onclick="loadContent('download-api.html')">Export API Endpoints </a></li>
             </ul>
 
             <h5 class="navigation-header mt-4">Configuration</h5>
             <ul class="nav flex-column">
-                <li class="nav-item"><a class="nav-link" href="#" id="move-link"
-                        onclick="loadContent('move.html')">Move</a></li>
+                <li class="nav-item"><a class="nav-link" href="#" id="wafe-link" onclick="loadContent('move.html')">Copy
+                        WAF Exclusions</a></li>
+                <li class="nav-item"><a class="nav-link" href="#" id="wafe-link" onclick="loadContent('move.html')">
+                        Edit Sets</a></li>
                 <li class="nav-item"><a class="nav-link" href="#" id="clone-link"
                         onclick="loadContent('clone.html')">Clone</a></li>
                 <li class="nav-item"><a class="nav-link" href="#" id="backup-link"
@@ -74,6 +76,8 @@
             <ul class="nav flex-column">
                 <li class="nav-item"><a class="nav-link" href="#" id="api-keys-link"
                         onclick="loadContent('apisetup')">API Keys</a></li>
+                <li class="nav-item"><a class="nav-link" href="#" id="settings-link"
+                        onclick="loadContent('settings')">Settings</a></li>
             </ul>
         </div>
     </div>

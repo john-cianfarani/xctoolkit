@@ -22,6 +22,9 @@ const namespace2 = 'demo-shop';
 const namespace3 = 'p-ashworth';
 const lb1 = 'juice-shop-https';
 
+const tenant_xcel = 'xcel';
+const xcel_token = 'dCUXpzY4OjQdoEPpe3uJUE9Zi6U=';
+
 
 // fetchNamespaces(xcTenant1, authToken)
 //     .then(data => {
@@ -113,13 +116,13 @@ const lb1 = 'juice-shop-https';
 //         console.error('Error:', error);
 //     });
 
-fetchUsers(finastra, authToken_finastra, 5)
-    .then(data => {
-        console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
-    })
-    .catch(error => {
-        console.error('Error:', error); gr
-    });
+// fetchUsers(finastra, authToken_finastra, 5)
+//     .then(data => {
+//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+//     })
+//     .catch(error => {
+//         console.error('Error:', error); gr
+//     });
 
 
 // Usage example
@@ -137,15 +140,15 @@ fetchUsers(finastra, authToken_finastra, 5)
 // })();
 
 
-// fetchInventory(xcTenant1, authToken, false, namespace1)
-//     .then(data => {
+fetchInventory(tenant_xcel, xcel_token, true,)
+    .then(data => {
 
-//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
-//         //console.log(util.inspect(data, {depth: null}));
-//     })
-//     .catch(error => {
-//         console.error('Error:', error);
-//     });
+        console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+        //console.log(util.inspect(data, {depth: null}));
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
 
 
 // fetchStats(xcTenant1, authToken, true, undefined, ONE_DAY,)

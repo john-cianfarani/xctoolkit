@@ -1,5 +1,8 @@
+    
+<td colspan="11" style="background-color: #f3f4fa;"> 
+
     <div id="feature-details-{{name}}" class="tableDetails p-3" style="background-color: white;">
-        <h5>Enabled Features</h5>
+        <h5>Enabled Features
         <div class="padding-topbottom-5px">
             <span class="badge {{httpsClass}}">HTTPS</span>
             <span class="badge {{httpClass}}">HTTP</span>
@@ -27,73 +30,107 @@
             <span class="badge {{maliciousUserMitigationClass}}">Malicious User Mitigation</span>
         </div>
     </div>
+    </h5>
+    <br>
     <div id="network-details-{{name}}" class="tableDetails p-3" style="background-color: white;">
-        <h5>Network</h5>
+
         <table class="stats-table">
-            <tr>
-                <th>Tx Throughput</th>
-                <td>{{txThroughput}}</td>
-            </tr>
-            <tr>
-                <th>Rx Throughput</th>
-                <td>{{rxThroughput}}</td>
-            </tr>
-            <tr>
-                <th>Req Rate</th>
-                <td>{{reqRate}}</td>
-            </tr>
-            <tr>
-                <th>VIP</th>
-                <td>{{vip}}</td>
-            </tr>
-            <tr>
-                <th>IP Address</th>
-                <td>{{ipAddress}}</td>
-            </tr>
+        <tr>
+            <th><h5>Network</h5></th>
+            <th></th>
+        </tr>        
+        <tr>
+            <td>HTTP Error Rate</td>
+            <td>{{errorRate}}</td>
+        </tr>      
+        <tr>
+            <td>Tx Transfer</td>
+            <td>{{txTransfer}}</td>
+        </tr>
+        <tr>
+            <td>Rx Transfer</td>
+            <td>{{rxTransfer}}</td>
+        </tr>
+
+        <tr>
+            <td>VIP</td>
+            <td>{{vip}}</td>
+        </tr>
+        <tr>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+        </tr>        
         </table>
-        <h5>Security</h5>
         <table class="stats-table">
+        <tr>
+            <th><h5>Security</h5></th>
+            <th></th>
+        </tr>             
             <tr>
-                <th>Total Events</th>
+                <td>Total Events</td>
                 <td>{{totalEvents}}</td>
             </tr>
             <tr>
-                <th>WAF Events</th>
+                <td>WAF Events</td>
                 <td>{{wafEvents}}</td>
             </tr>
             <tr>
-                <th>Bot Events</th>
+                <td>Bot Events</td>
                 <td>{{botEvents}}</td>
             </tr>
             <tr>
-                <th>SP Events</th>
+                <td>SP Events</td>
                 <td>{{spEvents}}</td>
             </tr>
             <tr>
-                <th>API Events</th>
+                <td>API Events</td>
                 <td>{{apiEvents}}</td>
             </tr>
+        <tr>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+        </tr>              
         </table>
-        <h5>Other</h5>
-        <table class="stats-table">
+
+        <table class="stats-table-lg">
+        <tr>
+            <th><h5>Other</h5></th>
+            <th></th>
+        </tr>             
             <tr>
-                <th>LB Creation</th>
+                <td>LB Creation</td>
                 <td>{{lbCreation}}</td>
             </tr>
             <tr>
-                <th>LB Last Modified</th>
+                <td>LB Last Modified</td>
                 <td>{{lbLastModified}}</td>
             </tr>
             <tr>
-                <th>Cert State</th>
+                <td>Cert State</td>
                 <td>{{certState}}</td>
             </tr>
             <tr>
-                <th>Cert Expiry</th>
+                <td>Cert Expiry</td>
                 <td>{{certExpiry}}</td>
             </tr>
+        <tr>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+        </tr>              
         </table>
+    <table class="stats-table-lg">
+        <tr>
+            <th>Domains</th>
+        </tr>
+        <tr>
+            <td><textarea readonly style="overflow: auto; height: 120px; width: 200px; border: none; outline: none;">{{allDomains}}</textarea></td>
+
+
+        </tr>
+
+    </table>           
     </div>
+    <br>
     <div id="latency-details-{{name}}" class="tableDetails p-3" style="background-color: white;">
         <h5>Latency</h5>
         <table class="latency-table">
@@ -147,3 +184,4 @@
         </table>
     </div>
 
+</td>

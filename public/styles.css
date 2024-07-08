@@ -337,11 +337,11 @@ table.collapse.in {
 
 .stats-table {
     width: 20%;
-    height: 160px;
+    height: 180px;
     table-layout: fixed;
     display: inline-block;
     border-collapse: separate;
-    float: left; 
+    float: left;
     margin-right: 20px;
     border: 1px solid #ccc;
     padding: 10px;
@@ -350,11 +350,11 @@ table.collapse.in {
 
 .stats-table-lg {
     width: 25%;
-    height: 160px;
+    height: 180px;
     table-layout: fixed;
     display: inline-block;
     border-collapse: separate;
-    float: left; 
+    float: left;
     margin-right: 20px;
     border: 1px solid #ccc;
     padding: 10px;

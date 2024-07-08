@@ -461,7 +461,7 @@ function validateField(field) {
         } else {
             switch (true) {
                 case field.hasClass('tenant-name'):
-                    isValid = /^[a-z0-9\-]{5,16}$/.test(value);
+                    isValid = /^[a-z0-9\-]{4,16}$/.test(value);
                     console.log('Tenant name validation result:', isValid);
                     break;
                 case field.hasClass('apikey'):
@@ -1216,30 +1216,172 @@ function formatAdditionalDomains(domains) {
 // });
 
 
-// populateRow Details on Click.
+// // populateRow Details on Click.
+// $(document).ready(function () {
+//     $(document).on('show.bs.collapse', '.details-collapse-trigger', function () {
+//         const tenant = $(this).data('tenant');
+//         const namespace = $(this).data('namespace');
+//         const lbname = $(this).data('lbname');
+//         const secondsback = document.getElementById('overviewSecondsBack').value || '86400'; // Default to last 24 hours if no value selected
+
+//         console.log('Opening:', tenant, namespace, lbname);
+
+//     // First, fetch the inventory
+//     getApiInventory(false, true).then(inventory => {
+//         // After inventory is fetched, fetch the stats
+//         getApiStats(inventory, false, secondsback).then(stats => {
+//             const tenants = Object.keys(inventory.inventory);
+//             tenants.sort();
+
+
+
+
+
+//         }).catch(error => {
+//             console.error("Failed to fetch stats:", error);
+//         });
+//     }).catch(error => {
+//         console.error("Failed to fetch inventory:", error);
+//     });
+
+
+//         // Fetch additional data if necessary, for now we assume it's static or already available
+//         const detailsData = {
+//             // This should be filled with actual data required by the template
+//         };
+
+
+//         // $(`#details-${lbname}`).html('<h6>It works!</h6>');
+//         // Fetch and render the row details template
+//         getTemplate('overview_rowdetails_temp', false).then(template => {
+//             const renderedHtml = Mustache.render(template, detailsData);
+//             $(`#details-${lbname}`).html(renderedHtml);
+//         }).catch(error => {
+//             console.error('Failed to load row details template:', error);
+//         });
+//     });
+// });
+
+
+function populateOverviewRowDetails(tenant, namespace, lbname, secondsback) {
+    console.log('Expanding details for:', tenant, namespace, lbname);
+
+    // First, fetch the inventory
+    getApiInventory(false, true).then(inventory => {
+        // Use inventory to fetch stats and other details concurrently
+        Promise.all([
+            Promise.resolve(inventory),
+            getApiStats(inventory, false, secondsback),
+            getApiAllSecurityEvents(tenant, namespace, false, secondsback),
+            getApiNSDetails(tenant, namespace, false)
+        ]).then(([inventory, stats, secevents, nsdetails]) => {
+            const lbConfig = inventory.inventory[tenant]?.[namespace]?.http_loadbalancers?.[lbname]?.config ?? {};
+            const lbStats = stats[tenant]?.[namespace]?.[lbname] ?? {};
+            const lbSecurity = secevents[tenant]?.[namespace]?.[lbname] ?? {};
+            const lbDetails = nsdetails[tenant]?.[namespace]?.[lbname] ?? {};
+
+            console.log('LB Stats:', lbStats);
+
+            // Classes based on conditions
+            const detailsData = {
+                name: lbname,
+                httpsClass: lbConfig.http === false ? 'bg-success' : 'bg-secondary',
+                httpClass: lbConfig.http ? 'bg-success' : 'bg-secondary',
+                autoCertClass: lbConfig.certification_status === 'DnsDomainVerification' ? 'bg-success' : 'bg-secondary',
+                routesClass: lbConfig.routes ? 'bg-success' : 'bg-secondary',
+                subsetRoutingClass: lbConfig.origin_server_subset ? 'bg-success' : 'bg-secondary',
+                corsPolicyClass: lbConfig.cors_policy ? 'bg-success' : 'bg-secondary',
+                dataGuardClass: lbConfig.data_guard ? 'bg-success' : 'bg-secondary',
+                wafClass: lbConfig.waf ? 'bg-success' : 'bg-secondary',
+                botDefenseClass: lbConfig.bot_protection ? 'bg-success' : 'bg-secondary',
+                ipReputationClass: lbConfig.ip_reputation ? 'bg-success' : 'bg-secondary',
+                clientSideDefenseClass: lbConfig.client_side_defense ? 'bg-success' : 'bg-secondary',
+                nsServicePolicyClass: lbConfig.namespace_service_policy ? 'bg-success' : 'bg-secondary',
+                lbServicePolicyClass: lbConfig.service_policy ? 'bg-success' : 'bg-secondary',
+                cookieProtectionClass: lbConfig.cookie_protection ? 'bg-success' : 'bg-secondary',
+                apiDiscoveryClass: lbConfig.api_discovery ? 'bg-success' : 'bg-secondary',
+                apiDefinitionClass: lbConfig.api_definition ? 'bg-success' : 'bg-secondary',
+                apiValidationClass: lbConfig.api_schema_validation ? 'bg-success' : 'bg-secondary',
+                apiProtectionClass: lbConfig.api_protection ? 'bg-success' : 'bg-secondary',
+                maliciousUserDetectionClass: lbConfig.malicious_user_detection ? 'bg-success' : 'bg-secondary',
+                maliciousUserMitigationClass: lbConfig.malicious_user_mitigation ? 'bg-success' : 'bg-secondary',
+                //Network
+                errorRate: lbStats.HTTP_ERROR_RATE ? parseFloat(lbStats.HTTP_ERROR_RATE).toFixed(2) + '%' : '-',
+                txTransfer: formatDataTransfer(lbStats.RESPONSE_DATA_TRANSFERRED),
+                rxTransfer: formatDataTransfer(lbStats.REQUEST_DATA_TRANSFERRED),
+                vip: lbConfig.vip_type || 'N/A',
+                //Security
+                totalEvents: formatGenericNumber(lbSecurity.total_events) || 0,
+                wafEvents: formatGenericNumber(lbSecurity.waf_sec_event) || 0,
+                botEvents: formatGenericNumber(lbSecurity.bot_defense_sec_event) || 0,
+                spEvents: formatGenericNumber(lbSecurity.svc_policy_sec_event) || 0,
+                apiEvents: formatGenericNumber(lbSecurity.api_sec_event) || 0,
+                //Other
+                lbCreation: convertDateTime(lbDetails.creationTimestamp) || 'N/A',
+                lbLastModified: convertDateTime(lbDetails.modificationTimestamp) || 'N/A',
+                certState: lbDetails.certState || 'N/A',
+                certExpiry: convertDateTime(lbDetails.certExpiration[0]) || 'N/A',
+                allDomains: lbConfig.domains.join(', ') || 'N/A',
+                //Latency
+                clientLatency: formatLatency(lbStats.CLIENT_RTT) || '- ms',
+                serverLatency: formatLatency(lbStats.SERVER_RTT) || '- ms',
+                appLatency: formatLatency(lbStats.HTTP_APP_LATENCY) || '- ms',
+                clientArrowSrc: formatLatencyArrowSrc(lbStats.CLIENT_RTT),
+                serverArrowSrc: formatLatencyArrowSrc(lbStats.SERVER_RTT),
+                appArrowSrc: formatLatencyArrowSrc(lbStats.APP_RTT)
+                // appArrowSrc:
+
+            };
+
+            console.log("Configuration Data:", detailsData);
+
+            return getTemplate('overview_rowdetails_copy', false).then(template => {
+                const renderedHtml = Mustache.render(template, { ...detailsData, secevents, nsdetails });
+                document.getElementById(`details-${lbname}`).innerHTML = renderedHtml;
+                console.log('Details template rendered successfully for:', lbname);
+            });
+        }).catch(error => {
+            console.error('Error processing details for:', lbname, error);
+        });
+    }).catch(error => {
+        console.error("Failed to fetch inventory:", error);
+    });
+}
+
+function formatLatencyArrowSrc(clientRtt) {
+    if (clientRtt === undefined || clientRtt === null) {
+        return 'dbl_arrow_black.png';  // Return black arrow if RTT is unknown
+    }
+
+    const rtt = parseFloat(clientRtt);  // Ensure the RTT is treated as a number
+
+    if (isNaN(rtt)) {
+        return 'dbl_arrow_black.png';  // Return black arrow if RTT is not a number
+    }
+
+    if (rtt < 0.200) {
+        return 'dbl_arrow_green.png';  // Green arrow for RTT less than 0.200
+    } else if (rtt < 0.400) {
+        return 'dbl_arrow_orange.png';  // Orange arrow for RTT between 0.200 and 0.400
+    } else {
+        return 'dbl_arrow_red.png';  // Red arrow for RTT greater than 0.400
+    }
+}
+
+
+// Event listener setup
 $(document).ready(function () {
     $(document).on('show.bs.collapse', '.details-collapse-trigger', function () {
         const tenant = $(this).data('tenant');
         const namespace = $(this).data('namespace');
         const lbname = $(this).data('lbname');
-        console.log('Opening:', tenant, namespace, lbname);
+        const secondsback = document.getElementById('overviewSecondsBack').value || '86400'; // Default to last 24 hours if no value selected
 
-        // Fetch additional data if necessary, for now we assume it's static or already available
-        const detailsData = {
-            // This should be filled with actual data required by the template
-        };
-
-
-        // $(`#details-${lbname}`).html('<h6>It works!</h6>');
-        // Fetch and render the row details template
-        getTemplate('overview_rowdetails_temp', false).then(template => {
-            const renderedHtml = Mustache.render(template, detailsData);
-            $(`#details-${lbname}`).html(renderedHtml);
-        }).catch(error => {
-            console.error('Failed to load row details template:', error);
-        });
+        populateOverviewRowDetails(tenant, namespace, lbname, secondsback);
     });
 });
+
+
 
 
 
@@ -1390,6 +1532,11 @@ function cacheClear(keys) {
 // console.log("Local Date Only:", convertDateTime(utcDateTime, '', true));                // Converts to local date only
 // console.log("Specific Timezone (e.g., New York) Date Only:", convertDateTime(utcDateTime, 'America/New_York', true)); // Converts to New York date only
 function convertDateTime(utcDateTime, timezone = '', dateOnly = false) {
+
+    if (!utcDateTime) {
+        return 'N/A'; // Immediately return if the input is null or empty
+    }
+
     const options = {
         year: 'numeric', month: '2-digit', day: '2-digit',
         hour: dateOnly ? undefined : '2-digit',
@@ -1536,7 +1683,7 @@ function formatGenericNumber(number) {
     }
     // If the number is less than 1 thousand, show it as is.
     else {
-        return `${num}`;
+        return `${(num).toFixed(1)}`;
     }
 }
 
