@@ -21,6 +21,7 @@ const {
     getNSDetails,
     getTenantUsers,
     getSecurityEvents,
+    getApiEndpoint,
     getInventory,
     getStats,
     generateCertificate,
@@ -147,6 +148,25 @@ app.post('/api/v1/getSecurityEvents', async (req, res) => {
     }
 });
 
+app.post('/api/v1/getApiDiscEndpoints', async (req, res) => {
+    try {
+        // Extract the request body
+        const { tenant, namespace, lbname, secondsback } = req.body;
+        console.log(" getApiDiscEndpoints - API - Endpoints: ", tenant, namespace, lbname, secondsback);
+
+        // Call the getSecurityEvents function to retrieve the security events
+        const apiendpoints = await getApiEndpoint(req, tenant, namespace, lbname, secondsback);
+
+        console.log("API - getApiDiscEndpoints: ", apiendpoints);
+
+        // Respond with the security events data
+        res.json({ success: true, apiendpoints });
+    } catch (error) {
+        console.error('Error in /api/v1/getSecurityEvents endpoint:', error);
+        // Handle any errors by responding with an error message
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 
 

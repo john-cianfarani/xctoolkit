@@ -1205,7 +1205,7 @@ async function getInventory(req) {
         // Step 4: Merge all fetched inventories into one
         let mergedInventory = {};
         inventories.forEach(inventory => {
-            mergedInventory = mergeDeep(mergedInventory, inventory);
+            mergedInventory = mergeDeepSum(mergedInventory, inventory);
         });
 
         return mergedInventory; // Return the combined inventory
@@ -1273,6 +1273,81 @@ async function getStats(req, inventory, secondsback, lbname = null) {
     }
 }
 
+async function getApiEndpoint(req, tenant, namespace, lbName, secondsback) {
+    try {
+        // Fetch the appropriate API key
+        const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+        if (!apikey) {
+            console.error(`No suitable API key found for tenant ${tenant}, namespace ${namespace}`);
+            throw new Error('API key not found');
+        }
+
+        console.log(`Fetching API endpoints for tenant ${tenant}, namespace ${namespace}, LB ${lbName} with API key: ${apikey}`);
+
+        // Calculate the time interval for the stats
+        const endTime = new Date().toISOString();
+        const startTime = new Date(new Date().getTime() - secondsback * 1000).toISOString();
+
+        // Fetch the API endpoints data
+        const apiData = await fetchApiEndpoint(apikey, tenant, namespace, lbName, startTime, endTime);
+
+        // Convert the JSON data to CSV format
+        const csvData = jsonToCSV(apiData);
+        console.log(`API Data fetched and converted for tenant ${tenant}, namespace ${namespace}, LB ${lbName}`);
+
+        return csvData;
+    } catch (error) {
+        console.error(`Error fetching API endpoints for tenant ${tenant}, namespace ${namespace}, LB ${lbName}:`, error);
+        throw error; // Rethrow the error to be handled by the caller
+    }
+}
+
+
+
+
+async function fetchApiEndpoint(apikey, tenant, namespace, lbname, startTime, endTime) {
+    // Default time handling
+    const now = new Date();
+    const endTimeFinal = endTime || now.toISOString();
+    const startTimeFinal = startTime || new Date(now.getTime() - 168 * 60 * 60 * 1000).toISOString();
+
+    const url = `https://${tenant}.console.ves.volterra.io/api/ml/data/namespaces/${namespace}/virtual_hosts/ves-io-http-loadbalancer-${lbname}/api_endpoints?api_endpoint_info_request=1&start_time=${startTimeFinal}&end_time=${endTimeFinal}`;
+
+    try {
+        const response = await axios.get(url, {
+            headers: {
+                'Authorization': `APIToken ${apikey}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        const data = response.data.apiep_list;
+        return data;
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        throw error;
+    }
+}
+
+function jsonToCSV(data) {
+    if (data.length === 0) return '';
+
+    const headers = Object.keys(data[0]).map(field => `"${field}"`).join(',');
+    const csvRows = [headers]; // Start with the headers
+
+    data.forEach(item => {
+        const values = Object.keys(data[0]).map(key => {
+            const val = item[key];
+            if (Array.isArray(val)) {
+                return `"${val.join(';')}"`; // Convert arrays to semi-colon separated strings
+            }
+            return `"${String(val).replace(/"/g, '""')}"`; // Handle basic escaping of quotes
+        });
+        csvRows.push(values.join(','));
+    });
+
+    return csvRows.join('\n');
+}
 
 
 
@@ -1601,6 +1676,29 @@ function mergeDeep(target, source) {
     return target;
 }
 
+function mergeDeepSum(target, source) {
+    // Iterate over all the properties in the source object
+    for (const key in source) {
+        if (source.hasOwnProperty(key)) {
+            // Check if the source value is an object and the target also has the same key as an object
+            if (source[key] instanceof Object && key in target && target[key] instanceof Object) {
+                // Recursively merge the two objects
+                target[key] = mergeDeep(target[key], source[key]);
+            } else {
+                // If the source and target at the key are both numbers, add them
+                if (typeof source[key] === 'number' && typeof target[key] === 'number') {
+                    target[key] += source[key];
+                } else {
+                    // Otherwise, set/overwrite the target at the key with the source value
+                    target[key] = source[key];
+                }
+            }
+        }
+    }
+    return target;
+}
+
+
 /**
  * Function to select the correct API key.
  * 
@@ -1683,6 +1781,7 @@ module.exports = {
     getNSDetails,
     getTenantUsers,
     getSecurityEvents,
+    getApiEndpoint,
     getInventory,
     getStats,
     uploadCertificate,

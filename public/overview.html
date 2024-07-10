@@ -1,19 +1,28 @@
-<h1>Tenant Overview</h1>
+<h1 class="roboto-medium">Overview</h1>
 
 <button id="populateOverview">populate</button>
 
-<select id="overviewSecondsBack" class="form-control w-25">
-    <option value="604800">Last Week</option>
-    <option value="172800">Last 48hrs</option>
-    <option value="86400" selected>Last 24hrs</option>
-    <option value="43200">Last 12hrs</option>
-    <option value="3600">Last Hour</option>
-    <!-- Add options here -->
-</select>
+<div class="float-end input-group" style="width: 225px;">
+    <select id="overviewSecondsBack" class=" form-control form-select" data-style="btn-primary">
+        <option value="604800">Last Week</option>
+        <option value="172800">Last 48hrs</option>
+        <option value="86400" selected>Last 24hrs</option>
+        <option value="43200">Last 12hrs</option>
+        <option value="3600">Last Hour</option>
+        <!-- Add options here -->
+    </select>
+
+    <button id="refreshOverview" type="button" class="btn btn-outline-primary"> <i class="bi bi-arrow-clockwise"></i>
+        Refresh</button>
+</div>
+<br> <br>
 <div id="overview-container">
 
     <br> <br>
-    <h5> Loading ... </h5>
+    <button class="btn btn-primary" type="button" disabled>
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span role="status">Inventory Loading ...</span>
+    </button>
     <br>
 
 

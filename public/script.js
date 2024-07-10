@@ -16,7 +16,6 @@ const SIX_HOURS = 6 * 60 * 60; // 6 hours
 const ONE_DAY = 24 * 60 * 60; // 1 day
 const ONE_WEEK = 7 * 24 * 60 * 60; // 1 week
 
-const keysToClear = ['dataInventory', 'dataStats', 'item3'];
 
 const pageConfig = {
     default: {
@@ -42,10 +41,11 @@ const pageConfig = {
             // Add contact page specific logic here
         }
     },
-    profile: {
-        url: 'js/pages/profile.html',
+    apiendpoints: {
+        url: 'apiendpoints.html',
         func: function () {
-            console.log('Profile page specific function executed.');
+            populateApiEndpoints();
+            console.log('ApiEndpoints page specific function executed.');
             // Add profile page specific logic here
         }
     },
@@ -1369,7 +1369,7 @@ function formatLatencyArrowSrc(clientRtt) {
 }
 
 
-// Event listener setup
+// Event listener setup for Overview row details
 $(document).ready(function () {
     $(document).on('show.bs.collapse', '.details-collapse-trigger', function () {
         const tenant = $(this).data('tenant');
@@ -1420,6 +1420,169 @@ function getTemplate(templateName, forcerefresh = false) {
             });
     });
 }
+
+
+
+
+
+function populateApiEndpoints() {
+    // Show loading and hide loaded elements using plain JavaScript
+    document.getElementById('apiendpoint-loading').style.display = 'block';
+    document.getElementById('apiendpoint-loaded').style.display = 'none';
+
+    updateTenantSelect('apiendpoint-tenant', 'apiendpoint-namespace', 'apiendpoint-loadbalancer', 'downloadAPIEndpoints', () => {
+        // After updating the tenant select, show the loaded element and hide the loading
+        document.getElementById('apiendpoint-loaded').style.display = 'block';
+        document.getElementById('apiendpoint-loading').style.display = 'none';
+    });
+}
+
+// Update tenant select dropdown
+function updateTenantSelect(tenantSelectId, namespaceSelectId, lbSelectId, buttonId, callback) {
+    const tenantSelect = document.getElementById(tenantSelectId);
+    document.getElementById(buttonId).disabled = true;
+    getApiInventory(false, true).then(inventory => {
+        const tenantOptions = ['<option value="" selected>-- Select Tenant --</option>'];
+        Object.keys(inventory.inventory).forEach(tenant => {
+            tenantOptions.push(`<option value="${tenant}">${tenant}</option>`);
+        });
+        tenantSelect.innerHTML = tenantOptions.join('');
+
+        tenantSelect.onchange = () => updateNamespaceSelect(tenantSelectId, namespaceSelectId, lbSelectId, buttonId);
+
+        if (callback) callback(); // Call the callback function when done
+
+    }).catch(error => {
+        console.error("Failed to fetch tenants:", error);
+    });
+}
+
+// Update namespace select dropdown
+function updateNamespaceSelect(tenantSelectId, namespaceSelectId, lbSelectId, buttonId) {
+    const tenantSelect = document.getElementById(tenantSelectId);
+    const namespaceSelect = document.getElementById(namespaceSelectId);
+    const selectedTenant = tenantSelect.value;
+    document.getElementById(buttonId).disabled = true;
+    if (selectedTenant) {
+        getApiInventory(false, true).then(inventory => {
+            const namespaces = inventory.inventory[selectedTenant] || {};
+            const namespaceOptions = ['<option value="" selected>-- Select Namespace --</option>'];
+            Object.keys(namespaces).forEach(namespace => {
+                namespaceOptions.push(`<option value="${namespace}">${namespace}</option>`);
+            });
+            namespaceSelect.innerHTML = namespaceOptions.join('');
+
+            namespaceSelect.onchange = () => updateLBSelect(tenantSelectId, namespaceSelectId, lbSelectId, buttonId);
+        }).catch(error => {
+            console.error("Failed to fetch namespaces:", error);
+        });
+    } else {
+        namespaceSelect.innerHTML = '<option value="" selected>-- Select Namespace --</option>';
+    }
+}
+
+// Update load balancer select dropdown
+function updateLBSelect(tenantSelectId, namespaceSelectId, lbSelectId, buttonId) {
+    const tenantSelect = document.getElementById(tenantSelectId);
+    const namespaceSelect = document.getElementById(namespaceSelectId);
+    const lbSelect = document.getElementById(lbSelectId);
+    document.getElementById(buttonId).disabled = true;
+    const selectedTenant = tenantSelect.value;
+    const selectedNamespace = namespaceSelect.value;
+    if (selectedTenant && selectedNamespace) {
+        getApiInventory(false, true).then(inventory => {
+            const lbs = (inventory.inventory[selectedTenant][selectedNamespace] || {}).http_loadbalancers || {};
+            const lbOptions = ['<option value="" selected>-- Select Load Balancer --</option>'];
+            Object.keys(lbs).forEach(lbName => {
+                if (lbs[lbName].config.api_discovery) { // Ensuring only load balancers with API discovery enabled are listed
+                    lbOptions.push(`<option value="${lbName}">${lbName}</option>`);
+                }
+            });
+            lbSelect.innerHTML = lbOptions.join('');
+
+            enableButtonBasedOnSelection(lbSelectId, buttonId);
+
+        }).catch(error => {
+            console.error("Failed to fetch load balancers:", error);
+        });
+    } else {
+        lbSelect.innerHTML = '<option value="" selected>-- Select Load Balancer --</option>';
+    }
+}
+
+
+function enableButtonBasedOnSelection(selectId, buttonId) {
+    const selectElement = document.getElementById(selectId);
+    const buttonElement = document.getElementById(buttonId);
+
+    selectElement.addEventListener('change', function () {
+        // Check if the selected option's value is not blank
+        if (this.value !== "") {
+            buttonElement.disabled = false; // Enable the button
+        } else {
+            buttonElement.disabled = true; // Disable the button
+        }
+    });
+
+    // Initial check in case there's already a selected option when the page loads
+    buttonElement.disabled = selectElement.value === "";
+}
+
+function downloadApiEndpoints() {
+    const tenant = document.getElementById('apiendpoint-tenant').value;
+    const namespace = document.getElementById('apiendpoint-namespace').value;
+    const lbname = document.getElementById('apiendpoint-loadbalancer').value;
+    const secondsback = document.getElementById('apiSecondsBack').value;
+
+    if (!tenant || !namespace || !lbname || !secondsback) {
+        alert('All fields are required.');
+        return;
+    }
+
+    const requestData = {
+        tenant,
+        namespace,
+        lbname,
+        secondsback
+    };
+
+    fetch('/api/v1/getApiDiscEndpoints', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+        .then(response => response.json())  // First, parse the JSON from the response
+        .then(data => {
+            if (!data.success) {
+                throw new Error('Failed to fetch API endpoints: ' + data.message);
+            }
+            const apiendpoints = data.apiendpoints;
+            // Assuming `apiendpoints` is already in CSV format
+            const blob = new Blob([apiendpoints], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${tenant}_${namespace}_${lbname}_apiEndpoints.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(error => {
+            console.error('Error downloading the API Endpoints:', error);
+            alert('Failed to download API endpoints: ' + error.message);
+        });
+}
+
+
+
+$(document).on('click', '#downloadAPIEndpoints', function () {
+    downloadApiEndpoints();
+});
+
+
 
 
 /**
@@ -1753,10 +1916,10 @@ $(document).on('click', '#testButton2', function () {
     $('#results').empty();
 
     // Call the getApiInventory function with forcerefresh parameter
-    getApiInventory(true)
+    getApiInventory(false)
         .then(inventory => {
             // Handle the response
-            $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
+            $('#results').append('<pre>' + JSON.stringify(inventory.summary, null, 2) + '</pre>');
         })
         .catch(error => {
             // Handle the error
