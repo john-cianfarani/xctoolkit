@@ -1,6 +1,6 @@
 <h1 class="roboto-medium">Overview</h1>
 
-<button id="populateOverview">populate</button>
+
 
 <div class="float-end input-group" style="width: 225px;">
     <select id="overviewSecondsBack" class=" form-control form-select" data-style="btn-primary">
@@ -16,14 +16,40 @@
         Refresh</button>
 </div>
 <br> <br>
-<div id="overview-container">
+<div class="float-start input-group" id="loading-container">
 
     <br> <br>
-    <button class="btn btn-primary" type="button" disabled>
-        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-        <span role="status">Inventory Loading ...</span>
-    </button>
-    <br>
+    <div id="inventory-loading" class="float-start input-group" style="width: 225px;">
+        <button class="btn btn-primary" type="button" disabled>
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span role="status">Inventory Loading ...</span>
+        </button>
+    </div>
+    <div id="inventory-loaded" class="float-start input-group" style="width: 225px;">
+        <button class="btn btn-primary" type="button" disabled>
+            <i class="bi bi-check-circle-fill"></i>
+            <span role="status">Inventory Loaded </span>
+        </button>
+    </div>
+    <div id="stats-loading" class="float-start input-group" style="width: 225px;">
+        <button class="btn btn-primary" type="button" disabled>
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span role="status">Stats Loading ...</span>
+        </button>
+    </div>
+    <div id="stats-loaded" class="float-start input-group" style="width: 225px;">
+        <button class="btn btn-primary" type="button" disabled>
+            <i class="bi bi-check-circle-fill"></i>
+            <span role="status">Stats Loaded </span>
+        </button>
+    </div>
+    <br> <br> <br>
 
+
+
+</div>
+
+<button id="populateOverview">populate</button>
+<div id="overview-container">
 
 </div>

@@ -8,7 +8,7 @@ const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
-
+const util = require('util');
 
 const {
     fetchNamespaces,
@@ -24,6 +24,7 @@ const {
     getApiEndpoint,
     getInventory,
     getStats,
+    getLogs,
     generateCertificate,
     encryptApiKeys,
     fetchUsers,
@@ -162,13 +163,57 @@ app.post('/api/v1/getApiDiscEndpoints', async (req, res) => {
         // Respond with the security events data
         res.json({ success: true, apiendpoints });
     } catch (error) {
-        console.error('Error in /api/v1/getSecurityEvents endpoint:', error);
+        console.error('Error in /api/v1/getApiDiscEndpoints endpoint:', error);
         // Handle any errors by responding with an error message
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
 
+app.post('/api/v1/getLogs', async (req, res) => {
+    try {
+        // Extract the request body
+        const { tenant, namespace, lbname, secondsback, logtype, additionalfilters, maxlogs, filetype } = req.body;
+        console.log(" getLogs - API - Logs: ", tenant, namespace, lbname, secondsback, logtype, additionalfilters, maxlogs, filetype);
+
+        // Call the getSecurityEvents function to retrieve the security events
+        const logs = await getLogs(req, tenant, namespace, lbname, secondsback, logtype, additionalfilters, maxlogs);
+
+
+        console.log('API - getLogs Data property:', util.inspect(logs, { showHidden: false, depth: null, colors: true }));
+        //validateJsonFormat(logs);
+        //console.log("Logs: ", logs);
+
+        // Respond with the security events data
+        res.json({ success: true, logs });
+    } catch (error) {
+        console.error('Error in /api/v1/getLogs endpoint:', error);
+        // Handle any errors by responding with an error message
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
+function validateJsonFormat(jsonData) {
+    let jsonObject;
+
+    try {
+        jsonObject = JSON.parse(jsonData);
+    } catch (error) {
+        console.error("Failed to parse JSON:", error);
+        return false;
+    }
+
+    for (const [key, value] of Object.entries(jsonObject)) {
+        if (typeof value !== 'string') {
+            console.error(`Validation Error: Expected string for key '${key}', but found type '${typeof value}'`);
+            return false;
+        }
+    }
+
+    console.log("All fields are valid strings.");
+    return true;
+}
 
 
 // Serve static files

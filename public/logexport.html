@@ -1,0 +1,127 @@
+<h1 class="roboto-medium">Log Export</h1>
+<br>
+
+<div id="logexport-loading" class="float-start input-group" style="width: 225px;">
+    <button class="btn btn-primary" type="button" disabled>
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span role="status">Inventory Loading ...</span>
+    </button>
+</div>
+<div id="logexport-loaded" class="float-start input-group" style="width: 225px;">
+    <button class="btn btn-primary" type="button" disabled>
+        <i class="bi bi-check-circle-fill"></i>
+        <span role="status">Inventory Loaded </span>
+    </button>
+</div>
+
+
+<div class="float-end input-group" style="width: 105px;">
+
+
+    <button id="refreshLogExport" type="button" class="btn btn-outline-primary float-end"> <i
+            class="bi bi-arrow-clockwise"></i>
+        Refresh</button>
+</div>
+<br> <br>
+<div id="logexport-container">
+
+    <br> <br>
+    <div class="float-start input-group" style="">
+        <select id="logexport-tenant" class=" form-control form-select">
+        </select>
+        <select id="logexport-namespace" class=" form-control form-select">
+        </select>
+        <select id="logexport-loadbalancer" class=" form-control form-select">
+        </select>
+
+    </div>
+    <br> <br> <br> <br>
+    <div class="float-start input-group" style="">
+        <span class="input-group-text" id="basic-addon1">Response Codes </span>
+        &nbsp;&nbsp;
+        <div class="form-check form-check-inline">
+            <input id="rsp_code_1xx" class="form-check-input" type="checkbox" value="option1" checked>
+            <label class="form-check-label" for="inlineCheckbox1">1xx</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input id="rsp_code_2xx" class="form-check-input" type="checkbox" value="option2" checked>
+            <label class="form-check-label" for="inlineCheckbox2">2xx</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input id="rsp_code_3xx" class="form-check-input" type="checkbox" value="option3" checked>
+            <label class="form-check-label" for="inlineCheckbox3">3xx</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input id="rsp_code_4xx" class="form-check-input" type="checkbox" value="option3" checked>
+            <label class="form-check-label" for="inlineCheckbox3">4xx</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input id="rsp_code_5xx" class="form-check-input" type="checkbox" value="option3" checked>
+            <label class="form-check-label" for="inlineCheckbox3">5xx</label>
+        </div>
+
+        <i class="bi bi-info-circle" title="RSP Code Class only supported for Access Logs."></i>
+    </div>
+    <br> <br> <br>
+    <div class="float-start input-group" style="">
+        <span class="input-group-text" id="">Source IP</span>
+        <input id="src_ip" type="text" class="form-control" placeholder="" aria-label=""
+            aria-describedby="basic-addon1">
+        &nbsp;
+
+        <span class="input-group-text" id="">Req ID</span>
+        <input id="req_id" type="text" class="form-control" placeholder="" aria-label=""
+            aria-describedby="basic-addon1">
+        &nbsp;
+
+        <span class="input-group-text" id="basic-addon1">Request Path</span>
+        <input id="req_path" type="text" class="form-control" placeholder="" aria-label=""
+            aria-describedby="basic-addon1">
+
+
+
+
+    </div>
+
+    <br> <br> <br> <br>
+    <div class="float-start input-group" style="">
+        <span class="input-group-text" id="">Log Type</span>
+        <select id="logType" class=" form-control form-select" style="max-width: 150px;" data-style="btn-primary">
+            <option value="access">Access Logs</option>
+            <option value="security">Security Logs</option>
+            <!-- Add options here -->
+        </select>
+        &nbsp;
+
+        <span class="input-group-text" id="">Time</span>
+        <select id="logSecondsBack" class=" form-control form-select" style="max-width: 150px;"
+            data-style="btn-primary">
+            <option value="86400">Last 24hrs</option>
+            <option value="43200">Last 12hrs</option>
+            <option value="3600" selected>Last Hour</option>
+            <option value="1800">Last 30min</option>
+            <!-- Add options here -->
+        </select>
+        &nbsp;
+        <span class="input-group-text" id="">Max Logs</span>
+        <select id="logMax" class=" form-control form-select" style="max-width: 150px;" data-style="btn-primary">
+            <option value="5000">5000</option>
+            <option value="2500">2500</option>
+            <option value="1000" selected>1000</option>
+            <option value="500">500</option>
+            <!-- Add options here -->
+        </select>
+        &nbsp;
+        <!-- <span class="input-group-text" id="">Format</span> -->
+        <select id="logFileType" class=" form-control form-select" style="max-width: 150px;" data-style="btn-primary"
+            hidden>
+            <!-- <option value="csv" >CSV</option> -->
+            <option value="json" selected>JSON</option>
+            <!-- Add options here -->
+        </select>
+        <button id="downloadLogs" type="button" class="btn btn-success" disabled> <i
+                class="bi bi-arrow-down-square"></i>
+            Download Logs</button>
+    </div>
+
+</div>

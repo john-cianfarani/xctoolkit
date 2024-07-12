@@ -783,7 +783,216 @@ async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter =
     }
 }
 
+// async function fetchLogs(apikey, tenant, namespace, lbname, secondsback, logtype, additionalfilters = '', maxlogs = 5000) {
+//     const baseURL = `https://${tenant}.console.ves.volterra.io/api/data/namespaces/${namespace}`;
+//     let url;
+//     let logs = [];
+//     let totalCount = 0;
+//     let scroll_id = null;
+//     let retryCount = 0;  // Retry counter
 
+//     const endEpoch = Math.floor(Date.now() / 1000);  // Current time in epoch seconds
+//     const startEpoch = endEpoch - secondsback;      // Calculate start time in epoch seconds
+
+//     const formattedFilters = formatFilters(additionalfilters);
+
+//     // Determine URL based on log type
+//     switch (logtype) {
+//         case 'access':
+//             url = `${baseURL}/access_logs`;
+//             break;
+//         case 'security':
+//             url = `${baseURL}/app_security/events`;
+//             break;
+//         case 'audit':
+//             url = `${baseURL}/audit_logs`;
+//             break;
+//         default:
+//             throw new Error("Invalid log type specified");
+//     }
+
+//     const requestData = {
+//         query: `{vh_name="ves-io-http-loadbalancer-${lbname}"${formattedFilters}}`,
+//         scroll: false,
+//         limit: '2',
+//         namespace: namespace,
+//         start_time: startEpoch.toString(),  // Convert epoch to string
+//         end_time: endEpoch.toString()        // Convert epoch to string
+//     };
+
+//     try {
+//         // Initial log fetch
+//         console.log('RequestJSON', requestData);
+//         let response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
+//         if (response.status === 200 && response.data.logs) {
+//             logs.push(...response.data.logs);
+//             totalCount += response.data.logs.length;
+//             scroll_id = response.data.scroll_id;
+//         } else {
+//             throw new Error(`API call to fetch logs failed: ${response.status}`);
+//         }
+
+//         // Handle pagination with scroll_id if necessary
+//         while (scroll_id && totalCount < maxlogs) {
+//             await new Promise(resolve => setTimeout(resolve, 5000)); // Delay for the API rate limit
+
+//             const scrollUrl = `${url}/scroll`;
+//             const scrollBody = {
+//                 namespace: namespace,
+//                 scroll_id: scroll_id
+//             };
+
+//             response = await axios.post(scrollUrl, scrollBody, { headers: headers(tenant, apikey) });
+
+//             if (response.status === 200 && response.data.logs) {
+//                 logs.push(...response.data.logs);
+//                 totalCount += response.data.logs.length;
+//                 scroll_id = response.data.scroll_id || null;
+//                 retryCount = 0; // Reset retry count after a successful request
+//             } else if (response.status === 429 && retryCount < 1) {
+//                 console.log("Rate limit hit, retrying...", retryCount + 1);
+//                 retryCount++; // Increment retry counter
+//                 continue; // Retry the request
+//             } else {
+//                 throw new Error(`API call to fetch logs failed: ${response.status}`);
+//             }
+//         }
+
+//         console.log('fetchLogs Data property:', util.inspect(logs, { showHidden: false, depth: null, colors: true }));
+
+//         return logs;
+//     } catch (error) {
+//         console.error('Failed to fetch logs:', error);
+//         throw error; // Rethrow to handle errors in the caller function
+//     }
+// }
+
+
+async function fetchLogs(apikey, tenant, namespace, lbname, secondsback, logtype, additionalfilters = '', maxlogs = 5000) {
+    const baseURL = `https://${tenant}.console.ves.volterra.io/api/data/namespaces/${namespace}`;
+    let url;
+    let logs = [];
+    let totalCount = 0;
+    let scroll_id = null;
+    let retryCount = 0;
+
+    const endEpoch = Math.floor(Date.now() / 1000);
+    const startEpoch = endEpoch - secondsback;
+
+    const formattedFilters = formatFilters(additionalfilters);
+
+    switch (logtype) {
+        case 'access':
+            url = `${baseURL}/access_logs`;
+            break;
+        case 'security':
+            url = `${baseURL}/app_security/events`;
+            break;
+        case 'audit':
+            url = `${baseURL}/audit_logs`;
+            break;
+        default:
+            throw new Error("Invalid log type specified");
+    }
+
+    const requestData = {
+        query: `{vh_name="ves-io-http-loadbalancer-${lbname}"${formattedFilters}}`,
+        scroll: true,
+        namespace: namespace,
+        start_time: startEpoch.toString(),
+        end_time: endEpoch.toString()
+    };
+
+    try {
+        let response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
+
+        let logKey = (logtype === 'security') ? 'events' : 'logs';  // Use 'events' key for security logs, 'logs' otherwise
+
+        if (response.status === 200 && response.data[logKey]) {
+            response.data[logKey].forEach(log => {
+                try {
+                    logs.push(JSON.parse(log));
+                    totalCount++;
+                } catch (error) {
+                    console.error('Error parsing log entry:', log, error);
+                }
+            });
+            scroll_id = response.data.scroll_id;
+        } else {
+            throw new Error(`API call to fetch logs failed: ${response.status}`);
+        }
+
+        while (scroll_id && totalCount < maxlogs) {
+            await new Promise(resolve => setTimeout(resolve, 5000));
+
+            const scrollUrl = `${url}/scroll`;
+            const scrollBody = {
+                namespace: namespace,
+                scroll_id: scroll_id
+            };
+
+            response = await axios.post(scrollUrl, scrollBody, { headers: headers(tenant, apikey) });
+
+            if (response.status === 200 && response.data[logKey]) {
+                response.data[logKey].forEach(log => {
+                    try {
+                        logs.push(JSON.parse(log));
+                        totalCount++;
+                    } catch (error) {
+                        console.error('Error parsing log entry:', log, error);
+                    }
+                });
+                scroll_id = response.data.scroll_id || null;
+                retryCount = 0;
+            } else if (response.status === 429 && retryCount < 3) {
+                console.log("Rate limit hit, retrying...", retryCount + 1);
+                retryCount++;
+                continue;
+            } else {
+                throw new Error(`API call to fetch logs failed: ${response.status}`);
+            }
+        }
+
+        return logs;
+    } catch (error) {
+        console.error('Failed to fetch logs:', error);
+        throw error;
+    }
+}
+
+
+
+
+
+
+/**
+ * Function to format the additional filters as a string of comma-separated
+ * key-value pairs for the XC API query.
+ *
+ * @param {string} additionalfilters - JSON string of filter objects
+ * @returns {string} Filter string for the XC API query
+ * const additionalfiltersJson = JSON.stringify([
+ *   { "key": "src_ip", "op": "=", "value": "1.2.3.4" },
+ *   { "key": "rsp_code_class", "op": "=~", "value": "1xx|2xx|3xx|4xx|5xx" }
+ * ]);
+ */
+function formatFilters(additionalfilters) {
+    // Parse the JSON string into an array of filter objects
+    const filtersArray = JSON.parse(additionalfilters);
+
+    // Map each filter object to a string based on the 'key', 'op', and 'value'
+    const filters = filtersArray.map(filter => {
+        const key = filter.key;
+        const operation = filter.op;
+        const value = operation === '=~' ? `"${filter.value}"` : `"${filter.value}"`; // Add quotes around the value
+        return `${key}${operation}${value}`;
+    });
+
+    // Join all filter strings with commas and prepend a comma to the result if not empty
+    return filters.length > 0 ? ',' + filters.join(',') : '';
+}
+
+// XC API for Security Events is not working correctly
 // async function fetchSecurityEvents(tenant, apikey, namespace, secondsback, sec_event_type) {
 //     try {
 //         // Define the security event types
@@ -1053,11 +1262,109 @@ async function getSecurityEvents(req, inventory, secondsback, sec_event_type) {
 }
 
 
+/**
+ * Asynchronously fetches logs for a given tenant, namespace, and load balancer.
+ * 
+ * @param {Object} req - The request object.
+ * @param {string} tenant - The Volterra tenant ID.
+ * @param {string} namespace - The Volterra namespace.
+ * @param {string} lbname - The name of the load balancer.
+ * @param {number} secondsback - The number of seconds back to fetch logs.
+ * @param {string} logtype - The type of logs to fetch ('access', 'security', or 'audit').
+ * @param {string} additionalfilters - Additional filters to apply to the logs.
+ * @param {number} maxlogs - The maximum number of logs to fetch.
+ * @returns {Promise} - A Promise that resolves to the fetched logs in the specified file type.
+ * @throws {Error} - If there is an error fetching the logs.
+ */
+async function getLogs(req, tenant, namespace, lbname, secondsback, logtype, additionalfilters, maxlogs) {
+    try {
+        const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+        if (!apikey) {
+            console.error(`No suitable API key found for tenant ${tenant}, namespace ${namespace}`);
+            throw new Error('API key not found');
+        }
+
+        console.log(`Fetching logs for tenant: ${tenant}, namespace: ${namespace}, load balancer: ${lbname}, seconds back: ${secondsback}, log type: ${logtype}, additional filters: ${JSON.stringify(additionalfilters)}, maximum logs: ${maxlogs}`);
+
+        // Call the fetchLogs function to retrieve the logs
+        const rawLogs = await fetchLogs(apikey, tenant, namespace, lbname, secondsback, logtype, additionalfilters, maxlogs);
+
+        // Log the raw logs received
+        console.log('getLogs Data property:', util.inspect(rawLogs, { showHidden: false, depth: null, colors: true }));
+
+        // Since CSV conversion is not needed, directly return the JSON logs
+        return rawLogs;
+    } catch (error) {
+        // Log the error and rethrow it to be handled by the caller
+        console.error(`Error fetching logs for tenant ${tenant}, namespace ${namespace}, LB ${lbname}:`, error);
+        throw error;
+    }
+}
 
 
+async function getLatencyLogs(req, tenant, namespace, lbname, secondsback, maxlogs, topx = 50) {
+    const additionalfiltersJson = JSON.stringify([
+        { "key": "rsp_code_class", "op": "=~", "value": "2xx" }
+    ]);
 
+    try {
+        const logs = await getLogs(req, tenant, namespace, lbname, secondsback, 'access', additionalfiltersJson, maxlogs);
+        const extensionRegex = /\.(jpg|jpeg|png|gif|svg|webp|ico|css|js|woff2?|ttf|otf|eot|pdf|json|xml|mp4|webm|avi|mov|mp3|wav|ogg)$/i;
 
+        const pathStats = {};
 
+        logs.forEach(log => {
+            const path = log.req_path;
+            if (!path.match(extensionRegex)) {
+                if (!pathStats[path]) {
+                    pathStats[path] = {
+                        req_path: path,
+                        transactions: 0,
+                        totalRspSize: 0,
+                        totalLastRxByte: 0,
+                        totalLastTxByte: 0,
+                        totalFirstRxByte: 0,
+                        totalFirstTxByte: 0,
+                        totalRttUpstream: 0,
+                        totalRttDownstream: 0
+                    };
+                }
+
+                const stats = pathStats[path];
+                stats.transactions++;
+                stats.totalRspSize += parseFloat(log.rsp_size || 0);
+                stats.totalLastRxByte += parseFloat(log.time_to_last_rx_byte || 0);
+                stats.totalLastTxByte += parseFloat(log.time_to_last_tx_byte || 0);
+                stats.totalFirstRxByte += parseFloat(log.time_to_first_rx_byte || 0);
+                stats.totalFirstTxByte += parseFloat(log.time_to_first_tx_byte || 0);
+                stats.totalRttUpstream += parseFloat(log.rtt_upstream_seconds || 0);
+                stats.totalRttDownstream += parseFloat(log.rtt_downstream_seconds || 0);
+            }
+        });
+
+        // Calculate averages and prepare the final list
+        const result = Object.values(pathStats).map(stat => {
+            return {
+                req_path: stat.req_path,
+                transactions: stat.transactions,
+                avgRspSize: stat.totalRspSize / stat.transactions,
+                avgLastRxByte: stat.totalLastRxByte / stat.transactions,
+                avgLastTxByte: stat.totalLastTxByte / stat.transactions,
+                avgFirstRxByte: stat.totalFirstRxByte / stat.transactions,
+                avgFirstTxByte: stat.totalFirstTxByte / stat.transactions,
+                avgRttUpstream: stat.totalRttUpstream / stat.transactions,
+                avgRttDownstream: stat.totalRttDownstream / stat.transactions
+            };
+        });
+
+        // Sort by transactions descending and slice to topx
+        result.sort((a, b) => b.transactions - a.transactions);
+        return result.slice(0, topx);
+    } catch (error) {
+        console.error('Error in getLatencyLogs:', error);
+        throw error;
+    }
+}
 
 
 // async function getSecurityEvents(req, inventory, secondsback, sec_event_type) {
@@ -1302,7 +1609,25 @@ async function getApiEndpoint(req, tenant, namespace, lbName, secondsback) {
     }
 }
 
+function jsonToCSV(data) {
+    if (data.length === 0) return '';
 
+    const headers = Object.keys(data[0]).map(field => `"${field}"`).join(',');
+    const csvRows = [headers]; // Start with the headers
+
+    data.forEach(item => {
+        const values = Object.keys(data[0]).map(key => {
+            const val = item[key];
+            if (Array.isArray(val)) {
+                return `"${val.join(';')}"`; // Convert arrays to semi-colon separated strings
+            }
+            return `"${String(val).replace(/"/g, '""')}"`; // Handle basic escaping of quotes
+        });
+        csvRows.push(values.join(','));
+    });
+
+    return csvRows.join('\n');
+}
 
 
 async function fetchApiEndpoint(apikey, tenant, namespace, lbname, startTime, endTime) {
@@ -1329,25 +1654,7 @@ async function fetchApiEndpoint(apikey, tenant, namespace, lbname, startTime, en
     }
 }
 
-function jsonToCSV(data) {
-    if (data.length === 0) return '';
 
-    const headers = Object.keys(data[0]).map(field => `"${field}"`).join(',');
-    const csvRows = [headers]; // Start with the headers
-
-    data.forEach(item => {
-        const values = Object.keys(data[0]).map(key => {
-            const val = item[key];
-            if (Array.isArray(val)) {
-                return `"${val.join(';')}"`; // Convert arrays to semi-colon separated strings
-            }
-            return `"${String(val).replace(/"/g, '""')}"`; // Handle basic escaping of quotes
-        });
-        csvRows.push(values.join(','));
-    });
-
-    return csvRows.join('\n');
-}
 
 
 
@@ -1491,62 +1798,6 @@ async function generateCertificate(commonName, altNames, validityDays = 10) {
 
 
 
-
-/**
- * Stores the given data in the browser's local storage, under the specified key.
- * Also adds a timestamp to the data.
- * @param {string} key - The key under which the data will be stored in local storage.
- * @param {any} data - The data to be stored in local storage.
- */
-function cacheData(key, data) {
-    // Get the current timestamp
-    const timestamp = new Date().getTime();
-
-    // Create the cache entry object
-    const cacheEntry = {
-        data: data,
-        timestamp: timestamp
-    };
-
-    // Stringify the cache entry and store it in local storage
-    localStorage.setItem(key, JSON.stringify(cacheEntry));
-
-    // Log a message indicating the data has been stored in local storage
-    console.log(`Data stored in LocalStorage under key '${key}'`);
-}
-
-/**
- * Retrieves data from the browser's local storage, under the specified key.
- * If the data is present and not older than the specified maximum age, it is returned.
- * Otherwise, null is returned.
- * @param {string} key - The key under which the data is stored in local storage.
- * @param {number} maxAgeInSeconds - The maximum age (in seconds) of the cached data.
- * @returns {any|null} - The retrieved data if it is not older than the maximum age, null otherwise.
- */
-function getCachedData(key, maxAgeInSeconds) {
-    // Retrieve the cache entry from local storage
-    const cacheEntry = localStorage.getItem(key);
-    if (cacheEntry) {
-        // Parse the cache entry
-        const parsedEntry = JSON.parse(cacheEntry);
-        const currentTime = new Date().getTime();
-        const ageInSeconds = (currentTime - parsedEntry.timestamp) / 1000;
-        // Check if the data is not older than the maximum age
-        if (ageInSeconds <= maxAgeInSeconds) {
-            // Log a message indicating the use of cached data
-            console.log(`Using cached data for key '${key}'`);
-            // Return the cached data
-            return parsedEntry.data;
-        } else {
-            // Log a message indicating that the cached data is older than the maximum age
-            console.log(`Cached data for key '${key}' is older than ${maxAgeInSeconds} seconds`);
-            // Remove the cache entry from local storage
-            localStorage.removeItem(key);
-        }
-    }
-    // Return null if the cached data is not available or is older than the maximum age
-    return null;
-}
 
 /**
  * Function to encrypt API keys
@@ -1778,12 +2029,14 @@ module.exports = {
     fetchStats,
     fetchInventory,
     fetchSecurityEvents,
+    fetchLogs,
     getNSDetails,
     getTenantUsers,
     getSecurityEvents,
     getApiEndpoint,
     getInventory,
     getStats,
+    getLogs,
     uploadCertificate,
     generateCertificate,
     encryptApiKeys,
@@ -1791,10 +2044,7 @@ module.exports = {
     getDecryptedApiKeys,
     getCorrectApiKey,
     encryptData,
-    decryptData,
-    mergeDeep,
-    cacheData,
-    getCachedData
+    decryptData
 
 };
 
