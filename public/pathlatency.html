@@ -1,0 +1,21 @@
+<h1 class="roboto-medium">Path Latency</h1>
+
+<div class="float-end input-group" style="width: 225px">
+  <select
+    id="overviewSecondsBack"
+    class="form-control form-select"
+    data-style="btn-primary"
+  >
+    <option value="86400" selected>Last 24hrs</option>
+    <option value="43200">Last 12hrs</option>
+    <option value="3600">Last Hour</option>
+    <!-- Add options here -->
+  </select>
+
+  <button id="refreshOverview" type="button" class="btn btn-outline-primary">
+    <i class="bi bi-arrow-clockwise"></i> Refresh
+  </button>
+</div>
+
+<button id="populatePathLatency">populate</button>
+<div id="pathlatency"></div>

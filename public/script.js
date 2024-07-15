@@ -969,6 +969,8 @@ function populateFormFromCookie() {
                 let apiKeyFormatElement = row.find('.apikey-format');
                 let apiKeyRightsElement = row.find('.apikey-rights');
                 let apiKeyStateElement = row.find('.apikey-state');
+                let delagatedStateElement = row.find('.delagated-state');
+                let delagatedNameElement = row.find('.delagated-name');
                 let apiKeyElement = row.find('.apikey');
 
                 console.log('Tenant Name element found:', tenantNameElement.length);
@@ -985,6 +987,8 @@ function populateFormFromCookie() {
                 apiKeyFormatElement.val(key['apikey-format']);
                 apiKeyRightsElement.val(key['apikey-rights']);
                 apiKeyStateElement.val(key['apikey-state']);
+                delagatedStateElement.val(key['delagated-state']);
+                delagatedNameElement.val(key['delagated-name']);
                 apiKeyElement.val(key['apikey']);
 
                 console.log('Tenant Name set to:', tenantNameElement.val());
@@ -1026,7 +1030,9 @@ $(document).on('click', '#add-api-key', function () {
     newRow.find('.apikey-format').val('clear'); // Select default value for API Key Format
     newRow.find('.apikey-rights').val('allns'); // Select default value for API Key Type
     newRow.find('.apikey-state').val('enabled'); // Select default value for API Key Format    
+    newRow.find('.delagated-state').val('disabled'); // Select default value for delagated state Format    
     newRow.find('.namespace-name').prop('disabled', true); // Ensure Namespace Name is disabled
+    newRow.find('.delagated-name').prop('disabled', true); // Ensure delagated Name is disabled
     newRow.find('.remove-api-key').prop('disabled', false); // Enable remove button for new row
     $("#api-keys-container").append(newRow); // Append the new row to the container
     console.log('Row appended'); // Confirm row append
@@ -1052,6 +1058,19 @@ $(document).on('change', '.namespace-type', function () {
         namespaceNameInput.prop('disabled', false);
     }
     console.log('Namespace type changed to:', namespaceType);
+});
+
+//Delagated State Change Event
+$(document).on('change', '.delagated-state', function () {
+    var delagatedState = $(this).val();
+    var delagatedNameInput = $(this).closest('.api-key-row').find('.delagated-name');
+    if (delagatedState === 'disabled') {
+        delagatedNameInput.prop('disabled', true).val('');
+        delagatedNameInput.removeClass('is-invalid');
+    } else {
+        delagatedNameInput.prop('disabled', false);
+    }
+    console.log('Delagated type changed to:', delagatedState);
 });
 
 // Form Field Blur Event for Validation
@@ -1799,6 +1818,25 @@ $(document).on('click', '#populateOverview', function () {
     // $('#results').empty();
 
     populateOverview();
+});
+
+
+
+$(document).on('click', '#populatePathLatency', function () {
+    // Clear previous results
+    $('#pathlatency-results').empty();
+
+    // Call the getApiInventory function with forcerefresh parameter
+    getPathLatency(false)
+        .then(latencydata => {
+            // Handle the response
+            //const data = inventory.inventory;
+            $('#pathlatency-results').append('<pre>' + JSON.stringify(latencydata, null, 2) + '</pre>');
+        })
+        .catch(error => {
+            // Handle the error
+            $('#pathlatency-results').append('<p>Error: ' + error.message + '</p>');
+        });
 });
 
 

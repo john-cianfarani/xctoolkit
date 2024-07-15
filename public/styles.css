@@ -100,33 +100,30 @@ body {
     padding-right: calc(1.5em + 0.75rem);
 }
 
-.api-key-row {
-    font-size: 8px !important;
 
-}
 
 .tenant-name {
     width: 200px;
     max-width: 200px;
-    font-size: 14px !important;
+    /* font-size: 14px !important; */
 }
 
 .namespace-type {
     width: 110px;
     max-width: 110px;
-    font-size: 14px !important;
+    /* font-size: 14px !important; */
 }
 
 .namespace-name {
     width: 200px;
     max-width: 200px;
-    font-size: 14px !important;
+    /* font-size: 14px !important; */
 }
 
 .apikey {
     width: 400px;
     max-width: 400px;
-    font-size: 14px !important;
+    /* font-size: 14px !important; */
 }
 
 .apikey-rights,
@@ -134,21 +131,23 @@ body {
 .apikey-format {
     width: 95px;
     max-width: 95px;
-    font-size: 14px !important;
+    /* font-size: 14px !important; */
 }
 
+.delagated-state,
 .apikey-state,
 .apikey-rights {
     width: 115px;
     max-width: 115px;
-    font-size: 14px !important;
+    /* font-size: 14px !important; */
 }
 
 
 .api-key-row {
-    background-color: rgb(250, 249, 249);
-    padding-top: 10px;
-    padding-bottom: 10px;
+    /* font-size: 8px !important; */
+    background-color: rgb(13, 110, 253, 0.1 );
+    border-radius: 15px 50px 50px 15px;
+    padding: 10px;
 }
 
 
