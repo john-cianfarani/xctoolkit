@@ -8,60 +8,38 @@
           <td>
             <div class="input-group">
               <span class="input-group-text" id="">Tenant Name</span>
-              <input
-                type="text"
-                class="form-control tenant-name"
-                placeholder="Tenant Name"
-                aria-label="Tenant Name"
-              />
+              <input type="text" class="form-control tenant-name" placeholder="Tenant Name" aria-label="Tenant Name" />
               <div class="invalid-feedback">
                 Please provide a valid Tenant Name.
               </div>
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
               <span class="input-group-text" id="">Namespace</span>
-              <select
-                class="form-select namespace-type"
-                aria-label="Namespace Type"
-              >
+              <select class="form-select namespace-type" aria-label="Namespace Type">
                 <option value="all" selected>All</option>
                 <option value="custom">Custom</option>
               </select>
-              <input
-                type="text"
-                class="form-control namespace-name"
-                placeholder="Namespace"
-                aria-label="Namespace"
-                disabled
-              />
+              <input type="text" class="form-control namespace-name" placeholder="Namespace" aria-label="Namespace"
+                disabled />
               <div class="invalid-feedback">
                 Please provide a valid Namespace.
               </div>
 
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-              <span class="input-group-text" id="">Delagated Access</span>
-              <select class="form-select delagated-state" aria-label="">
+              <span class="input-group-text" id="">Delegated Access</span>
+              <select class="form-select delegated-state" aria-label="">
                 <option value="disabled" selected>Disabled</option>
                 <option value="enabled">Enabled</option>
               </select>
-              <input
-                type="text"
-                class="form-control delagated-name"
-                placeholder=""
-                aria-label="Namespace"
-                disabled
-              />
+              <input type="text" class="form-control delegated-name" placeholder="" aria-label="Managed Tenant Name"
+                disabled />
               <div class="invalid-feedback">
-                Please provide a valid Namespace.
+                Please provide a valid Managed Tenant Name.
               </div>
             </div>
           </td>
           <td rowspan="3" style="width: 50px; padding-left: 10px">
             <div class="col-auto">
-              <button
-                type="button"
-                class="btn btn-danger remove-api-key"
-                disabled
-              >
+              <button type="button" class="btn btn-danger remove-api-key" disabled>
                 X
               </button>
             </div>
@@ -74,16 +52,8 @@
           <td>
             <div class="input-group">
               <span class="input-group-text" id="">API Key</span>
-              <input
-                type="text"
-                class="form-control apikey"
-                placeholder="API Key"
-                aria-label="API Key"
-              />
-              <select
-                class="form-select apikey-format"
-                aria-label="API Key Format"
-              >
+              <input type="text" class="form-control apikey" placeholder="API Key" aria-label="API Key" />
+              <select class="form-select apikey-format" aria-label="API Key Format">
                 <option value="clear" selected>Clear</option>
                 <option value="enc">Enc</option>
               </select>

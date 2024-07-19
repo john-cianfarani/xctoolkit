@@ -1493,8 +1493,8 @@ function encryptApiKeys(apiKeys) {
                 "apikey-format": apiKey["apikey-format"],
                 "apikey-rights": apiKey["apikey-rights"],
                 "apikey-state": apiKey["apikey-state"],
-                "delagted-state": apiKey["delagated-state"],
-                "delagated-name": apiKey["apikey-name"],
+                "delegated-state": apiKey["delegated-state"],
+                "delegated-name": apiKey["delegated-name"],
                 "apikey": apiKey["apikey"]
             };
         } else {
@@ -1506,8 +1506,8 @@ function encryptApiKeys(apiKeys) {
                 "namespace-name": apiKey["namespace-name"],
                 "apikey-rights": apiKey["apikey-rights"],
                 "apikey-state": apiKey["apikey-state"],
-                "delagted-state": apiKey["delagated-state"],
-                "delagated-name": apiKey["apikey-name"],
+                "delagted-state": apiKey["delegated-state"],
+                "delegated-name": apiKey["apikey-name"],
                 "apikey-format": 'enc',
                 "apikey": encryptData(apiKey["apikey"])
             };

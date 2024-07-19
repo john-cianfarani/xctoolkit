@@ -957,6 +957,8 @@ function populateFormFromCookie() {
                 console.log('Tenant Name:', key['tenant-name']);
                 console.log('Namespace Type:', key['namespace-type']);
                 console.log('Namespace Name:', key['namespace-name']);
+                console.log('delegated Name:', key['delegated-name']);
+                console.log('delegated State:', key['delegated-state']);
                 console.log('API Key Type:', key['apikey-type']);
                 console.log('API Key Format:', key['apikey-format']);
                 console.log('API Key:', key['apikey']);
@@ -969,8 +971,8 @@ function populateFormFromCookie() {
                 let apiKeyFormatElement = row.find('.apikey-format');
                 let apiKeyRightsElement = row.find('.apikey-rights');
                 let apiKeyStateElement = row.find('.apikey-state');
-                let delagatedStateElement = row.find('.delagated-state');
-                let delagatedNameElement = row.find('.delagated-name');
+                let delegatedStateElement = row.find('.delegated-state');
+                let delegatedNameElement = row.find('.delegated-name');
                 let apiKeyElement = row.find('.apikey');
 
                 console.log('Tenant Name element found:', tenantNameElement.length);
@@ -987,8 +989,8 @@ function populateFormFromCookie() {
                 apiKeyFormatElement.val(key['apikey-format']);
                 apiKeyRightsElement.val(key['apikey-rights']);
                 apiKeyStateElement.val(key['apikey-state']);
-                delagatedStateElement.val(key['delagated-state']);
-                delagatedNameElement.val(key['delagated-name']);
+                delegatedStateElement.val(key['delegated-state']);
+                delegatedNameElement.val(key['delegated-name']);
                 apiKeyElement.val(key['apikey']);
 
                 console.log('Tenant Name set to:', tenantNameElement.val());
@@ -1002,6 +1004,12 @@ function populateFormFromCookie() {
                     namespaceNameElement.prop('disabled', false);
                 } else {
                     namespaceNameElement.prop('disabled', true);
+                }
+
+                if (key['delegated-state'] === 'enabled') {
+                    delegatedNameElement.prop('disabled', false);
+                } else {
+                    delegatedNameElement.prop('disabled', true);
                 }
             }
         } catch (e) {
@@ -1030,9 +1038,9 @@ $(document).on('click', '#add-api-key', function () {
     newRow.find('.apikey-format').val('clear'); // Select default value for API Key Format
     newRow.find('.apikey-rights').val('allns'); // Select default value for API Key Type
     newRow.find('.apikey-state').val('enabled'); // Select default value for API Key Format    
-    newRow.find('.delagated-state').val('disabled'); // Select default value for delagated state Format    
+    newRow.find('.delegated-state').val('disabled'); // Select default value for delegated state Format    
     newRow.find('.namespace-name').prop('disabled', true); // Ensure Namespace Name is disabled
-    newRow.find('.delagated-name').prop('disabled', true); // Ensure delagated Name is disabled
+    newRow.find('.delegated-name').prop('disabled', true); // Ensure delegated Name is disabled
     newRow.find('.remove-api-key').prop('disabled', false); // Enable remove button for new row
     $("#api-keys-container").append(newRow); // Append the new row to the container
     console.log('Row appended'); // Confirm row append
@@ -1060,17 +1068,17 @@ $(document).on('change', '.namespace-type', function () {
     console.log('Namespace type changed to:', namespaceType);
 });
 
-//Delagated State Change Event
-$(document).on('change', '.delagated-state', function () {
-    var delagatedState = $(this).val();
-    var delagatedNameInput = $(this).closest('.api-key-row').find('.delagated-name');
-    if (delagatedState === 'disabled') {
-        delagatedNameInput.prop('disabled', true).val('');
-        delagatedNameInput.removeClass('is-invalid');
+//delegated State Change Event
+$(document).on('change', '.delegated-state', function () {
+    var delegatedState = $(this).val();
+    var delegatedNameInput = $(this).closest('.api-key-row').find('.delegated-name');
+    if (delegatedState === 'disabled') {
+        delegatedNameInput.prop('disabled', true).val('');
+        delegatedNameInput.removeClass('is-invalid');
     } else {
-        delagatedNameInput.prop('disabled', false);
+        delegatedNameInput.prop('disabled', false);
     }
-    console.log('Delagated type changed to:', delagatedState);
+    console.log('delegated type changed to:', delegatedState);
 });
 
 // Form Field Blur Event for Validation
@@ -1103,6 +1111,8 @@ $(document).on('click', '#submit-api-keys', function (event) {
                 "apikey-format": $(this).find(".apikey-format").val(),
                 "apikey-rights": $(this).find(".apikey-rights").val(),
                 "apikey-state": $(this).find(".apikey-state").val(),
+                "delegated-state": $(this).find(".delegated-state").val(),
+                "delegated-name": $(this).find(".delegated-name").val(),
                 "apikey": $(this).find(".apikey").val()
             };
             apiKeys.push(apiKey);
@@ -1149,47 +1159,45 @@ function validateField(field) {
         if (namespaceType === 'all') {
             isValid = true; // Skip validation for namespace-name when namespace-type is 'all'
             console.log('Namespace type is all, skipping validation for namespace-name');
-            field.removeClass('is-invalid');
-            return isValid;
         } else {
             isValid = /^[a-z0-9\-]{3,20}$/.test(value);
             console.log('Namespace name validation result:', isValid);
         }
-    } else {
-        if (value === '') {
-            isValid = false;
-            console.log('Field value is empty, marking as invalid');
+    } else if (field.hasClass('delegated-name')) {
+        var state = field.closest('.api-key-row').find('.delegated-state').val();
+        console.log('Delegated State:', state);
+        if (state === 'disabled') {
+            field.prop('disabled', true);
+            isValid = true; // If state is disabled, skip validation and disable input
+            console.log('Delegated state is disabled, skipping validation for delegated-name');
         } else {
-            switch (true) {
-                case field.hasClass('tenant-name'):
-                    isValid = /^[a-z0-9\-]{4,16}$/.test(value);
-                    console.log('Tenant name validation result:', isValid);
-                    break;
-                case field.hasClass('apikey'):
-                    isValid = /^[a-zA-Z0-9!@#$%^&*()_+={}\[\]:;"'<>,.?\/\\|-]{10,80}$/.test(value);
-                    console.log('API key validation result:', isValid);
-                    break;
-                default:
-                    isValid = true;
-                    console.log('Default validation passed');
-            }
+            field.prop('disabled', false);
+            isValid = /^[a-z0-9\-]{4,16}$/.test(value); // Use same regex as tenant-name
+            console.log('Delegated name validation result:', isValid);
         }
+    } else if (field.hasClass('tenant-name')) {
+        isValid = /^[a-z0-9\-]{4,16}$/.test(value);
+        console.log('Tenant name validation result:', isValid);
+    } else if (field.hasClass('apikey')) {
+        isValid = /^[a-zA-Z0-9!@#$%^&*()_+={}\[\]:;"'<>,.?\/\\|-]{10,80}$/.test(value);
+        console.log('API key validation result:', isValid);
+    } else {
+        isValid = true; // For any other fields not explicitly checked
+        console.log('Default validation passed');
     }
 
     if (isValid) {
         field.removeClass('is-invalid');
         console.log('Field marked as valid');
-    } else if (isValid === false) {
+    } else {
         field.addClass('is-invalid');
         console.log('Field marked as invalid');
-    } else {
-        console.log('Fallback logic triggered');
     }
 
     console.log('Field validation complete:', field.attr('class'), 'ValidState:', isValid);
-
     return isValid;
 }
+
 
 
 /// API KEYS PAGE CODE BELOW  END ///
