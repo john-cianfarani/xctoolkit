@@ -1,0 +1,69 @@
+<h1 class="roboto-medium">Copy WAF Exclusions</h1>
+<br>
+
+<div id="inventory-loading" class="float-start input-group" style="width: 225px;">
+    <button class="btn btn-primary" type="button" disabled>
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span role="status">Inventory Loading ...</span>
+    </button>
+</div>
+<div id="inventory-loaded" class="float-start input-group" style="width: 225px;">
+    <button class="btn btn-primary" type="button" disabled>
+        <i class="bi bi-check-circle-fill"></i>
+        <span role="status">Inventory Loaded </span>
+    </button>
+</div>
+
+
+<div class="float-end input-group" style="width: 225px;">
+
+
+    <button id="refreshwafexclusions" type="button" class="btn btn-outline-primary float-end"> <i
+            class="bi bi-arrow-clockwise"></i>
+        Refresh</button>
+</div>
+<br> <br>
+<div id="wafexclusion-container">
+
+    <br> <br>
+    <h6 class="roboto-medium">Source Load Balancer</h6>
+    <div class="float-start input-group" style="">
+        <select id="wafexclusion-src-tenant" class=" form-control form-select">
+        </select>
+        <select id="wafexclusion-src-namespace" class=" form-control form-select">
+        </select>
+        <select id="wafexclusion-src-loadbalancer" class=" form-control form-select">
+        </select>
+    </div>
+    <br> <br> <br> <br>
+    <h6 class="roboto-medium">Destination Load Balancer</h6>
+    <div class="float-start input-group" style="">
+        <select id="wafexclusion-dst-tenant" class=" form-control form-select">
+        </select>
+        <select id="wafexclusion-dst-namespace" class=" form-control form-select">
+        </select>
+        <select id="wafexclusion-dst-loadbalancer" class=" form-control form-select">
+        </select>
+    </div>
+
+
+    <br> <br> <br> <br>
+    <div class="form-check form-check-inline">
+        <input id="wafexclusionAgree" class="form-check-input" type="checkbox" value="agree" >
+        <label class="form-check-label" for="inlineCheckbox1">I agree to this change and that there is no undo button!</label>
+    </div>
+    <br><br>
+    <div class="float-start input-group" style="">
+
+
+
+        <button id="copywafexclusions" type="button" class="btn btn-success" disabled> <i
+                class="bi bi-arrow-down-square"></i>
+            Copy</button>
+    </div>
+
+</div>
+
+
+<br> <br><br> <br>
+<div id="wafexclusion-results"></div>

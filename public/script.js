@@ -57,6 +57,30 @@ const pageConfig = {
             console.log('Log Export page specific function executed.');
             // Add settings page specific logic here
         }
+    },
+    pathlatency: {
+        url: 'pathlatency.html',
+        func: function () {
+            populatePathLatency()
+            console.log('Log pathlatency page specific function executed.');
+            // Add settings page specific logic here
+        }
+    },
+    wafexclusion: {
+        url: 'wafexclusion.html',
+        func: function () {
+            populateWafExclusion()
+            console.log('Log wafexclusion page specific function executed.');
+            // Add settings page specific logic here
+        }
+    },
+    editsets: {
+        url: 'editsets.html',
+        func: function () {
+            //populateWafExclusion()
+            console.log('Log editsets page specific function executed.');
+            // Add settings page specific logic here
+        }
     }
 };
 
@@ -1326,7 +1350,22 @@ function populateOverviewTenant(tenantName, inventory, stats) {
 function populateOverviewRow(inventory, stats, tenantName, namespace, lbName) {
     console.log("Start processing LB Row for:", tenantName, namespace, lbName);
 
-    // Safely access stats
+    // Fetch API keys from cookies
+    const apiKeys = JSON.parse(decodeURIComponent(getCookie('apiKeys')) || '[]');
+    console.log("API Keys:", apiKeys);
+
+    // Determine the relevant API key for the current row
+    const apiKeyDetails = apiKeys.find(key => key['tenant-name'] === tenantName && (key['namespace-name'] === namespace || key['namespace-type'] === 'all'));
+    console.log("Relevant API Key Details:", apiKeyDetails);
+
+    // Check for delegated state and name
+    let delegatedState = false;
+    let delegatedName = '';
+    if (apiKeyDetails && apiKeyDetails['delegated-state'] === 'enabled') {
+        delegatedState = true;
+        delegatedName = apiKeyDetails['delegated-name'];
+    }
+
     const lbStats = ((stats[tenantName] || {})[namespace] || {})[lbName] || {};
     console.log("Stats fetched for LB Row:", lbStats);
 
@@ -1338,11 +1377,13 @@ function populateOverviewRow(inventory, stats, tenantName, namespace, lbName) {
 
     const domains = lbData.config.domains || [];
 
-    // Prepare row data with checks for null values
+    // Prepare row data
     const rowData = {
         tenantName: tenantName,
         namespace: namespace,
         name: lbName,
+        delegatedState: delegatedState,
+        delegatedName: delegatedName,
         statusClass: determineStatusClass(lbStats.HEALTHSCORE_OVERALL),
         statusPercentage: formatHealth(lbStats.HEALTHSCORE_OVERALL),
         domainsDisplay: domains.length > 0 ? domains[0] : 'N/A',
@@ -1357,12 +1398,10 @@ function populateOverviewRow(inventory, stats, tenantName, namespace, lbName) {
 
     console.log("Processed LB Row Data:", rowData);
 
-    // Fetch the row template using the getTemplate function
+    // Fetch the row template
     return getTemplate('overview_row', false)
         .then(template => {
-            // Render the template with Mustache
             const renderedHtml = Mustache.render(template, { loadBalancers: [rowData] });
-            //console.log("Rendered LB Row HTML:", renderedHtml);
             return renderedHtml;
         })
         .catch(error => {
@@ -1370,6 +1409,7 @@ function populateOverviewRow(inventory, stats, tenantName, namespace, lbName) {
             throw new Error('Failed to load LB row template');
         });
 }
+
 
 
 function determineStatusClass(healthScore) {
@@ -1716,8 +1756,29 @@ function updateLBSelect(tenantSelectId, namespaceSelectId, lbSelectId, buttonId,
             const lbOptions = ['<option value="" selected>-- Select Load Balancer --</option>'];
 
             Object.keys(lbs).forEach(lbName => {
-                if (!filterType || (filterType === 'api_discovery' && lbs[lbName].config.api_discovery)) {
-                    lbOptions.push(`<option value="${lbName}">${lbName}</option>`);
+                const lb = lbs[lbName];
+                const wafEnabled = lb.config.waf;
+                const hasWriteApiKey = hasWriteAccess(selectedTenant, selectedNamespace); // Assuming hasWriteAccess function exists
+
+                switch (filterType) {
+                    case 'waf':
+                        if (wafEnabled) {
+                            lbOptions.push(`<option value="${lbName}">${lbName}</option>`);
+                        }
+                        break;
+                    case 'waf_write':
+                        if (wafEnabled && hasWriteApiKey) {
+                            lbOptions.push(`<option value="${lbName}">${lbName}</option>`);
+                        }
+                        break;
+                    case 'api_discovery':
+                        if (lb.config.api_discovery) {
+                            lbOptions.push(`<option value="${lbName}">${lbName}</option>`);
+                        }
+                        break;
+                    default:
+                        lbOptions.push(`<option value="${lbName}">${lbName}</option>`);
+                        break;
                 }
             });
 
@@ -1731,6 +1792,31 @@ function updateLBSelect(tenantSelectId, namespaceSelectId, lbSelectId, buttonId,
         lbSelect.innerHTML = '<option value="" selected>-- Select Load Balancer --</option>';
     }
 }
+
+// Helper function to check if there is a write API key for a tenant and namespace
+function hasWriteAccess(tenant, namespace) {
+    const apiKeys = JSON.parse(decodeURIComponent(getCookie('apiKeys')) || '[]');
+    // First try to find an API key that matches both tenant and namespace
+    const specificKey = apiKeys.find(apiKey =>
+        apiKey['tenant-name'] === tenant &&
+        apiKey['namespace-name'] === namespace &&
+        apiKey['apikey-type'] === 'write'
+    );
+
+    // If no specific key found, check for a tenant-level key where namespace might not matter
+    if (!specificKey) {
+        const tenantLevelKey = apiKeys.find(apiKey =>
+            apiKey['tenant-name'] === tenant &&
+            (apiKey['namespace-name'] === '' || apiKey['namespace-type'] === 'all') &&
+            apiKey['apikey-type'] === 'write'
+        );
+        return Boolean(tenantLevelKey);
+    }
+
+    return Boolean(specificKey);
+}
+
+
 
 
 function enableButtonBasedOnSelection(selectId, buttonId) {
@@ -1806,6 +1892,175 @@ $(document).on('click', '#downloadAPIEndpoints', function () {
 
 
 
+// Path Latency
+
+function populatePathLatency() {
+
+    document.getElementById('pathlatency-loading').style.display = 'block';
+    document.getElementById('pathlatency-loaded').style.display = 'none';
+
+    updateTenantSelect('pathlatency-tenant', 'pathlatency-namespace', 'pathlatency-loadbalancer', 'pathlatencySubmit', '', () => {
+        // After updating the tenant select, show the loaded element and hide the loading
+        document.getElementById('pathlatency-loaded').style.display = 'block';
+        document.getElementById('pathlatency-loading').style.display = 'none';
+    });
+}
+
+$(document).on('click', '#pathlatencySubmit', function () {
+    populateLatencyLogsRequest();
+});
+
+function populateLatencyLogsRequest(forcerefresh = false) {
+    const tenant = document.getElementById('pathlatency-tenant').value;
+    const namespace = document.getElementById('pathlatency-namespace').value;
+    const lbname = document.getElementById('pathlatency-loadbalancer').value;
+    const secondsback = document.getElementById('pathlatency-secondsback').value;
+    const maxlogs = document.getElementById('pathlatency-maxlogs').value;
+    const topx = document.getElementById('pathlatency-topx').value;
+
+    if (!tenant || !namespace || !lbname || !secondsback || !maxlogs || !topx) {
+        alert('All fields are required.');
+        return;
+    }
+
+    const cacheKey = `latencyLogs_${tenant}_${namespace}_${lbname}_${secondsback}_${maxlogs}_${topx}`;
+    const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
+
+    // Check cache first if not force refresh
+    if (!forcerefresh) {
+        const cachedLogs = cacheGetData(cacheKey, maxAgeInSeconds);
+        if (cachedLogs !== null) {
+            console.log("Using cached data for latency logs");
+            //document.getElementById('pathlatency-results').innerHTML = `<pre>${JSON.stringify(cachedLogs, null, 2)}</pre>`;
+            $('#pathlatency-results').append('<pre>' + JSON.stringify(cachedLogs, null, 2) + '</pre>');
+            return;
+        }
+    }
+
+    const requestData = {
+        tenant,
+        namespace,
+        lbname,
+        secondsback: parseInt(secondsback),
+        maxlogs: parseInt(maxlogs),
+        topx: parseInt(topx)
+    };
+
+    console.log("Sending request data:", JSON.stringify(requestData));
+
+    fetch('/api/v1/getLatencyLogs', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success) {
+                throw new Error('Failed to fetch latency logs: ' + data.message);
+            }
+            console.log("Latency logs received:", data.logs);
+            cacheSetData(cacheKey, data.logs); // Cache the new data
+            //document.getElementById('pathlatency-results').innerHTML = `<pre>${JSON.stringify(data.logs, null, 2)}</pre>`;
+            $('#pathlatency-results').append('<pre>' + JSON.stringify(data.logs, null, 2) + '</pre>');
+        })
+        .catch(error => {
+            console.error('Error fetching latency logs:', error);
+            alert('Failed to fetch latency logs: ' + error.message);
+        });
+}
+
+
+// Copy WAF Exclusions
+
+function populateWafExclusion() {
+
+    document.getElementById('inventory-loading').style.display = 'block';
+    document.getElementById('inventory-loaded').style.display = 'none';
+    // Source only needs LBs with WAF enabled
+    updateTenantSelect('wafexclusion-src-tenant', 'wafexclusion-src-namespace', 'wafexclusion-src-loadbalancer', 'copywafexclusions', 'waf', () => {
+        // After updating the tenant select, show the loaded element and hide the loading
+        document.getElementById('inventory-loaded').style.display = 'block';
+        document.getElementById('inventory-loading').style.display = 'none';
+    });
+    // Destination  needs LBs with WAF enabled + Write APIKEY
+    updateTenantSelect('wafexclusion-dst-tenant', 'wafexclusion-dst-namespace', 'wafexclusion-dst-loadbalancer', 'copywafexclusions', 'waf_write', () => {
+        // After updating the tenant select, show the loaded element and hide the loading
+        document.getElementById('inventory-loaded').style.display = 'block';
+        document.getElementById('inventory-loading').style.display = 'none';
+    });
+}
+
+$(document).on('click', '#copywafexclusions', function () {
+    execCopyWafExclusions();
+});
+
+function execCopyWafExclusions() {
+    const srcTenant = document.getElementById('wafexclusion-src-tenant').value;
+    const srcNamespace = document.getElementById('wafexclusion-src-namespace').value;
+    const srcLoadBalancer = document.getElementById('wafexclusion-src-loadbalancer').value;
+    const dstTenant = document.getElementById('wafexclusion-dst-tenant').value;
+    const dstNamespace = document.getElementById('wafexclusion-dst-namespace').value;
+    const dstLoadBalancer = document.getElementById('wafexclusion-dst-loadbalancer').value;
+    const wafExclusionAgree = document.getElementById('wafexclusionAgree').checked;
+    const resultsDiv = document.getElementById('wafexclusion-results');
+
+    // Helper function to format timestamp
+    const formatTimestamp = () => {
+        const now = new Date();
+        return now.toLocaleString();
+    };
+
+    // Check if all fields are filled and the checkbox is checked
+    if (!srcTenant || !srcNamespace || !srcLoadBalancer || !dstTenant || !dstNamespace || !dstLoadBalancer || !wafExclusionAgree) {
+        alert("Please fill in all fields and agree to the terms.");
+        return;
+    }
+
+    // Prepare the request data
+    const requestData = {
+        sourceTenant: srcTenant,
+        sourceNamespace: srcNamespace,
+        sourceLbName: srcLoadBalancer,
+        destinationTenant: dstTenant,
+        destinationNamespace: dstNamespace,
+        destinationLbName: dstLoadBalancer
+    };
+
+    // Make the API call
+    fetch('/api/v1/execCopyWafExclusion', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to execute copy operation.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                console.log("Copy successful:", data);
+                resultsDiv.innerHTML += `<p>${formatTimestamp()} - Success - WAF exclusions copied successfully! SRC: ${srcTenant} - ${srcNamespace} - ${srcLoadBalancer} DST: ${dstTenant} - ${dstNamespace} - ${dstLoadBalancer}</p>`;
+
+            } else {
+                throw new Error(data.message || 'Unknown error occurred');
+            }
+        })
+        .catch(error => {
+            console.error("Error copying WAF exclusions:", error);
+            resultsDiv.innerHTML += `<p>${formatTimestamp()} - Failure - ${error.message}</p>`;
+        });
+}
 
 
 

@@ -24,7 +24,9 @@ const {
     getApiEndpoint,
     getInventory,
     getStats,
+    getLatencyLogs,
     getLogs,
+    execCopyWafExclusion,
     generateCertificate,
     encryptApiKeys,
     fetchUsers,
@@ -189,6 +191,51 @@ app.post('/api/v1/getLogs', async (req, res) => {
     } catch (error) {
         console.error('Error in /api/v1/getLogs endpoint:', error);
         // Handle any errors by responding with an error message
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
+app.post('/api/v1/getLatencyLogs', async (req, res) => {
+    try {
+        // Extract the request body
+        const { tenant, namespace, lbname, secondsback, maxlogs, topx } = req.body;
+        console.log("getLatencyLogs - API - Request Parameters: ", tenant, namespace, lbname, secondsback, maxlogs, topx);
+
+        // Call the getLatencyLogs function to retrieve and process the latency logs
+        const logs = await getLatencyLogs(req, tenant, namespace, lbname, secondsback, maxlogs, topx);
+
+        console.log('API - getLatencyLogs Data property:', util.inspect(logs, { showHidden: false, depth: null, colors: true }));
+        // Respond with the processed latency logs data
+        res.json({ success: true, logs });
+    } catch (error) {
+        console.error('Error in /api/v1/getLatencyLogs endpoint:', error);
+        // Handle any errors by responding with an error message
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/api/v1/execCopyWafExclusion', async (req, res) => {
+    try {
+        // Extract the request body for source and destination
+        const {
+            sourceTenant, sourceNamespace, sourceLbName,
+            destinationTenant, destinationNamespace, destinationLbName
+        } = req.body;
+        console.log("execCopyWafExclusion - API - Request Parameters: ",
+            sourceTenant, sourceNamespace, sourceLbName,
+            destinationTenant, destinationNamespace, destinationLbName);
+
+        // Call the execCopyWafExclusion function to copy the WAF exclusion rules
+        await execCopyWafExclusion(req, sourceTenant, sourceNamespace, sourceLbName,
+            destinationTenant, destinationNamespace, destinationLbName);
+
+        console.log('API - execCopyWafExclusion completed successfully from',
+            sourceTenant, sourceNamespace, sourceLbName, 'to',
+            destinationTenant, destinationNamespace, destinationLbName);
+        res.json({ success: true, message: "WAF exclusion rules copied successfully." });
+    } catch (error) {
+        console.error('Error in /api/v1/execCopyWafExclusion endpoint:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

@@ -1,0 +1,52 @@
+<h1 class="roboto-medium">Edit Sets</h1>
+<br>
+
+<div id="inventory-loading" class="float-start input-group" style="width: 225px;">
+    <button class="btn btn-primary" type="button" disabled>
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span role="status">Inventory Loading ...</span>
+    </button>
+</div>
+<div id="inventory-loaded" class="float-start input-group" style="width: 225px;">
+    <button class="btn btn-primary" type="button" disabled>
+        <i class="bi bi-check-circle-fill"></i>
+        <span role="status">Inventory Loaded </span>
+    </button>
+</div>
+
+
+<div class="float-end input-group" style="width: 225px;">
+
+
+    <button id="refreshEditSets" type="button" class="btn btn-outline-primary float-end"> <i
+            class="bi bi-arrow-clockwise"></i>
+        Refresh</button>
+</div>
+<br> <br>
+<div id="editsets-container">
+
+    <br> <br>
+    <div class="float-start input-group" style="">
+        <select id="editsets-tenant" class=" form-control form-select">
+        </select>
+        <select id="editsets-namespace" class=" form-control form-select">
+        </select>
+        <select id="editsets-settype" style="max-width: 200px;"  class=" form-control form-select">
+            <option value="">--- Select Set Type ---</option>
+            <option value="ip_prefix_sets">IP Prefix Sets</option>
+            <option value="asn_sets">BGP ASN Sets</option>
+        </select>
+        <select id="editsets-objname" class=" form-control form-select">
+        </select>
+
+    </div>
+    <br> <br> <br> <br>
+    <div class="float-start input-group" style="">
+
+
+        <button id="downloadeditsetss" type="button" class="btn btn-success" disabled> <i
+                class="bi bi-arrow-down-square"></i>
+            Get Configuration</button>
+    </div>
+
+</div>

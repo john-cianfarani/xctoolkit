@@ -31,6 +31,12 @@
                     <li><a class="dropdown-item" target="_blank" href="https://{{tenantName}}.console.ves.volterra.io/web/workspaces/web-app-and-api-protection/namespaces/{{namespace}}/manage/load_balancers/http_loadbalancers">Edit Configuration</a></li>
                     <li><a class="dropdown-item" target="_blank" href="https://{{tenantName}}.console.ves.volterra.io/web/workspaces/web-app-and-api-protection/namespaces/{{namespace}}/overview/performance/http/ves-io-http-loadbalancer-{{name}}/performance_monitoring/dashboard">Performance Dashboard</a></li>
                     <li><a class="dropdown-item" target="_blank" href="https://{{tenantName}}.console.ves.volterra.io/web/workspaces/web-app-and-api-protection/namespaces/{{namespace}}/overview/security/http/ves-io-http-loadbalancer-{{name}}/security_monitoring/app_firewall">Security Dashboard</a></li>
+                    {{#delegatedState}}
+                    <li><hr class="dropdown-divider"></li>
+<li><a class="dropdown-item" target="_blank" href="https://{{delegatedName}}.console.ves.volterra.io/managed_tenant/{{tenantName}}/web/workspaces/web-app-and-api-protection/namespaces/{{namespace}}/manage/load_balancers/http_loadbalancers">Edit Configuration via Managed</a></li>
+<li><a class="dropdown-item" target="_blank" href="https://{{delegatedName}}.console.ves.volterra.io/managed_tenant/{{tenantName}}/web/workspaces/web-app-and-api-protection/namespaces/{{namespace}}/overview/performance/http/ves-io-http-loadbalancer-{{name}}/performance_monitoring/dashboard">Performance Dashboard via Managed</a></li>
+<li><a class="dropdown-item" target="_blank" href="https://{{delegatedName}}.console.ves.volterra.io/managed_tenant/{{tenantName}}/web/workspaces/web-app-and-api-protection/namespaces/{{namespace}}/overview/security/http/ves-io-http-loadbalancer-{{name}}/security_monitoring/app_firewall">Security Dashboard via Managed</a></li>
+                    {{/delegatedState}}
                 </ul>
             </div>
         </td>
