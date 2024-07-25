@@ -148,7 +148,7 @@ body {
     background-color: rgb(13, 110, 253, 0.1);
     border-radius: 15px 50px 50px 15px;
     padding: 10px;
-    filter: drop-shadow(2px 2px 1px #858585);
+    /* filter: drop-shadow(1px 1px 1px #858585); */
 }
 
 
@@ -415,6 +415,27 @@ table.collapse.in {
     /* background-color: aqua; */
 }
 
+/* Edit Sets */
+
+#editsets-configuration-left {
+    max-width: 300px;
+    overflow-y: scroll;
+    float: left;
+    display: inline-block;
+    padding-right: 75px;
+}
+
+#editsets-configuration-time {
+    display: inline-block;
+
+}
+
+#editsets-configuration-right {
+    /* float: right; */
+    width: 600px;
+    max-width: 600px;
+    display: inline-block;
+}
 
 /* Fonts */
 .roboto-thin {

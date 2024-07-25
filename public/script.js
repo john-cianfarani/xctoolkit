@@ -16,6 +16,9 @@ const SIX_HOURS = 6 * 60 * 60; // 6 hours
 const ONE_DAY = 24 * 60 * 60; // 1 day
 const ONE_WEEK = 7 * 24 * 60 * 60; // 1 week
 
+let countdownTimer;
+
+
 
 const pageConfig = {
     default: {
@@ -77,7 +80,7 @@ const pageConfig = {
     editsets: {
         url: 'editsets.html',
         func: function () {
-            //populateWafExclusion()
+            populateEditSets()
             console.log('Log editsets page specific function executed.');
             // Add settings page specific logic here
         }
@@ -516,6 +519,32 @@ function getTemplate(templateName, forcerefresh = false) {
                 reject(error);
             });
     });
+}
+
+
+function startCountdown(duration, displayElement, onFinish) {
+    let timer = duration, minutes, seconds;
+    countdownTimer = setInterval(() => {
+        minutes = parseInt(timer / 60, 10);
+        seconds = parseInt(timer % 60, 10);
+
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        seconds = seconds < 10 ? "0" + seconds : seconds;
+
+        displayElement.textContent = minutes + ":" + seconds;
+
+        if (--timer < 0) {
+            clearInterval(countdownTimer);
+            if (typeof onFinish === 'function') onFinish();
+        }
+    }, 1000);
+}
+
+function stopTimer() {
+    if (countdownTimer) {
+        clearInterval(countdownTimer);
+        console.log('Timer stopped');
+    }
 }
 
 
@@ -1758,7 +1787,7 @@ function updateLBSelect(tenantSelectId, namespaceSelectId, lbSelectId, buttonId,
             Object.keys(lbs).forEach(lbName => {
                 const lb = lbs[lbName];
                 const wafEnabled = lb.config.waf;
-                const hasWriteApiKey = hasWriteAccess(selectedTenant, selectedNamespace); // Assuming hasWriteAccess function exists
+                const hasWriteApiKey = hasWriteAccess(selectedTenant, selectedNamespace);
 
                 switch (filterType) {
                     case 'waf':
@@ -2063,8 +2092,431 @@ function execCopyWafExclusions() {
 }
 
 
+// Edit Sets
 
 
+$(document).on('click', '#getSetsConfig', function () {
+    getConfigOnClick();
+});
+
+$(document).on('click', '#cancelEditSets', function () {
+    editsetsCancel();
+});
+
+$(document).on('click', '#submitEditSets', function () {
+    editsetsSubmit();
+    //sendConfigUpdate();
+});
+
+function populateEditSets() {
+
+    document.getElementById('inventory-loading').style.display = 'block';
+    document.getElementById('inventory-loaded').style.display = 'none';
+    // Source only needs LBs with WAF enabled
+    updateSetsTenantSelect('editsets-tenant', 'editsets-namespace', 'getSetsConfig', () => {
+        // After updating the tenant select, show the loaded element and hide the loading
+        document.getElementById('inventory-loaded').style.display = 'block';
+        document.getElementById('inventory-loading').style.display = 'none';
+    });
+
+}
+
+// Update tenant select dropdown
+function updateSetsTenantSelect(tenantSelectId, namespaceSelectId, buttonId, callback) {
+    const tenantSelect = document.getElementById(tenantSelectId);
+    document.getElementById(buttonId).disabled = true;
+
+
+    getApiInventory(false, true).then(inventory => {
+        const tenantOptions = ['<option value="" selected>-- Select Tenant --</option>'];
+        Object.keys(inventory.inventory).forEach(tenant => {
+            tenantOptions.push(`<option value="${tenant}">${tenant}</option>`);
+        });
+        tenantSelect.innerHTML = tenantOptions.join('');
+
+        tenantSelect.onchange = () => updateSetsNamespaceSelect(tenantSelectId, namespaceSelectId, buttonId);
+
+        if (callback) callback(); // Call the callback function when done
+
+    }).catch(error => {
+        console.error("Failed to fetch tenants:", error);
+    });
+}
+
+// Update namespace select dropdown
+function updateSetsNamespaceSelect(tenantSelectId, namespaceSelectId, buttonId) {
+    const tenantSelect = document.getElementById(tenantSelectId);
+    const namespaceSelect = document.getElementById(namespaceSelectId);
+    const setTypeSelect = document.getElementById('editsets-setstype');
+    const selectedTenant = tenantSelect.value;
+    document.getElementById(buttonId).disabled = true;
+    if (selectedTenant) {
+        getApiInventory(false, true).then(inventory => {
+            const namespaces = inventory.inventory[selectedTenant] || {};
+            const namespaceOptions = ['<option value="" selected>-- Select Namespace --</option> <option value="shared" >shared</option>'];
+            Object.keys(namespaces).forEach(namespace => {
+                namespaceOptions.push(`<option value="${namespace}">${namespace}</option>`);
+            });
+            namespaceSelect.innerHTML = namespaceOptions.join('');
+
+            namespaceSelect.onchange = () => updateSetsSelectionList(tenantSelectId, namespaceSelectId, 'editsets-setstype', buttonId);
+            setTypeSelect.onchange = () => updateSetsSelectionList(tenantSelectId, namespaceSelectId, 'editsets-setstype', buttonId);
+
+        }).catch(error => {
+            console.error("Failed to fetch namespaces:", error);
+        });
+    } else {
+        namespaceSelect.innerHTML = '<option value="" selected>-- Select Namespace --</option>';
+    }
+}
+
+async function updateSetsSelectionList(tenantSelectId, namespaceSelectId, setTypeSelectId, buttonId) {
+    const tenantSelect = document.getElementById(tenantSelectId);
+    const namespaceSelect = document.getElementById(namespaceSelectId);
+    const setTypeSelect = document.getElementById(setTypeSelectId);
+    const button = document.getElementById(buttonId);
+
+    setTypeSelect.disabled = false;
+    // Check if any of the required fields are empty
+    // if (!tenantSelect.value || !namespaceSelect.value || !setTypeSelect.value) {
+    //     alert('Please fill out all fields');
+    //     return;
+    // }
+
+    try {
+        const sets = await getSetsList(tenantSelect.value, namespaceSelect.value);
+
+        console.log('Sets:', sets);
+
+        const setType = setTypeSelect.value; // Could be 'ip_prefix_sets' or 'bgp_asn_sets'
+
+        console.log('Sets Type:', setType);
+
+        if (!sets || !setType) {
+            return;
+        }
+
+        const setOptions = sets.sets[setType];
+
+        // Populate the select element for object names
+        const objNameSelect = document.getElementById('editsets-objname');
+        // Start with the default option
+        let optionsHTML = '<option value="" selected>-- Select Object --</option>';
+        optionsHTML += setOptions.map(option => `<option value="${option.name}">${option.name}</option>`).join('');
+        objNameSelect.innerHTML = optionsHTML;
+
+        // Attach onchange event to the objName select element
+        objNameSelect.onchange = () => updateSetsObjSelect(tenantSelectId, namespaceSelectId, buttonId);
+
+        // Initially disable the button until an object is selected
+        button.disabled = true;
+    } catch (error) {
+        console.error('Failed to fetch sets:', error);
+        alert('Failed to load data: ' + error.message);
+    }
+}
+
+function updateSetsObjSelect(tenantSelectId, namespaceSelectId, buttonId) {
+    const objNameSelect = document.getElementById('editsets-objname');
+    const button = document.getElementById(buttonId);
+
+    // Enable or disable the button based on the objName select value
+    if (objNameSelect.value) {
+        button.disabled = false;
+    } else {
+        button.disabled = true;
+    }
+}
+
+
+/**
+ * Asynchronously fetches sets list for a given tenant and namespace.
+ *
+ * @param {string} tenantname - The name of the tenant.
+ * @param {string} namespacename - The name of the namespace.
+ * @return {Promise<Object>} A promise that resolves to the JSON response containing the sets list.
+ * @throws {Error} Throws an error if the response was not successful.
+ * 
+ */
+// Return example
+// sets is returned out of this function
+// {
+//     "success": true,
+//     "sets": {
+//       "ip_prefix_sets": [
+//         {
+//           "name": "ip-list",
+//           "description": "",
+//           "namespace": "namespace123",
+//           "tenant": "tenant1"
+//         }
+//       ],
+//       "bgp_asn_sets": [
+//         {
+//           "name": "test-asn",
+//           "description": "",
+//           "namespace": "namespace123",
+//           "tenant": "tenant1"
+//         }
+//       ]
+//     }
+//   }
+
+async function getSetsList(tenantname, namespacename) {
+    // Construct a unique cache key using tenant and namespace
+    const cacheKey = `sets_${tenantname}_${namespacename}`;
+
+    // Try to get data from the cache
+    let cachedData = cacheGetData(cacheKey);
+    if (cachedData) {
+        console.log("Using cached data for:", cacheKey);
+        return cachedData;
+    }
+
+    // Prepare the request payload
+    const requestData = {
+        tenant: tenantname,
+        namespace: namespacename
+    };
+
+    if (!requestData.tenant || !requestData.namespace) {
+        return;
+        throw new Error('Tenant and namespace are required.');
+    }
+
+    try {
+        // Make the POST request to the /api/v1/getSets endpoint
+        const response = await fetch('/api/v1/getSetsList', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        // Parse the response JSON
+        const data = await response.json();
+
+        // Check if the response was successful
+        if (data.success) {
+            // Cache the fetched data
+            cacheSetData(cacheKey, data);
+            return data;
+        } else {
+            throw new Error(data.message || 'Failed to fetch sets.');
+        }
+    } catch (error) {
+        console.error('Error fetching sets:', error);
+        throw error;
+    }
+}
+
+
+// Function to handle "Get Configuration" click event
+function getConfigOnClick() {
+    const tenantSelect = document.getElementById('editsets-tenant');
+    const namespaceSelect = document.getElementById('editsets-namespace');
+    const setTypeSelect = document.getElementById('editsets-setstype');
+    const objNameSelect = document.getElementById('editsets-objname');
+    const getButton = document.getElementById('getSetsConfig');
+    const resultsDiv = document.getElementById('editsets-configuration');
+    const originalConfigTextarea = document.getElementById('editsets-configuration-original');
+    const changeConfigTextarea = document.getElementById('editsets-configuration-change');
+    const timerDisplay = document.getElementById('editsets-configuration-timeremaining');
+
+    // Check if any of the required fields are empty
+    if (!tenantSelect.value || !namespaceSelect.value || !setTypeSelect.value || !objNameSelect.value) {
+        alert('Please fill out all fields.');
+        return;
+    }
+
+    // Disable form elements
+    [tenantSelect, namespaceSelect, setTypeSelect, objNameSelect, getButton].forEach(elem => elem.disabled = true);
+
+    // Fetch configuration
+    fetch('/api/v1/getConfig', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            tenant: tenantSelect.value,
+            namespace: namespaceSelect.value,
+            type: setTypeSelect.value,
+            objname: objNameSelect.value
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.message);
+            }
+            // Display configuration
+            originalConfigTextarea.value = JSON.stringify(data.config, null, 2);
+
+            // Conditionally format data for editing
+            let formattedData = '';
+            if (setTypeSelect.value === 'ip_prefix_sets') {
+                formattedData = data.config.spec.prefix.join('\n');
+            } else if (setTypeSelect.value === 'bgp_asn_sets') {
+                formattedData = data.config.spec.as_numbers.join('\n');
+            }
+            changeConfigTextarea.value = formattedData;
+
+            resultsDiv.style.display = 'block'; // Show the configuration div
+            getButton.disabled = true; // Disable the "Get Configuration" button
+
+            // Start the 5-minute countdown
+            startCountdown(1 * 60, timerDisplay, () => {
+                // Cancel operation after countdown
+                editsetsCancel()
+            });
+        })
+        .catch(error => {
+            alert('Failed to fetch configuration: ' + error.message);
+            [tenantSelect, namespaceSelect, setTypeSelect, objNameSelect, getButton].forEach(elem => elem.disabled = false);
+        });
+}
+
+function sendConfigUpdate() {
+    const tenant = document.getElementById('editsets-tenant').value;
+    const namespace = document.getElementById('editsets-namespace').value;
+    const type = document.getElementById('editsets-setstype').value;
+    const objname = document.getElementById('editsets-objname').value;
+    const originalConfigTextarea = document.getElementById('editsets-configuration-original').value
+    const newData = {}; // Ensure this is collected and structured properly
+
+    console.log('tenant:', tenant, 'namespace:', namespace, 'type:', type, 'objname:', objname, 'newData:', newData, 'originalConfigTextarea:', originalConfigTextarea);
+
+    fetch('/api/v1/putConfig', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant, namespace, type, objname, originalConfigTextarea })
+    })
+        .then(response => response.json())
+        .then(data => console.log('API Response:', data))
+        .catch(error => console.error('Error in API call:', error));
+}
+
+
+async function editsetsSubmit() {
+    const tenantSelect = document.getElementById('editsets-tenant');
+    const namespaceSelect = document.getElementById('editsets-namespace');
+    const setTypeSelect = document.getElementById('editsets-setstype');
+    const objNameSelect = document.getElementById('editsets-objname');
+    const getButton = document.getElementById('getSetsConfig');
+    const resultsDiv = document.getElementById('editsets-results');
+    const originalConfigTextarea = document.getElementById('editsets-configuration-original');
+    const changeConfigTextarea = document.getElementById('editsets-configuration-change');
+
+    if (!tenantSelect.value || !namespaceSelect.value || !setTypeSelect.value || !objNameSelect.value || !changeConfigTextarea.value.trim()) {
+        alert('All fields are required and cannot be blank.');
+        return;
+    }
+
+    tenantSelect.disabled = true;
+    namespaceSelect.disabled = true;
+    setTypeSelect.disabled = true;
+    objNameSelect.disabled = true;
+    getButton.disabled = true;
+
+    try {
+        let newConfigData = changeConfigTextarea.value.split('\n')
+            .map(line => line.trim())
+            .filter(line => line && !line.startsWith('#'))
+            .map(line => line.replace(/['",]/g, ''));
+
+        newConfigData = [...new Set(newConfigData)]; // Remove duplicates
+        const updatedConfig = JSON.parse(originalConfigTextarea.value);
+
+        if (setTypeSelect.value === 'ip_prefix_sets') {
+            newConfigData = newConfigData.filter(line => isValidCIDR(line));
+            updatedConfig.spec.prefix = newConfigData; // Use cleaned CIDR lines
+        } else if (setTypeSelect.value === 'bgp_asn_sets') {
+            newConfigData = newConfigData.filter(num => isValidASN(num)).map(Number);
+            updatedConfig.spec.as_numbers = newConfigData; // Use cleaned AS numbers
+        }
+
+        console.log('Sending update:', tenantSelect.value, namespaceSelect.value, setTypeSelect.value, objNameSelect.value, updatedConfig);
+
+        const response = await fetch(`/api/v1/putConfig`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                tenant: tenantSelect.value,
+                namespace: namespaceSelect.value,
+                type: setTypeSelect.value,
+                objname: objNameSelect.value,
+                newData: updatedConfig
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        alert('Configuration updated successfully!');
+        resultsDiv.innerHTML += `<p>${new Date().toLocaleTimeString()} - Success - Configuration updated successfully! ${tenantSelect.value} - ${namespaceSelect.value} - ${setTypeSelect.value} - ${objNameSelect.value}</p>`;
+        editsetsCancel();
+    } catch (error) {
+        alert(`Error updating configuration: ${error.message}`);
+        resultsDiv.innerHTML += `<p>${new Date().toLocaleTimeString()} - Failure - ${error.message} - ${tenantSelect.value} - ${namespaceSelect.value} - ${setTypeSelect.value} - ${objNameSelect.value}</p>`;
+        startCountdown();
+    } finally {
+        tenantSelect.disabled = false;
+        namespaceSelect.disabled = false;
+        setTypeSelect.disabled = false;
+        objNameSelect.disabled = false;
+        getButton.disabled = false;
+    }
+}
+
+// Helper functions to validate CIDR and ASN
+function isValidCIDR(cidr) {
+    const regex = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
+    return regex.test(cidr);
+}
+
+function isValidASN(asn) {
+    const num = Number(asn);
+    return num >= 1 && num <= 4294967296;
+}
+
+
+
+function editsetsCancel() {
+
+    const timerDisplay = document.getElementById('editsets-configuration-timeremaining')
+
+    // Clear the textarea contents
+    document.getElementById('editsets-configuration-change').value = '';
+    document.getElementById('editsets-configuration-original').value = '';
+
+    // Hide the configuration div
+    document.getElementById('editsets-configuration').style.display = 'none';
+
+    // Enable the Get Configuration button
+    document.getElementById('getSetsConfig').disabled = false;
+
+    // Enable the select inputs
+    document.getElementById('editsets-tenant').disabled = false;
+    document.getElementById('editsets-namespace').disabled = false;
+    document.getElementById('editsets-setstype').disabled = false;
+    document.getElementById('editsets-objname').disabled = false;
+
+    // Optionally, you could also reset the selected options to their default state
+    // Reset select elements to default option or clear selections
+    document.getElementById('editsets-tenant').selectedIndex = 0;
+    document.getElementById('editsets-namespace').selectedIndex = 0;
+    document.getElementById('editsets-setstype').selectedIndex = 0;
+    document.getElementById('editsets-objname').selectedIndex = 0;
+
+    stopTimer();
+    timerDisplay.textContent = '';
+}
 
 
 // // Example usage:
@@ -2242,6 +2694,24 @@ $(document).on('click', '#testButton7', async function () {
         // Handle the response
         console.log('Tenant users:', users);
         $('#results').append('<pre>' + JSON.stringify(users, null, 2) + '</pre>');
+    } catch (error) {
+        // Handle the error
+        $('#results').append('<p>Error: ' + error.message + '</p>');
+    }
+});
+
+$(document).on('click', '#testButton8', async function () {
+    // Clear previous results
+    $('#results').empty();
+
+    console.log('testButton7');
+    // Call the getApiInventory function with forcerefresh parameter
+    try {
+
+        const sets = await getSetsList('f5-amer-ent', 'j-cianfarani');
+        // Handle the response
+        console.log('getSetsList users:', sets);
+        $('#results').append('<pre>' + JSON.stringify(sets, null, 2) + '</pre>');
     } catch (error) {
         // Handle the error
         $('#results').append('<p>Error: ' + error.message + '</p>');

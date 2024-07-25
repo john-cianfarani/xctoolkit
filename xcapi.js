@@ -327,7 +327,7 @@ async function getTenantUsers(req, tenant, limit = 5) {
 // Function to fetch configuration using provided API key
 //http_loadbalancers, app_firewalls, origin_pools, healthchecks, ip_prefix_sets, rate_limiter, rate_limiter_policys, routes
 async function fetchConfig(apikey, tenant, namespace, type, objname) {
-    const url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespace}/${type}`;
+    let url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespace}/${type}`;
     try {
 
         if (objname) {
@@ -337,6 +337,18 @@ async function fetchConfig(apikey, tenant, namespace, type, objname) {
         return response.data;
     } catch (error) {
         console.error('Error fetching configuration data:', error);
+        throw error;
+    }
+}
+
+
+async function getConfig(req, tenant, namespace, type, objname = null) {
+    try {
+        const apikey = getCorrectApiKey(req, tenant, 'read');  // Ensuring we retrieve a 'read' type API key
+        const configData = await fetchConfig(apikey, tenant, namespace, type, objname);
+        return configData;
+    } catch (error) {
+        console.error(`Error fetching configuration for ${type} in tenant ${tenant}, namespace ${namespace}:`, error);
         throw error;
     }
 }
@@ -374,10 +386,20 @@ async function updateConfig(apikey, tenant, namespace, type, objname, newData) {
     }
 }
 
+async function putConfig(req, tenant, namespace, type, objname, newData) {
+    try {
+        const apikey = getCorrectApiKey(req, tenant, 'write');  // Ensuring we retrieve a 'write' type API key
+        const updateResponse = await updateConfig(apikey, tenant, namespace, type, objname, newData);
+        return updateResponse;
+    } catch (error) {
+        console.error(`Error updating configuration for ${type}/${objname} in tenant ${tenant}, namespace ${namespace}:`, error);
+        throw error;
+    }
+}
 
 
 
-async function fetchConfigItems(tenant, apikey, namespace, type) {
+async function fetchConfigItems(apikey, tenant, namespace, type) {
     const list = [];
     try {
         const data = await fetchConfig(apikey, tenant, namespace, type);
@@ -1505,32 +1527,43 @@ async function getLatencyLogs(req, tenant, namespace, lbname, secondsback, maxlo
         const pathStats = {};
 
         logs.forEach(log => {
-            const path = log.req_path;
-            if (!path.match(extensionRegex)) {
-                if (!pathStats[path]) {
-                    pathStats[path] = {
-                        req_path: path,
-                        transactions: 0,
-                        totalRspSize: 0,
-                        totalLastRxByte: 0,
-                        totalLastTxByte: 0,
-                        totalFirstRxByte: 0,
-                        totalFirstTxByte: 0,
-                        totalRttUpstream: 0,
-                        totalRttDownstream: 0
-                    };
-                }
-
-                const stats = pathStats[path];
-                stats.transactions++;
-                stats.totalRspSize += parseFloat(log.rsp_size || 0);
-                stats.totalLastRxByte += parseFloat(log.time_to_last_rx_byte || 0);
-                stats.totalLastTxByte += parseFloat(log.time_to_last_tx_byte || 0);
-                stats.totalFirstRxByte += parseFloat(log.time_to_first_rx_byte || 0);
-                stats.totalFirstTxByte += parseFloat(log.time_to_first_tx_byte || 0);
-                stats.totalRttUpstream += parseFloat(log.rtt_upstream_seconds || 0);
-                stats.totalRttDownstream += parseFloat(log.rtt_downstream_seconds || 0);
+            if (!log.req_path || log.req_path.match(extensionRegex)) {
+                // Skip logs without a req_path or with excluded extensions
+                return;
             }
+
+            const path = log.req_path;
+            if (!pathStats[path]) {
+                pathStats[path] = {
+                    req_path: path,
+                    transactions: 0,
+                    totalRspSize: 0,
+                    totalDurationWithDataTxDelay: 0,
+                    totalRttUpstream: 0,
+                    totalRttDownstream: 0,
+                    totalLastDownstreamTxByte: 0,
+                    totalFirstDownstreamTxByte: 0,
+                    totalLastUpstreamRxByte: 0,
+                    totalFirstUpstreamRxByte: 0,
+                    totalFirstUpstreamTxByte: 0,
+                    totalLastUpstreamTxByte: 0,
+                    totalLastRxByte: 0
+                };
+            }
+
+            const stats = pathStats[path];
+            stats.transactions++;
+            stats.totalRspSize += parseFloat(log.rsp_size || 0);
+            stats.totalDurationWithDataTxDelay += parseFloat(log.duration_with_data_tx_delay || 0);
+            stats.totalRttUpstream += parseFloat(log.rtt_upstream_seconds || 0);
+            stats.totalRttDownstream += parseFloat(log.rtt_downstream_seconds || 0);
+            stats.totalLastDownstreamTxByte += parseFloat(log.time_to_last_downstream_tx_byte || 0);
+            stats.totalFirstDownstreamTxByte += parseFloat(log.time_to_first_downstream_tx_byte || 0);
+            stats.totalLastUpstreamRxByte += parseFloat(log.time_to_last_upstream_rx_byte || 0);
+            stats.totalFirstUpstreamRxByte += parseFloat(log.time_to_first_upstream_rx_byte || 0);
+            stats.totalFirstUpstreamTxByte += parseFloat(log.time_to_first_upstream_tx_byte || 0);
+            stats.totalLastUpstreamTxByte += parseFloat(log.time_to_last_upstream_tx_byte || 0);
+            stats.totalLastRxByte += parseFloat(log.time_to_last_rx_byte || 0);
         });
 
         // Calculate averages and prepare the final list
@@ -1539,12 +1572,16 @@ async function getLatencyLogs(req, tenant, namespace, lbname, secondsback, maxlo
                 req_path: stat.req_path,
                 transactions: stat.transactions,
                 avgRspSize: stat.totalRspSize / stat.transactions,
-                avgLastRxByte: stat.totalLastRxByte / stat.transactions,
-                avgLastTxByte: stat.totalLastTxByte / stat.transactions,
-                avgFirstRxByte: stat.totalFirstRxByte / stat.transactions,
-                avgFirstTxByte: stat.totalFirstTxByte / stat.transactions,
+                avgDurationWithDataTxDelay: stat.totalDurationWithDataTxDelay / stat.transactions,
                 avgRttUpstream: stat.totalRttUpstream / stat.transactions,
-                avgRttDownstream: stat.totalRttDownstream / stat.transactions
+                avgRttDownstream: stat.totalRttDownstream / stat.transactions,
+                avgLastDownstreamTxByte: stat.totalLastDownstreamTxByte / stat.transactions,
+                avgFirstDownstreamTxByte: stat.totalFirstDownstreamTxByte / stat.transactions,
+                avgLastUpstreamRxByte: stat.totalLastUpstreamRxByte / stat.transactions,
+                avgFirstUpstreamRxByte: stat.totalFirstUpstreamRxByte / stat.transactions,
+                avgFirstUpstreamTxByte: stat.totalFirstUpstreamTxByte / stat.transactions,
+                avgLastUpstreamTxByte: stat.totalLastUpstreamTxByte / stat.transactions,
+                avgLastRxByte: stat.totalLastRxByte / stat.transactions
             };
         });
 
@@ -1556,6 +1593,8 @@ async function getLatencyLogs(req, tenant, namespace, lbname, secondsback, maxlo
         throw error;
     }
 }
+
+
 
 
 async function getApiEndpoint(req, tenant, namespace, lbName, secondsback) {
@@ -1670,6 +1709,32 @@ async function execCopyWafExclusion(req, sourceTenant, sourceNamespace, sourceLb
     } catch (error) {
         console.error('Error processing WAF exclusion rules:', error);
         throw error;
+    }
+}
+
+
+async function getSetsList(req, tenant, namespace) {
+    try {
+        // Get the correct API key for the tenant and namespace
+        const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+
+        // Fetch IP prefix sets and BGP ASN sets in parallel
+        const [ipPrefixSets, bgpAsnSets] = await Promise.all([
+            fetchConfigItems(apikey, tenant, namespace, 'ip_prefix_sets'),
+            fetchConfigItems(apikey, tenant, namespace, 'bgp_asn_sets')
+        ]);
+
+        // Build the resulting JSON object
+        const result = {
+            ip_prefix_sets: ipPrefixSets,
+            bgp_asn_sets: bgpAsnSets
+        };
+
+        return result;
+    } catch (error) {
+        // Handle any errors that occur during the request
+        console.error('Error fetching sets:', error);
+        throw error; // Re-throw the error to be caught by the caller if necessary
     }
 }
 
@@ -2114,6 +2179,9 @@ module.exports = {
     getLogs,
     getLatencyLogs,
     execCopyWafExclusion,
+    getSetsList,
+    putConfig,
+    getConfig,
     uploadCertificate,
     generateCertificate,
     encryptApiKeys,

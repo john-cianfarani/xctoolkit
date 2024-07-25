@@ -2,7 +2,7 @@
 
 
 
-<div class="float-end input-group" style="width: 225px;">
+<div class="float-end input-group" style="width: 425px;">
     <select id="overviewSecondsBack" class=" form-control form-select" data-style="btn-primary">
         <option value="604800">Last Week</option>
         <option value="172800">Last 48hrs</option>
@@ -11,9 +11,11 @@
         <option value="3600">Last Hour</option>
         <!-- Add options here -->
     </select>
-
+    <button id="refreshOverviewStats" type="button" class="btn btn-outline-primary"> <i
+            class="bi bi-arrow-clockwise"></i>
+        Refresh Stats</button>
     <button id="refreshOverview" type="button" class="btn btn-outline-primary"> <i class="bi bi-arrow-clockwise"></i>
-        Refresh</button>
+        Refresh All</button>
 </div>
 <br> <br>
 <div class="float-start input-group" id="loading-container">

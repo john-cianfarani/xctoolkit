@@ -27,6 +27,9 @@ const {
     getLatencyLogs,
     getLogs,
     execCopyWafExclusion,
+    getSetsList,
+    getConfig,
+    putConfig,
     generateCertificate,
     encryptApiKeys,
     fetchUsers,
@@ -205,7 +208,7 @@ app.post('/api/v1/getLatencyLogs', async (req, res) => {
         // Call the getLatencyLogs function to retrieve and process the latency logs
         const logs = await getLatencyLogs(req, tenant, namespace, lbname, secondsback, maxlogs, topx);
 
-        console.log('API - getLatencyLogs Data property:', util.inspect(logs, { showHidden: false, depth: null, colors: true }));
+        //console.log('API - getLatencyLogs Data property:', util.inspect(logs, { showHidden: false, depth: null, colors: true }));
         // Respond with the processed latency logs data
         res.json({ success: true, logs });
     } catch (error) {
@@ -239,6 +242,70 @@ app.post('/api/v1/execCopyWafExclusion', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
+
+// API endpoint to get sets
+app.post('/api/v1/getSetsList', async (req, res) => {
+    try {
+        // Extract parameters from the request body
+        const { tenant, namespace } = req.body;
+        console.log("getSets - API - Request Parameters: ", tenant, namespace);
+
+        // Call the getSets function to retrieve the sets
+        const sets = await getSetsList(req, tenant, namespace);
+
+        //console.log('API - getSets Data:', JSON.stringify(sets, null, 2));
+        // Respond with the sets data
+        res.json({ success: true, sets });
+    } catch (error) {
+        console.error('Error in /api/v1/getSets endpoint:', error);
+        // Handle any errors by responding with an error message
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/api/v1/getConfig', async (req, res) => {
+    try {
+        // Extract parameters from the request body
+        const { tenant, namespace, type, objname } = req.body;
+        //console.log("getConfig - API - Request Parameters:", tenant, namespace, type, objname);
+
+        // Call the getConfig abstraction function to retrieve configuration
+        const configData = await getConfig(req, tenant, namespace, type, objname);
+
+        //console.log('API - getConfig Data:', JSON.stringify(configData, null, 2));
+        // Respond with the configuration data
+        res.json({ success: true, config: configData });
+    } catch (error) {
+        console.error('Error in /api/v1/getConfig endpoint:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/api/v1/putConfig', async (req, res) => {
+    try {
+        const { tenant, namespace, type, objname, newData } = req.body;
+
+        // Log received parameters for debugging
+        console.log("Received parameters:", { tenant, namespace, type, objname, newData });
+
+        if (!type || !objname) {
+            return res.status(400).json({ success: false, message: "Type and object name must be provided for the update." });
+        }
+
+        // Call the putConfig function to update configuration
+        const updateResponse = await putConfig(req, tenant, namespace, type, objname, newData);
+        console.log('API - putConfig Response:', JSON.stringify(updateResponse, null, 2));
+
+        // Respond with the result of the update operation
+        res.json({ success: true, updateResponse });
+    } catch (error) {
+        console.error('Error in /api/v1/putConfig endpoint:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
 
 
 function validateJsonFormat(jsonData) {

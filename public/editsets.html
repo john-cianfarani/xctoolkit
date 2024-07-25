@@ -31,22 +31,112 @@
         </select>
         <select id="editsets-namespace" class=" form-control form-select">
         </select>
-        <select id="editsets-settype" style="max-width: 200px;"  class=" form-control form-select">
+        <select id="editsets-setstype" style="max-width: 200px;" class=" form-control form-select" disabled>
             <option value="">--- Select Set Type ---</option>
             <option value="ip_prefix_sets">IP Prefix Sets</option>
-            <option value="asn_sets">BGP ASN Sets</option>
+            <option value="bgp_asn_sets">BGP ASN Sets</option>
         </select>
         <select id="editsets-objname" class=" form-control form-select">
         </select>
 
     </div>
-    <br> <br> <br> <br>
+    <br> <br> <br>
     <div class="float-start input-group" style="">
 
 
-        <button id="downloadeditsetss" type="button" class="btn btn-success" disabled> <i
+        <button id="getSetsConfig" type="button" class="btn btn-success" disabled> <i
                 class="bi bi-arrow-down-square"></i>
             Get Configuration</button>
     </div>
+    <br> <br> <br><br> <br>
 
+    <div id="editsets-configuration">
+
+
+        <div id="editsets-configuration-left">
+
+            <div class="card">
+                <div class="card-header">
+                    Configuration
+                </div>
+
+            </div>
+
+            <textarea class="form-control" id="editsets-configuration-change" rows="22"
+                style="max-width: 300px; overflow-y: scroll;"></textarea>
+
+
+        </div>
+
+        <div id="editsets-configuration-left">
+            <div class="card">
+                <div class="card-header">
+                    Original Configuration
+                </div>
+            </div>
+            <textarea class="form-control" id="editsets-configuration-original" rows="22"
+                style="max-width: 300px; overflow-y: scroll;" disabled></textarea>
+
+        </div>
+
+        <div id="editsets-configuration-right">
+            <div class="card">
+                <div class="card-header">
+                    IP Prefix Sets
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Format</h5>
+
+                    <ul>
+
+                        <li>Max 1024 entries</li>
+                        <li>One entry per line</li>
+                        <li>Entries should be in CIDR notation</li>
+                        <li>Blank lines, white space, quotes, commas and comments are removed</li>
+                    </ul>
+                    <p class="card-text">Example:<br> 237.84.2.178/24<br> 89.207.132.170/24</p>
+                </div>
+            </div>
+            <br><br>
+            <div class="card">
+                <div class="card-header">
+                    BGP ASN Sets
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Format</h5>
+
+                    <ul>
+
+                        <li>Max 1024 entries</li>
+                        <li>One entry per line</li>
+                        <li>Entries should be in BGP ASN notation</li>
+                        <li>Blank lines, white space, quotes, commas and comments are removed</li>
+                    </ul>
+                    <p class="card-text">Example:<br> 35280<br> 22317</p>
+                </div>
+            </div>
+        </div>
+        <br><br>
+
+
+        <br>
+        <span id="editsets-configuration-time"
+            class="border border-primary input-group-text align-middle text-primary ">
+            Remaining Time: <span id="editsets-configuration-timeremaining"></span>
+        </span>
+        <br><br>
+        <div class="float-end input-group">
+
+
+            <button id="cancelEditSets" type="button" class="btn btn-outline-danger float-end">
+                <i class="bi bi-x-circle"></i>
+                Cancel</button>
+            <button id="submitEditSets" type="button" class="btn btn-outline-success float-end">
+                <i class="bi bi-box-arrow-in-right"></i>
+                Submit</button>
+
+        </div>
+    </div>
+    <br><br>
+    <div id="editsets-results"></div>
 </div>
