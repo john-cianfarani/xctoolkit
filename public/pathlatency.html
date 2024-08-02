@@ -1,11 +1,7 @@
 <h1 class="roboto-medium">Path Latency</h1>
-
+<br> <br><br>
 <div class="float-end input-group" style="width: 225px">
-  <select
-    id="overviewSecondsBack"
-    class="form-control form-select"
-    data-style="btn-primary"
-  >
+  <select id="overviewSecondsBack" class="form-control form-select" data-style="btn-primary">
     <option value="86400" selected>Last 24hrs</option>
     <option value="43200">Last 12hrs</option>
     <option value="3600">Last Hour</option>
@@ -19,21 +15,13 @@
 
 <button id="populatePathLatency">populate</button>
 
-<div
-  id="pathlatency-loading"
-  class="float-start input-group"
-  style="width: 225px"
->
+<div id="pathlatency-loading" class="float-start input-group" style="width: 225px">
   <button class="btn btn-primary" type="button" disabled>
     <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
     <span role="status">Inventory Loading ...</span>
   </button>
 </div>
-<div
-  id="pathlatency-loaded"
-  class="float-start input-group"
-  style="width: 225px"
->
+<div id="pathlatency-loaded" class="float-start input-group" style="width: 225px">
   <button class="btn btn-primary" type="button" disabled>
     <i class="bi bi-check-circle-fill"></i>
     <span role="status">Inventory Loaded </span>
@@ -41,25 +29,18 @@
 </div>
 <br />
 <br />
-<div class="float-start input-group" style="">
+<div class="float-start input-group">
   <select id="pathlatency-tenant" class="form-control form-select"></select>
   <select id="pathlatency-namespace" class="form-control form-select"></select>
-  <select
-    id="pathlatency-loadbalancer"
-    class="form-control form-select"
-  ></select>
+  <select id="pathlatency-loadbalancer" class="form-control form-select"></select>
 </div>
 <br />
 <br />
 <br />
 <br />
 <div class="float-start input-group" style="">
-  <select
-    id="pathlatency-secondsback"
-    class="form-control form-select"
-    style="max-width: 150px"
-    data-style="btn-primary"
-  >
+  <select id="pathlatency-secondsback" class="form-control form-select" style="max-width: 150px"
+    data-style="btn-primary">
     <option value="86400" selected>Last 24hrs</option>
     <option value="43200">Last 12hrs</option>
     <option value="21600">Last 6hrs</option>
@@ -67,31 +48,47 @@
     <option value="3600">Last 1hr</option>
   </select>
 
-  <select
-    id="pathlatency-maxlogs"
-    class="form-control form-select"
-    style="max-width: 150px"
-    data-style="btn-primary"
-  >
+  <select id="pathlatency-maxlogs" class="form-control form-select" style="max-width: 150px" data-style="btn-primary">
     <option value="20000">20k</option>
     <option value="10000">10k</option>
     <option value="5000" selected>5k</option>
+    <option value="1500">1.5k</option>
   </select>
 
-  <select
-    id="pathlatency-topx"
-    class="form-control form-select"
-    style="max-width: 150px"
-    data-style="btn-primary"
-  >
-    <option value="100">Top 100</option>
-    <option value="50" selected>Top 50</option>
+  <select id="pathlatency-topx" class="form-control form-select" style="max-width: 150px" data-style="btn-primary">
+    <option value="10" selected>Top 10</option>
     <option value="25">Top 25</option>
-    <option value="10">Top 10</option>
+    <option value="50">Top 50</option>
   </select>
   <button id="pathlatencySubmit" type="button" class="btn btn-success" disabled>
     <i class="bi bi-arrow-down-square"></i> Submit
   </button>
 </div>
 
-<div id="pathlatency-results">Loading...</div>
+
+<br><br><br><br>
+<table id="pathlatency-table" class="table table-pathlatency">
+
+  <thead>
+    <tr>
+      <th>Path</th>
+      <th>Transactions</th>
+      <th>Avg Rsp Size</th>
+      <th>Total Rsp Size</th>
+      <th>Avg RTT Downstream <i class="bi bi-info-circle" title="TCP Handshake RTT"></i></th>
+      <th>Avg Rtt Upstream <i class="bi bi-info-circle" title="TCP Handshake RTT"></i></th>
+      <th>Avg Origin Latency <i class="bi bi-info-circle"
+          title="avgFirstUpstreamRxByte ( Avg time of first client byte recieved to first byte recieved from origin )- avgFirstUpstreamTxByte ( Avg time of first client byte recieved to first XC byte sent to origin )"></i>
+      </th>
+      <th>Avg Full Round Trip <i class="bi bi-info-circle"
+          title="avgLastDownstreamTxByte - Avg time of first client byte recieved to origin and back to last client byte sent"></i>
+      </th>
+      <th>Avg XC Latency<i class="bi bi-info-circle"
+          title="avgLastDownstreamTxByte w/ Data - Avg time of First XC Byte Sent to Origin to last XC Byte send to client"></i>
+      </th>
+    </tr>
+  </thead>
+  <tbody id="pathlatency-table-body">
+  </tbody>
+</table>
+<div id="pathlatency-results"></div>

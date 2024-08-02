@@ -1,10 +1,8 @@
 /* Overall styles */
 body {
-    /* font-family: Inter, Helvetica Neue, Helvetica, Arial, sans-serif; */
     font-family: "Roboto", sans-serif;
     font-weight: 400;
     font-style: normal;
-
     font-size: 14px;
     background-color: #f3f4fa;
     display: flex;
@@ -40,7 +38,7 @@ body {
 #logo {
     padding: 20px 5px;
     margin-bottom: 20px;
-    border-bottom: 1px solid #e7e9f3;
+    /* border-bottom: 1px solid #e7e9f3; */
 }
 
 #service-target {
@@ -155,6 +153,7 @@ body {
 /* Custom table for Overview page */
 
 /* Ensure table has no vertical borders except the left and right edges */
+.table-pathlatency,
 .table-custom {
     border-collapse: collapse;
     width: 100%;
@@ -166,6 +165,8 @@ body {
     border: 1px solid #dee2e6;
 } */
 
+.table-pathlatency th,
+.table-pathlatency td,
 .table-custom th,
 .table-custom td {
     border-top: none;
@@ -191,6 +192,7 @@ body {
 }
 
 /* Different background color for thead and border around it */
+.table-pathlatency thead th,
 .table-custom thead th {
     background-color: #f3f4fa;
     /* border: 1px solid #dee2e6; */
@@ -198,13 +200,14 @@ body {
     /* No border at the bottom of the header cells */
 }
 
-
+.table-pathlatency thead,
 .table-custom thead {
     border: 1px solid #dee2e6;
     /* border-bottom: none; */
 }
 
 /* Border around each tr */
+.table-pathlatency tr,
 .table-custom tbody tr,
 .table-custom tbody tr.collapsing,
 .table-custom tbody tr.collapse {
@@ -419,7 +422,7 @@ table.collapse.in {
 
 #editsets-configuration-left {
     max-width: 300px;
-    overflow-y: scroll;
+    /* overflow-y: scroll; */
     float: left;
     display: inline-block;
     padding-right: 75px;

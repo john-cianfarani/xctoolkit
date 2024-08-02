@@ -9,12 +9,18 @@ const axios = require('axios');
 const fs = require('fs');
 const util = require('util');
 const crypto = require('crypto');
+const JSZip = require('jszip');
 
 const forge = require('node-forge'); //Generate Certificates
 const pki = forge.pki; // Generate Certificates
 
 
 const encryptionKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
+// Check environment variables for encryption key
+const key = process.env.ENCRYPTION_KEY || 'defaultValue';
+console.log('key', key);
+
 
 // Global headers
 const headers = (tenant, apikey) => ({
@@ -33,7 +39,7 @@ const ONE_DAY = 24 * 60 * 60; // 1 day
 const ONE_WEEK = 7 * 24 * 60 * 60; // 1 week
 
 // Function to make Pull list of Namespaces
-async function fetchNamespaces(tenant, apikey) {
+async function fetchNamespaces(apikey, tenant) {
     const namespaces = {};
     try {
         // Construct the URL with variables using string interpolation
@@ -415,7 +421,8 @@ async function fetchConfigItems(apikey, tenant, namespace, type) {
                 name: name,
                 description: description,
                 namespace: namespace,
-                tenant: tenant
+                tenant: tenant,
+                type: type
             };
 
             list.push(obj);
@@ -1522,7 +1529,7 @@ async function getLatencyLogs(req, tenant, namespace, lbname, secondsback, maxlo
 
     try {
         const logs = await getLogs(req, tenant, namespace, lbname, secondsback, 'access', additionalfiltersJson, maxlogs);
-        const extensionRegex = /\.(jpg|jpeg|png|gif|svg|webp|ico|css|js|woff2?|ttf|otf|eot|pdf|json|xml|mp4|webm|avi|mov|mp3|wav|ogg)$/i;
+        const extensionRegex = /\.(jpg|jpeg|png|gif|svg|webp|ico|css|js|woff2?|ttf|otf|eot|pdf|json|xml|mp4|webm|avi|mov|mp3|wav|ogg|htaccess)$/i;
 
         const pathStats = {};
 
@@ -1566,22 +1573,38 @@ async function getLatencyLogs(req, tenant, namespace, lbname, secondsback, maxlo
             stats.totalLastRxByte += parseFloat(log.time_to_last_rx_byte || 0);
         });
 
-        // Calculate averages and prepare the final list
+        // Calculate averages separately and prepare the final list
         const result = Object.values(pathStats).map(stat => {
+            // Individual calculations for better readability
+            const avgRspSize = stat.totalRspSize / stat.transactions;
+            const avgDurationWithDataTxDelay = stat.totalDurationWithDataTxDelay / stat.transactions;
+            const avgRttUpstream = stat.totalRttUpstream / stat.transactions;
+            const avgRttDownstream = stat.totalRttDownstream / stat.transactions;
+            const avgLastDownstreamTxByte = stat.totalLastDownstreamTxByte / stat.transactions;
+            const avgFirstDownstreamTxByte = stat.totalFirstDownstreamTxByte / stat.transactions;
+            const avgLastUpstreamRxByte = stat.totalLastUpstreamRxByte / stat.transactions;
+            const avgFirstUpstreamRxByte = stat.totalFirstUpstreamRxByte / stat.transactions;
+            const avgFirstUpstreamTxByte = stat.totalFirstUpstreamTxByte / stat.transactions;
+            const avgLastUpstreamTxByte = stat.totalLastUpstreamTxByte / stat.transactions;
+            const avgLastRxByte = stat.totalLastRxByte / stat.transactions;
+            const avgOriginLatency = avgFirstUpstreamRxByte - avgFirstUpstreamTxByte;
+
             return {
                 req_path: stat.req_path,
                 transactions: stat.transactions,
-                avgRspSize: stat.totalRspSize / stat.transactions,
-                avgDurationWithDataTxDelay: stat.totalDurationWithDataTxDelay / stat.transactions,
-                avgRttUpstream: stat.totalRttUpstream / stat.transactions,
-                avgRttDownstream: stat.totalRttDownstream / stat.transactions,
-                avgLastDownstreamTxByte: stat.totalLastDownstreamTxByte / stat.transactions,
-                avgFirstDownstreamTxByte: stat.totalFirstDownstreamTxByte / stat.transactions,
-                avgLastUpstreamRxByte: stat.totalLastUpstreamRxByte / stat.transactions,
-                avgFirstUpstreamRxByte: stat.totalFirstUpstreamRxByte / stat.transactions,
-                avgFirstUpstreamTxByte: stat.totalFirstUpstreamTxByte / stat.transactions,
-                avgLastUpstreamTxByte: stat.totalLastUpstreamTxByte / stat.transactions,
-                avgLastRxByte: stat.totalLastRxByte / stat.transactions
+                avgRspSize,
+                totalRspSize: stat.totalRspSize,
+                avgDurationWithDataTxDelay,
+                avgRttUpstream,
+                avgRttDownstream,
+                avgLastDownstreamTxByte,
+                avgFirstDownstreamTxByte,
+                avgLastUpstreamRxByte,
+                avgFirstUpstreamRxByte,
+                avgFirstUpstreamTxByte,
+                avgLastUpstreamTxByte,
+                avgLastRxByte,
+                avgOriginLatency
             };
         });
 
@@ -1593,6 +1616,7 @@ async function getLatencyLogs(req, tenant, namespace, lbname, secondsback, maxlo
         throw error;
     }
 }
+
 
 
 
@@ -1737,6 +1761,61 @@ async function getSetsList(req, tenant, namespace) {
         throw error; // Re-throw the error to be caught by the caller if necessary
     }
 }
+
+
+async function getBackup(req, tenant, namespace, backupShared = false) {
+    const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+    const objectTypes = ['http_loadbalancers', 'tcp_loadbalancers', 'app_firewalls', 'origin_pools', 'healthchecks', 'ip_prefix_sets', 'bgp_asn_sets', 'service_policys', 'rate_limiter_policys', 'routes'];
+
+    const manifest = {};
+    const files = [];
+
+    // Process items for the namespace including shared items if they are fetched by default
+    console.log('Fetching backup for namespace:', tenant, namespace);
+    await execBackup(apikey, tenant, namespace, objectTypes, manifest, files, backupShared);
+
+    // Use JSZip or similar library to package files and manifest into a ZIP
+    const zip = new JSZip();
+    files.forEach(file => zip.file(file.name, file.content));
+    zip.file('manifest.json', JSON.stringify(manifest));
+
+    // Return or save the ZIP file
+    const zipContent = await zip.generateAsync({ type: "nodebuffer" });
+    return zipContent;
+}
+
+async function execBackup(apikey, tenant, namespace, types, manifest, files, backupShared) {
+    for (const type of types) {
+        console.log('Fetching backup for type:', tenant, namespace, type);
+        const items = await fetchConfigItems(apikey, tenant, namespace, type);
+        for (const item of items) {
+            if (!backupShared && item.namespace === 'shared') {
+                continue; // Skip shared items if backupShared is false
+            }
+            if (item.name.startsWith('ves-io')) {
+                continue; // Skip system items
+            }
+            console.log('Fetching backup for item:', tenant, item.namespace, type, item.name);
+            const config = await fetchConfig(apikey, tenant, item.namespace, type, item.name);
+            const fileContent = JSON.stringify(config);
+            files.push({ name: `${tenant}_${item.namespace}_${type}_${item.name}.json`, content: fileContent });
+
+            // Build manifest entry
+            if (!manifest[type]) manifest[type] = [];
+            manifest[type].push({
+                name: item.name,
+                namespace: item.namespace,
+                resource_version: config.resource_version,
+                uid: config.system_metadata.uid,
+                modification_timestamp: config.system_metadata.modification_timestamp
+            });
+        }
+    }
+}
+
+
+
+
 
 
 /**
@@ -2180,6 +2259,7 @@ module.exports = {
     getLatencyLogs,
     execCopyWafExclusion,
     getSetsList,
+    getBackup,
     putConfig,
     getConfig,
     uploadCertificate,

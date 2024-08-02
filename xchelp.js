@@ -76,26 +76,26 @@ const xcel_token = 'dCUXpzY4OjQdoEPpe3uJUE9Zi6U=';
 // });     
 
 
-fetchConfig(authToken, xcTenant1, namespace1, 'bgp_asn_sets', 'test-asn')
-    .then(data => {
-
-        console.log(data);
-        //console.log(util.inspect(data, {depth: null}));
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
-
-// 'ip_prefix_sets' 'origin_pools' 
-// fetchConfigItems(xcTenant1, authToken, 'shared', 'ip_prefix_sets')
+// fetchConfig(authToken, xcTenant1, namespace1, 'bgp_asn_sets', 'test-asn')
 //     .then(data => {
 
-//         console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+//         console.log(data);
 //         //console.log(util.inspect(data, {depth: null}));
 //     })
 //     .catch(error => {
 //         console.error('Error:', error);
 //     });
+
+// 'ip_prefix_sets' 'origin_pools' 
+fetchConfigItems(authToken, xcTenant1, 'shared', 'ip_prefix_sets')
+    .then(data => {
+
+        console.log('Data property:', util.inspect(data, { showHidden: false, depth: null, colors: true }));
+        //console.log(util.inspect(data, {depth: null}));
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
 // fetchConfigItems(xcTenant1, authToken, namespace1, 'bgp_asn_sets')
 //     .then(data => {
 

@@ -1,57 +1,56 @@
 <h1 class="roboto-medium">Overview</h1>
+<br> <br><br>
+<div>
+    <div class="float-start " id="loading-container">
 
+        <div id="inventory-loading" class="float-start input-group" style="width: 215px;">
+            <button class="btn btn-primary" type="button" disabled>
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                <span role="status">Inventory Loading ...</span>
+            </button>
+        </div>
+        <div id="inventory-loaded" class="float-start input-group" style="width: 215px;">
+            <button class="btn btn-primary" type="button" disabled>
+                <i class="bi bi-check-circle-fill"></i>
+                <span role="status">Inventory Loaded </span>
+            </button>
+        </div>
+        <div id="stats-loading" class="float-start input-group" style="width: 215px;">
+            <button class="btn btn-primary" type="button" disabled>
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                <span role="status">Stats Loading ...</span>
+            </button>
+        </div>
+        <div id="stats-loaded" class="float-start input-group" style="width: 215px;">
+            <button class="btn btn-primary" type="button" disabled>
+                <i class="bi bi-check-circle-fill"></i>
+                <span role="status">Stats Loaded </span>
+            </button>
+        </div>
 
-
-<div class="float-end input-group" style="width: 425px;">
-    <select id="overviewSecondsBack" class=" form-control form-select" data-style="btn-primary">
-        <option value="604800">Last Week</option>
-        <option value="172800">Last 48hrs</option>
-        <option value="86400" selected>Last 24hrs</option>
-        <option value="43200">Last 12hrs</option>
-        <option value="3600">Last Hour</option>
-        <!-- Add options here -->
-    </select>
-    <button id="refreshOverviewStats" type="button" class="btn btn-outline-primary"> <i
-            class="bi bi-arrow-clockwise"></i>
-        Refresh Stats</button>
-    <button id="refreshOverview" type="button" class="btn btn-outline-primary"> <i class="bi bi-arrow-clockwise"></i>
-        Refresh All</button>
-</div>
-<br> <br>
-<div class="float-start input-group" id="loading-container">
-
-    <br> <br>
-    <div id="inventory-loading" class="float-start input-group" style="width: 225px;">
-        <button class="btn btn-primary" type="button" disabled>
-            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-            <span role="status">Inventory Loading ...</span>
-        </button>
     </div>
-    <div id="inventory-loaded" class="float-start input-group" style="width: 225px;">
-        <button class="btn btn-primary" type="button" disabled>
-            <i class="bi bi-check-circle-fill"></i>
-            <span role="status">Inventory Loaded </span>
-        </button>
-    </div>
-    <div id="stats-loading" class="float-start input-group" style="width: 225px;">
-        <button class="btn btn-primary" type="button" disabled>
-            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-            <span role="status">Stats Loading ...</span>
-        </button>
-    </div>
-    <div id="stats-loaded" class="float-start input-group" style="width: 225px;">
-        <button class="btn btn-primary" type="button" disabled>
-            <i class="bi bi-check-circle-fill"></i>
-            <span role="status">Stats Loaded </span>
-        </button>
-    </div>
-    <br> <br> <br>
 
-
+    <div class="float-end input-group" style="width: 425px;">
+        <select id="overviewSecondsBack" class=" form-control form-select" data-style="btn-primary">
+            <option value="604800">Last Week</option>
+            <option value="172800">Last 48hrs</option>
+            <option value="86400" selected>Last 24hrs</option>
+            <option value="43200">Last 12hrs</option>
+            <option value="3600">Last Hour</option>
+            <!-- Add options here -->
+        </select>
+        <button id="refreshOverviewStats" type="button" class="btn btn-outline-primary"> <i
+                class="bi bi-arrow-clockwise"></i>
+            Refresh Stats</button>
+        <button id="refreshOverview" type="button" class="btn btn-outline-primary"> <i
+                class="bi bi-arrow-clockwise"></i>
+            Refresh All</button>
+    </div>
 
 </div>
 
-<button id="populateOverview">populate</button>
+<!-- <button id="populateOverview">populate</button> -->
+<br> <br><br> <br>
 <div id="overview-container">
 
 </div>

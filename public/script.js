@@ -84,6 +84,14 @@ const pageConfig = {
             console.log('Log editsets page specific function executed.');
             // Add settings page specific logic here
         }
+    },
+    backup: {
+        url: 'backup.html',
+        func: function () {
+            populateBackup()
+            console.log('Log backup page specific function executed.');
+            // Add settings page specific logic here
+        }
     }
 };
 
@@ -93,8 +101,10 @@ const pageConfig = {
 // Check if the user has visited the page before if not show the default page
 // Checks if the apiKeys cookie is present if not shows the API Keys page
 // populates the left side tenant select
+// Restores the saved theme dark or light
 $(document).ready(function () {
     const currentPage = localStorage.getItem('currentPage') || 'default';
+    applySavedTheme()
     //console.log('Current page:', currentPage);
     loadContent(currentPage);
     checkCookie();
@@ -458,7 +468,7 @@ function formatGenericNumber(number) {
     }
     // If the number is less than 1 thousand, show it as is.
     else {
-        return `${(num).toFixed(1)}`;
+        return `${(num).toFixed(0)}`;
     }
 }
 
@@ -521,6 +531,40 @@ function getTemplate(templateName, forcerefresh = false) {
     });
 }
 
+function toggleTheme() {
+    const isDarkMode = document.body.classList.toggle('dark-mode');
+    document.documentElement.setAttribute('data-bs-theme', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+}
+
+
+$(document).on('click', '#toggleTheme', function () {
+    toggleTheme();
+});
+
+function applySavedTheme() {
+    const savedTheme = localStorage.getItem('theme'); // Retrieve the theme from local storage.
+    const themeToggleCheckbox = document.getElementById('toggleTheme'); // Get the checkbox element.
+
+    // Check if a theme has been saved in localStorage.
+    if (savedTheme) {
+        // Determine if the saved theme is 'dark'.
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark-mode'); // Add 'dark-mode' class to body.
+            document.documentElement.setAttribute('data-bs-theme', 'dark'); // Set data attribute to 'dark'.
+            if (themeToggleCheckbox) {
+                themeToggleCheckbox.checked = true; // Set the checkbox to checked if dark mode is active.
+            }
+        } else {
+            document.body.classList.remove('dark-mode'); // Remove 'dark-mode' class from body.
+            document.documentElement.setAttribute('data-bs-theme', 'light'); // Set data attribute to 'light'.
+            if (themeToggleCheckbox) {
+                themeToggleCheckbox.checked = false; // Ensure the checkbox is not checked if light mode is active.
+            }
+        }
+    }
+
+}
 
 function startCountdown(duration, displayElement, onFinish) {
     let timer = duration, minutes, seconds;
@@ -1309,6 +1353,26 @@ function populateOverviewTenant(tenantName, inventory, stats) {
     const tenantData = inventory.inventory[tenantName]; // Specific tenant's data
     const summaryData = inventory.summary[tenantName]; // Summary data for the tenant
 
+
+    // Fetch API keys from cookies
+    const apiKeys = JSON.parse(decodeURIComponent(getCookie('apiKeys')) || '[]');
+    // Determine the relevant API key for the current row
+    const apiKeyDetails = apiKeys.find(key => key['tenant-name'] === tenantName);
+    console.log("Relevant API Key Details:", apiKeyDetails);
+
+    // Check for delegated state and name
+    let delegatedState = false;
+    let delegatedName = '';
+    let userUrl = '';  // For building the url link for the user list either default or managed
+
+    if (apiKeyDetails && apiKeyDetails['delegated-state'] === 'enabled') {
+        delegatedState = true;
+        delegatedName = apiKeyDetails['delegated-name'];
+        userUrl = `https://${delegatedName}.example.com`; // Set URL for delegated state
+    } else {
+        userUrl = `https://${tenantName}.example.com`; // Set URL for non-delegated state
+    }
+
     // Fetch user data and pad it if necessary
     return getApiTenantUsers(tenantName, 5, false)
         .then(data => {
@@ -1340,7 +1404,8 @@ function populateOverviewTenant(tenantName, inventory, stats) {
                 httpTotalMUD: summaryData.http_loadbalancers.malicious_user_detection,
                 httpTotalMUM: summaryData.http_loadbalancers.malicious_user_mitigation,
                 httpTotalCSD: summaryData.http_loadbalancers.client_side_defense,
-                loadBalancers: preparedUsers
+                loadBalancers: preparedUsers,
+                userUrl: userUrl
             };
 
             // Use the getTemplate function to fetch the tenant template
@@ -1349,11 +1414,25 @@ function populateOverviewTenant(tenantName, inventory, stats) {
                     let renderedHTML = Mustache.render(template, templateData);
 
                     // Prepare to add load balancer rows by iterating through namespaces and load balancers
-                    const rowsPromises = Object.entries(tenantData).flatMap(([namespace, lbDetails]) => {
-                        return Object.keys(lbDetails.http_loadbalancers).map(lbName => {
-                            return populateOverviewRow(inventory, stats, tenantName, namespace, lbName);
-                        });
+                    // const rowsPromises = Object.entries(tenantData).flatMap(([namespace, lbDetails]) => {
+                    //     return Object.keys(lbDetails.http_loadbalancers).map(lbName => {
+                    //         return populateOverviewRow(inventory, stats, tenantName, namespace, lbName);
+                    //     });
+                    // });
+
+                    // Sort the rows based on namespace A-Z and then load balancer total requests in descending order
+                    const rowsPromises = Object.keys(tenantData).sort().flatMap(namespace => {
+                        const lbDetails = tenantData[namespace].http_loadbalancers || {};
+                        return Object.entries(lbDetails)
+                            .sort((a, b) => {
+                                // Use optional chaining to safely access deeply nested properties and provide a default value
+                                const totalRequestsA = stats[tenantName]?.[namespace]?.[a[0]]?.TOTAL_REQUESTS ?? 0;
+                                const totalRequestsB = stats[tenantName]?.[namespace]?.[b[0]]?.TOTAL_REQUESTS ?? 0;
+                                return totalRequestsB - totalRequestsA;  // Sort descending by total requests
+                            })
+                            .map(([lbName]) => populateOverviewRow(inventory, stats, tenantName, namespace, lbName));
                     });
+
 
                     // Wait for all load balancer rows to be generated and concatenated
                     return Promise.all(rowsPromises).then(rowsHTML => {
@@ -1542,7 +1621,7 @@ function populateOverviewRowDetails(tenant, namespace, lbname, secondsback) {
 
             console.log("Configuration Data:", detailsData);
 
-            return getTemplate('overview_rowdetails_copy', false).then(template => {
+            return getTemplate('overview_rowdetails', false).then(template => {
                 const renderedHtml = Mustache.render(template, { ...detailsData, secevents, nsdetails });
                 document.getElementById(`details-${lbname}`).innerHTML = renderedHtml;
                 console.log('Details template rendered successfully for:', lbname);
@@ -1939,7 +2018,75 @@ $(document).on('click', '#pathlatencySubmit', function () {
     populateLatencyLogsRequest();
 });
 
-function populateLatencyLogsRequest(forcerefresh = false) {
+// function populateLatencyLogsRequest(forcerefresh = false) {
+//     const tenant = document.getElementById('pathlatency-tenant').value;
+//     const namespace = document.getElementById('pathlatency-namespace').value;
+//     const lbname = document.getElementById('pathlatency-loadbalancer').value;
+//     const secondsback = document.getElementById('pathlatency-secondsback').value;
+//     const maxlogs = document.getElementById('pathlatency-maxlogs').value;
+//     const topx = document.getElementById('pathlatency-topx').value;
+
+//     if (!tenant || !namespace || !lbname || !secondsback || !maxlogs || !topx) {
+//         alert('All fields are required.');
+//         return;
+//     }
+
+//     const cacheKey = `latencyLogs_${tenant}_${namespace}_${lbname}_${secondsback}_${maxlogs}_${topx}`;
+//     const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
+
+//     // Check cache first if not force refresh
+//     if (!forcerefresh) {
+//         const cachedLogs = cacheGetData(cacheKey, maxAgeInSeconds);
+//         if (cachedLogs !== null) {
+//             console.log("Using cached data for latency logs");
+//             //document.getElementById('pathlatency-results').innerHTML = `<pre>${JSON.stringify(cachedLogs, null, 2)}</pre>`;
+//             $('#pathlatency-results').append('<pre>' + JSON.stringify(cachedLogs, null, 2) + '</pre>');
+//             return;
+//         }
+//     }
+
+//     const requestData = {
+//         tenant,
+//         namespace,
+//         lbname,
+//         secondsback: parseInt(secondsback),
+//         maxlogs: parseInt(maxlogs),
+//         topx: parseInt(topx)
+//     };
+
+//     console.log("Sending request data:", JSON.stringify(requestData));
+
+//     fetch('/api/v1/getLatencyLogs', {
+//         method: 'POST',
+//         headers: {
+//             'Content-Type': 'application/json'
+//         },
+//         body: JSON.stringify(requestData)
+//     })
+//         .then(response => {
+//             if (!response.ok) {
+//                 throw new Error('Network response was not ok');
+//             }
+//             return response.json();
+//         })
+//         .then(data => {
+//             if (!data.success) {
+//                 throw new Error('Failed to fetch latency logs: ' + data.message);
+//             }
+//             console.log("Latency logs received:", data.logs);
+//             cacheSetData(cacheKey, data.logs); // Cache the new data
+//             //document.getElementById('pathlatency-results').innerHTML = `<pre>${JSON.stringify(data.logs, null, 2)}</pre>`;
+//             $('#pathlatency-results').append('<pre>' + JSON.stringify(data.logs, null, 2) + '</pre>');
+//         })
+//         .catch(error => {
+//             console.error('Error fetching latency logs:', error);
+//             alert('Failed to fetch latency logs: ' + error.message);
+//         });
+// }
+
+
+
+async function populateLatencyLogsRequest(forcerefresh = false) {
     const tenant = document.getElementById('pathlatency-tenant').value;
     const namespace = document.getElementById('pathlatency-namespace').value;
     const lbname = document.getElementById('pathlatency-loadbalancer').value;
@@ -1952,20 +2099,6 @@ function populateLatencyLogsRequest(forcerefresh = false) {
         return;
     }
 
-    const cacheKey = `latencyLogs_${tenant}_${namespace}_${lbname}_${secondsback}_${maxlogs}_${topx}`;
-    const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
-
-    // Check cache first if not force refresh
-    if (!forcerefresh) {
-        const cachedLogs = cacheGetData(cacheKey, maxAgeInSeconds);
-        if (cachedLogs !== null) {
-            console.log("Using cached data for latency logs");
-            //document.getElementById('pathlatency-results').innerHTML = `<pre>${JSON.stringify(cachedLogs, null, 2)}</pre>`;
-            $('#pathlatency-results').append('<pre>' + JSON.stringify(cachedLogs, null, 2) + '</pre>');
-            return;
-        }
-    }
-
     const requestData = {
         tenant,
         namespace,
@@ -1975,35 +2108,58 @@ function populateLatencyLogsRequest(forcerefresh = false) {
         topx: parseInt(topx)
     };
 
-    console.log("Sending request data:", JSON.stringify(requestData));
+    const cacheKey = `latencyLogs_${tenant}_${namespace}_${lbname}_${secondsback}_${maxlogs}_${topx}`;
+    const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
 
-    fetch('/api/v1/getLatencyLogs', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestData)
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (!data.success) {
-                throw new Error('Failed to fetch latency logs: ' + data.message);
-            }
-            console.log("Latency logs received:", data.logs);
-            cacheSetData(cacheKey, data.logs); // Cache the new data
-            //document.getElementById('pathlatency-results').innerHTML = `<pre>${JSON.stringify(data.logs, null, 2)}</pre>`;
-            $('#pathlatency-results').append('<pre>' + JSON.stringify(data.logs, null, 2) + '</pre>');
-        })
-        .catch(error => {
+    let logsData = cacheGetData(cacheKey, maxAgeInSeconds);
+    if (!forcerefresh && logsData) {
+        console.log("Using cached data for latency logs");
+    } else {
+        try {
+            const response = await fetch('/api/v1/getLatencyLogs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            });
+            if (!response.ok) throw new Error('Network response was not ok');
+            const data = await response.json();
+            if (!data.success) throw new Error('Failed to fetch latency logs: ' + data.message);
+
+            logsData = data.logs;
+            cacheSetData(cacheKey, logsData); // Cache the new data
+        } catch (error) {
             console.error('Error fetching latency logs:', error);
             alert('Failed to fetch latency logs: ' + error.message);
-        });
+            return;
+        }
+    }
+
+    // Format data and render template
+    const formattedLogs = logsData.map(log => ({
+        req_path: log.req_path,
+        transactions: formatGenericNumber(log.transactions),
+        avgRspSize: formatGenericNumber(log.avgRspSize),
+        totalRspSize: formatGenericNumber(log.totalRspSize),
+        avgRttDownstream: formatLatency(log.avgRttDownstream),
+        avgRttUpstream: formatLatency(log.avgRttUpstream),
+        avgOriginLatency: formatLatency(log.avgOriginLatency),
+        avgLastDownstreamTxByte: formatLatency(log.avgLastDownstreamTxByte),
+        avgDurationWithDataTxDelay: formatLatency(log.avgDurationWithDataTxDelay)
+    }));
+
+    try {
+        const template = await getTemplate('pathlatency_row', false);
+        const renderedHTML = Mustache.render(template, { loadBalancers: formattedLogs });
+        document.getElementById('pathlatency-table-body').innerHTML = renderedHTML;
+        $('#pathlatency-results').append('<pre>' + JSON.stringify(logsData, null, 2) + '</pre>');
+    } catch (error) {
+        console.error('Failed to load template or render HTML:', error);
+        alert('Failed to process template: ' + error.message);
+    }
 }
+
+
+
 
 
 // Copy WAF Exclusions
@@ -2517,6 +2673,133 @@ function editsetsCancel() {
     stopTimer();
     timerDisplay.textContent = '';
 }
+
+// Backup
+
+function populateBackup() {
+
+    document.getElementById('inventory-loading').style.display = 'block';
+    document.getElementById('inventory-loaded').style.display = 'none';
+    // Source only needs LBs with WAF enabled
+    updateBackupTenantSelect('backup-tenant', 'backup-namespace', 'downloadBackup', () => {
+        // After updating the tenant select, show the loaded element and hide the loading
+        document.getElementById('inventory-loaded').style.display = 'block';
+        document.getElementById('inventory-loading').style.display = 'none';
+    });
+
+}
+
+// Update tenant select dropdown
+function updateBackupTenantSelect(tenantSelectId, namespaceSelectId, buttonId, callback) {
+    const tenantSelect = document.getElementById(tenantSelectId);
+    document.getElementById(buttonId).disabled = true;
+
+
+    getApiInventory(false, true).then(inventory => {
+        const tenantOptions = ['<option value="" selected>-- Select Tenant --</option>'];
+        Object.keys(inventory.inventory).forEach(tenant => {
+            tenantOptions.push(`<option value="${tenant}">${tenant}</option>`);
+        });
+        tenantSelect.innerHTML = tenantOptions.join('');
+
+        tenantSelect.onchange = () => updateBackupNamespaceSelect(tenantSelectId, namespaceSelectId, buttonId);
+
+        if (callback) callback(); // Call the callback function when done
+
+    }).catch(error => {
+        console.error("Failed to fetch tenants:", error);
+    });
+}
+
+// Update namespace select dropdown
+function updateBackupNamespaceSelect(tenantSelectId, namespaceSelectId, buttonId) {
+    const tenantSelect = document.getElementById(tenantSelectId);
+    const namespaceSelect = document.getElementById(namespaceSelectId);
+    const setTypeSelect = document.getElementById('editsets-setstype');
+    const selectedTenant = tenantSelect.value;
+    document.getElementById(buttonId).disabled = true;
+    if (selectedTenant) {
+        getApiInventory(false, true).then(inventory => {
+            const namespaces = inventory.inventory[selectedTenant] || {};
+            const namespaceOptions = ['<option value="" selected>-- Select Namespace --'];
+            Object.keys(namespaces).forEach(namespace => {
+                namespaceOptions.push(`<option value="${namespace}">${namespace}</option>`);
+            });
+            namespaceSelect.innerHTML = namespaceOptions.join('');
+
+            namespaceSelect.onchange = () => document.getElementById(buttonId).disabled = false;
+
+
+        }).catch(error => {
+            console.error("Failed to fetch namespaces:", error);
+        });
+    } else {
+        namespaceSelect.innerHTML = '<option value="" selected>-- Select Namespace --</option>';
+    }
+}
+
+$(document).on('click', '#downloadBackup', function () {
+    downloadBackup();
+});
+
+function downloadBackup() {
+    var tenant = document.getElementById('backup-tenant').value;
+    var namespace = document.getElementById('backup-namespace').value;
+    var backupShared = document.getElementById('backupshared').value;
+    var backupSharedSuffix = backupShared === 'true' ? '_shared' : '';
+    const resultsDiv = document.getElementById('backup-results');
+
+    const formatTimestamp = () => {
+        const now = new Date();
+        return now.toLocaleString();
+    };
+
+    if (!tenant || !namespace) {
+        alert('Please select both a tenant and a namespace.');
+        return;
+    }
+
+    var postData = {
+        tenant: tenant,
+        namespace: namespace,
+        backupShared: backupShared === 'true'
+    };
+
+    fetch('/api/v1/getBackup', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(postData)
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            resultsDiv.innerHTML += `<p>${formatTimestamp()} - Success - Backup Executed for: ${tenant} - ${namespace} Shared Included: ${backupShared}</p>`;
+            return response.blob();
+        })
+        .then(blob => {
+            // Generate a filename based on tenant, namespace, shared status, and current UTC time
+            const utcNow = new Date().toISOString().replace(/[:\-]|\.\d{3}/g, '');
+            const filename = `${tenant}_${namespace}${backupSharedSuffix}_${utcNow}_backup.zip`;
+
+            // Create a URL and trigger the download
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(error => {
+            console.error('Error during fetch operation:', error);
+            alert('Failed to download backup. Please try again.');
+        });
+}
+
 
 
 // // Example usage:

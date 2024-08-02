@@ -1,0 +1,435 @@
+:root {
+    --bg-color-main: #f3f4fa;
+    --border-color-light: #e7e9f3;
+    --text-color-primary: black;
+    --link-color: blue;
+    --link-hover-color: darkblue;
+    --bg-color-white: white;
+    --bg-color-lightblue: #d1e7fd;
+    --bg-color-apikey-row: rgb(13, 110, 253, 0.1);
+    --border-color-dark: #dee2e6;
+    --text-color-gray: gray;
+}
+
+.dark-mode {
+    --bg-color-main: #222831;
+    /* Dark background for main areas */
+    --border-color-light: #393E46;
+    /* Darker grey for borders */
+    --text-color-primary: #EEEEEE;
+    /* Light text for better contrast */
+    --link-color: #00ADB5;
+    /* Bright accent color for links */
+    --link-hover-color: #3D63DD;
+    /* Bright accent color for link hover state */
+    --bg-color-white: #393E46;
+    /* Dark background for elements that are white in light mode */
+    --bg-color-lightblue: #222831;
+    /* Dark version of the light blue used in headers or other UI elements */
+    --bg-color-apikey-row: rgba(37, 82, 138, 0.76);
+    /* Slightly transparent version for API key rows */
+    --border-color-dark: #222831;
+    /* Consistent border color for darker elements */
+    --text-color-gray: #CCCCCC;
+    /* Lighter gray for less critical text */
+    --form-bg-color: #a6a6a6;
+}
+
+
+
+
+.dropdown-menu,
+.bootstrap-select.btn-group .dropdown-menu li a:focus,
+.bootstrap-select.btn-group .dropdown-menu li a:hover {
+    color: var(--text-color-primary) !important;
+    background: var(--bg-color-apikey-row) !important;
+}
+
+/* Overall styles */
+body {
+    font-family: "Roboto", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 14px;
+    background-color: var(--bg-color-main);
+    display: flex;
+    color: var(--text-color-primary);
+}
+
+.divider {
+    border-right: 1px solid var(--border-color-light);
+}
+
+/* Generic styles */
+.padding-topbottom-5px {
+    padding: 5px;
+}
+
+/* Left side styles */
+#navigation-panel {
+    min-width: 200px;
+    width: 200px;
+    height: 100%;
+    background-color: var(--bg-color-main);
+    border-right: 1px solid var(--border-color-light);
+    padding: 5px;
+}
+
+#logo {
+    padding: 20px 5px;
+    margin-bottom: 20px;
+    /* border-bottom: 1px solid var(--border-color-light); */
+}
+
+#service-target {
+    padding: 20px 5px;
+    margin-bottom: 20px;
+    border-top: 1px solid var(--border-color-light);
+    border-bottom: 1px solid var(--border-color-light);
+}
+
+.nav-link {
+    color: var(--text-color-primary);
+}
+
+.nav-link:hover {
+    color: var(--link-hover-color);
+}
+
+.navigation-header {
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+
+/* Right side styles */
+#main {
+    border-left: 1px solid var(--border-color-light);
+    min-width: 1300px;
+    overflow-x: auto;
+}
+
+#topbar {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border-color-light);
+    min-width: 600px;
+    max-width: 1500px;
+}
+
+#spacer {
+    height: 20px;
+    /* border-bottom: 1px solid var(--border-color-light); */
+}
+
+#subcontent {
+    background-color: var(--bg-color-white);
+    min-height: calc(100vh - 63px - 20px - 20px);
+    padding: 20px;
+    min-width: 600px;
+    max-width: 1500px;
+}
+
+/* API Keys styles */
+.form-inline input:not(.is-invalid),
+.form-inline input:not(.is-valid) {
+    padding-right: calc(1.5em + 0.75rem);
+}
+
+.tenant-name,
+.namespace-name,
+.apikey {
+    width: 200px;
+    max-width: 200px;
+}
+
+.namespace-type {
+    width: 110px;
+    max-width: 110px;
+}
+
+.apikey-rights,
+.apikey-type,
+.apikey-format {
+    width: 95px;
+    max-width: 95px;
+}
+
+.delegated-state,
+.apikey-state,
+.apikey-rights {
+    width: 115px;
+    max-width: 115px;
+}
+
+.api-key-row {
+    background-color: var(--bg-color-apikey-row);
+    border-radius: 15px 50px 50px 15px;
+    padding: 10px;
+}
+
+/* Custom table for Overview page */
+.table-pathlatency,
+.table-custom {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12px;
+    table-layout: fixed;
+}
+
+.table-pathlatency th,
+.table-pathlatency td,
+.table-custom th,
+.table-custom td {
+    vertical-align: middle;
+    word-wrap: break-word;
+    background-color: var(--bg-color-white);
+    color: var(--text-color-primary);
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+.table-pathlatency thead th,
+.table-custom thead th {
+    background-color: var(--bg-color-main);
+    color: var(--text-color-primary);
+}
+
+.table-pathlatency thead,
+.table-custom thead {
+    border: 1px solid var(--border-color-dark);
+}
+
+.table-pathlatency tr,
+.table-custom tbody tr,
+.table-custom tbody tr.collapsing,
+.table-custom tbody tr.collapse {
+    border: 1px solid var(--border-color-dark);
+    /* background-color: var(--bg-color-white);
+    color: var(--text-color-primary); */
+}
+
+.table-overview-details {
+    background-color: var(--bg-color-main) !important;
+
+}
+
+.table-overview-subdetails {
+    background-color: var(--bg-color-white) !important;
+    padding: 10px;
+    overflow: auto;
+}
+
+.table-overview-subdetails-middle {
+    background-color: var(--bg-color-white) !important;
+    padding: 0px 10px 0px 10px;
+    overflow: auto;
+}
+
+
+.selecthover:hover {
+    cursor: pointer;
+    font-style: italic;
+    font-weight: bold;
+}
+
+/* CSS to toggle icons */
+a[aria-expanded="true"] .bi-chevron-right,
+a[aria-expanded="false"] .bi-chevron-down,
+div[aria-expanded="true"] .bi-chevron-right,
+div[aria-expanded="false"] .bi-chevron-down {
+    display: none;
+}
+
+table.collapse.in {
+    display: table;
+}
+
+/* Styles for the collapse header */
+.collapse-header {
+    background-color: var(--bg-color-lightblue);
+    padding: 10px;
+    border: 1px solid var(--border-color-dark);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.collapse-header .tenant-name {
+    flex-grow: 1;
+    margin-left: 10px;
+}
+
+.collapse-body {
+    padding: 10px;
+}
+
+.first-td {
+    width: 75px;
+    background-color: aqua;
+}
+
+/* Styles for the Latency diagram */
+.latency-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+}
+
+.latency-table td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.icon-box {
+    padding: 10px;
+    border: 1px solid #ccc;
+    display: inline-block;
+    width: 90px;
+    height: 90px;
+}
+
+.arrow-cell {
+    width: 120px;
+}
+
+.arrow {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+}
+
+.arrow span {
+    font-size: 50px;
+}
+
+.arrow i {
+    font-size: 24px;
+}
+
+.latency-label {
+    margin-top: -20px;
+    font-size: 24px;
+}
+
+.text-under {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-color-gray);
+}
+
+.lg-icon {
+    font-size: 24px;
+}
+
+/* Styling for the stats table */
+.stats-table,
+.stats-table-lg,
+.stats-summary-table {
+    width: 20%;
+    height: 180px;
+    table-layout: fixed;
+    display: inline-block;
+    border-collapse: separate;
+    float: left;
+    margin-right: 20px;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+.stats-summary-table td:first-child {
+    padding-right: 25px;
+}
+
+.stats-table-lg {
+    width: 25%;
+}
+
+/* .stats-summary-table {
+    min-width: 20%;
+    max-width: 25%;
+} */
+
+.stats-userlogin-table {
+    min-width: 25%;
+    max-width: 50%;
+    display: inline-block;
+    border-collapse: separate;
+    border: 1px solid #ccc;
+    padding: 10px;
+    height: 180px;
+}
+
+.stats-userlogin-table td:nth-child(2),
+.stats-userlogin-table td:first-child {
+    padding-right: 20px;
+}
+
+/* Edit Sets */
+#editsets-configuration-left {
+    max-width: 300px;
+    float: left;
+    display: inline-block;
+    padding-right: 75px;
+}
+
+#editsets-configuration-time {
+    display: inline-block;
+}
+
+#editsets-configuration-right {
+    width: 600px;
+    max-width: 600px;
+    display: inline-block;
+}
+
+/* Fonts */
+.roboto-thin,
+.roboto-light,
+.roboto-regular,
+.roboto-medium,
+.roboto-bold,
+.roboto-black,
+.roboto-thin-italic,
+.roboto-light-italic,
+.roboto-regular-italic,
+.roboto-medium-italic,
+.roboto-bold-italic,
+.roboto-black-italic {
+    font-family: "Roboto", sans-serif;
+}
+
+.roboto-thin {
+    font-weight: 100;
+}
+
+.roboto-light {
+    font-weight: 300;
+}
+
+.roboto-regular {
+    font-weight: 400;
+}
+
+.roboto-medium {
+    font-weight: 500;
+}
+
+.roboto-bold {
+    font-weight: 700;
+}
+
+.roboto-black {
+    font-weight: 900;
+}
+
+.roboto-thin-italic,
+.roboto-light-italic,
+.roboto-regular-italic,
+.roboto-medium-italic,
+.roboto-bold-italic,
+.roboto-black-italic {
+    font-style: italic;
+}

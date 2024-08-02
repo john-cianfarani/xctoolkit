@@ -1,0 +1,15 @@
+    {{#loadBalancers}}
+
+    <tr  class="pathlatency-row">
+        <td>{{req_path}}</td>
+        <td>{{transactions}}</td>
+        <td>{{avgRspSize}}</td>
+        <td>{{totalRspSize}}</td>        
+        <td>{{avgRttDownstream}}</td>
+        <td>{{avgRttUpstream}}</td>
+        <td>{{avgOriginLatency}}</td>
+        <td>{{avgLastDownstreamTxByte}}</td>
+        <td>{{avgDurationWithDataTxDelay}}</td>
+    </tr>
+
+    {{/loadBalancers}}

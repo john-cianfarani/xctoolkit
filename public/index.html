@@ -1,186 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>XC Helper v1.1</title>
-    <!-- Bootstrap CSS -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-      crossorigin="anonymous"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css"
-    />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap"
-      rel="stylesheet"
-    />
 
-    <!-- Custom CSS -->
-    <link href="styles.css?v=1.1" rel="stylesheet" />
-    <style>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XC Toolkit v1.0</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap"
+    rel="stylesheet" />
 
-    </style>
-  </head>
+  <!-- Custom CSS -->
+  <link href="stylesv2.css" rel="stylesheet" />
+  <style>
 
-  <body onload="checkCookie()">
-    <div id="navigation-panel" class="col-md-3">
-      <div id="logo" class="text-center">
-        <div class="logo-placeholder">Logo</div>
-      </div>
-      <div id="service-target">
-        <select id="service-tenant" class="form-control mb-3">
-          <option>Select Tenant</option>
-          <!-- Add options here -->
-        </select>
-      </div>
-      <div id="main-navigation" class="px-2">
-        <h5 class="navigation-header">Monitoring</h5>
-        <ul class="nav flex-column">
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              href="#"
-              id="global-lbs-link"
-              onclick="loadContent('overview')"
-              >Overview</a
-            >
-          </li>
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              href="#"
-              id="path-latency-link"
-              onclick="loadContent('pathlatency')"
-              >Path Latency</a
-            >
-          </li>
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              href="#"
-              id="logs-link"
-              onclick="loadContent('logexport')"
-              >Export Logs</a
-            >
-          </li>
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              href="#"
-              id="api-link"
-              onclick="loadContent('apiendpoints')"
-              >Export API Endpoints
-            </a>
-          </li>
-        </ul>
+  </style>
+</head>
 
-        <h5 class="navigation-header mt-4">Configuration</h5>
-        <ul class="nav flex-column">
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              href="#"
-              id="wafe-link"
-              onclick="loadContent('wafexclusion')"
-              >Copy WAF Exclusions</a
-            >
-          </li>
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              href="#"
-              id="editsets-link"
-              onclick="loadContent('editsets')"
-            >
-              Edit Sets</a
-            >
-          </li>
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              href="#"
-              id="clone-link"
-              onclick="loadContent('clone')"
-              >Clone</a
-            >
-          </li>
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              href="#"
-              id="backup-link"
-              onclick="loadContent('backup')"
-              >Backup</a
-            >
-          </li>
-        </ul>
-
-        <h5 class="navigation-header mt-4">Settings</h5>
-        <ul class="nav flex-column">
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              href="#"
-              id="api-keys-link"
-              onclick="loadContent('apisetup')"
-              >API Keys</a
-            >
-          </li>
-          <li class="nav-item">
-            <a
-              class="nav-link"
-              href="#"
-              id="settings-link"
-              onclick="loadContent('settings')"
-              >Settings</a
-            >
-          </li>
-        </ul>
-      </div>
+<body class="">
+  <div id="navigation-panel" class="col-md-3">
+    <div id="logo" class="text-center">
+      <div class="logo-placeholder">Logo</div>
     </div>
+    <div id="service-target">
+      <select id="service-tenant" class="form-control mb-3">
+        <option>Select Tenant</option>
+        <!-- Add options here -->
+      </select>
+    </div>
+    <div id="main-navigation" class="px-2">
+      <h5 class="navigation-header">Monitoring</h5>
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link" href="#" id="global-lbs-link" onclick="loadContent('overview')">Overview</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" id="path-latency-link" onclick="loadContent('pathlatency')">Path Latency</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" id="logs-link" onclick="loadContent('logexport')">Export Logs</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" id="api-link" onclick="loadContent('apiendpoints')">Export API Endpoints
+          </a>
+        </li>
+      </ul>
 
-    <div id="main" class="col">
-      <!-- Breadcrumbs -->
-      <div id="breadcrumbs" class="px-3">
-        &nbsp;
-        <!-- <span id="breadcrumb-1">Breadcrumb 1</span> >
-            <span id="breadcrumb-2">Breadcrumb 2</span> >
-            <span id="breadcrumb-3">Breadcrumb 3</span> >
-            <span id="breadcrumb-4">Breadcrumb 4</span> >
-            <span id="breadcrumb-5">Breadcrumb 5</span> -->
-      </div>
-      <!-- Spacer -->
-      <div id="spacer" class="spacer"></div>
-      <!-- Content -->
-      <div id="content" class="px-3">
-        <div id="subcontent" class="pb-3">
-          <h2>Content Area</h2>
-          <p>
-            This is some placeholder content. Replace it with your actual
-            content.
-          </p>
+      <h5 class="navigation-header mt-4">Configuration</h5>
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link" href="#" id="wafe-link" onclick="loadContent('wafexclusion')">Copy WAF Exclusions</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" id="editsets-link" onclick="loadContent('editsets')">
+            Edit Sets</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" id="backup-link" onclick="loadContent('backup')">Backup</a>
+        </li>
+      </ul>
+
+      <h5 class="navigation-header mt-4">Settings</h5>
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link" href="#" id="api-keys-link" onclick="loadContent('apisetup')">API Keys</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" id="settings-link" onclick="loadContent('settings')">Settings</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="main" class="col">
+    <!-- Breadcrumbs -->
+    <div id="topbar" class="">
+      &nbsp;
+      <div class="float-end">
+        <i class="bi bi-sun"></i> &nbsp;
+        <div class="form-check form-switch float-end">
+
+
+          <input class="form-check-input" type="checkbox" id="toggleTheme">
+
+          <i class="bi bi-moon"></i>
         </div>
       </div>
-    </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-      crossorigin="anonymous"
-    ></script>
-    <script src="https://cdn.jsdelivr.net/npm/mustache@4.2.0/mustache.min.js"></script>
-    <!-- Custom JS -->
-    <script src="script.js"></script>
-    <!-- <script src="api-keys.js"></script> -->
-  </body>
+
+    </div>
+    <!-- Spacer -->
+    <div id="spacer" class="spacer"></div>
+    <!-- Content -->
+    <div id="content" class="px-3">
+      <div id="subcontent" class="pb-3">
+        <h2>Content Area</h2>
+        <p>
+          This is some placeholder content. Replace it with your actual
+          content.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mustache@4.2.0/mustache.min.js"></script>
+  <!-- Custom JS -->
+  <script src="script.js"></script>
+  <!-- <script src="api-keys.js"></script> -->
+</body>
+
 </html>

@@ -1,0 +1,96 @@
+<h1 class="roboto-medium">Backup</h1>
+<br> <br><br>
+
+<div id="inventory-loading" class="float-start input-group" style="width: 225px;">
+    <button class="btn btn-primary" type="button" disabled>
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span role="status">Inventory Loading ...</span>
+    </button>
+</div>
+<div id="inventory-loaded" class="float-start input-group" style="width: 225px;">
+    <button class="btn btn-primary" type="button" disabled>
+        <i class="bi bi-check-circle-fill"></i>
+        <span role="status">Inventory Loaded </span>
+    </button>
+</div>
+
+
+<div class="float-end input-group" style="width: 105px;">
+
+
+    <button id="refreshBackup" type="button" class="btn btn-outline-primary float-end"> <i
+            class="bi bi-arrow-clockwise"></i>
+        Refresh</button>
+</div>
+<br> <br>
+<br><br>
+<div id="backup-description">
+    <div class="card">
+        <div class="card-header">
+            Namespace Backup
+        </div>
+        <div class="card-body">
+            <h5 class="card-title">Backup Format</h5>
+            This will backup the json configuration files for each of the object types listed below within
+            the selected tenant and namespace. Optionally the 'shared' namespace can also be included in the backup.
+
+            <br><br>
+            Backed up object types:<br>
+            <code>http_loadbalancers, tcp_loadbalancers, app_firewalls, origin_pools, healthchecks, ip_prefix_sets, bgp_asn_sets, service_policys, rate_limiter_policys, routes</code>
+
+            <br><br>
+
+            All files will be combined into a Zip file.
+            <ul>
+                <li>Zip file name:<code> tenant_namespace_[shared]_utc.zip</code></li>
+                <li>All configuration files will be named with the format:
+                    <code> tenant_namespace_objecttype_itemname.json</code>
+                </li>
+
+                <li>A <code>manifest.json</code> file will be created in the same directory as the backup files,
+                    detailing the
+                    included
+                    files</li>
+                <li>The format of this file is: { "object_type": [ { "name": "name", "namespace": "namespace",
+                    "resource_version": "resource_version", "uid": "uid", "modification_timestamp":
+                    "modification_timestamp"
+                    },
+                    ... ] }</li>
+
+
+            </ul>
+
+
+        </div>
+    </div>
+    <div id="backup-container">
+
+        <br> <br>
+        <div class="float-start input-group" style="">
+            <select id="backup-tenant" class=" form-control form-select">
+            </select>
+            <select id="backup-namespace" class=" form-control form-select">
+            </select>
+
+
+        </div>
+        <br> <br> <br> <br>
+
+        <div class="float-start input-group" style="">
+            <span class="input-group-text" id="">Include Shared</span>
+            <select id="backupshared" class=" form-control form-select" style="max-width: 150px;"
+                data-style="btn-primary">
+                <option value="true">Yes</option>
+                <option value="false" selected>No</option>
+                <!-- Add options here -->
+            </select>
+            &nbsp;
+
+            <button id="downloadBackup" type="button" class="btn btn-success" disabled> <i
+                    class="bi bi-arrow-down-square"></i>
+                Backup</button>
+        </div>
+
+    </div>
+    <br> <br>
+    <div id="backup-results"></div>

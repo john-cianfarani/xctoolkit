@@ -30,6 +30,7 @@ const {
     getSetsList,
     getConfig,
     putConfig,
+    getBackup,
     generateCertificate,
     encryptApiKeys,
     fetchUsers,
@@ -301,6 +302,33 @@ app.post('/api/v1/putConfig', async (req, res) => {
         res.json({ success: true, updateResponse });
     } catch (error) {
         console.error('Error in /api/v1/putConfig endpoint:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/api/v1/getBackup', async (req, res) => {
+    try {
+        // Extract parameters from the request body
+        const { tenant, namespace, backupShared } = req.body;
+        console.log("getBackup - API - Request Parameters:", tenant, namespace, backupShared);
+
+        // Call the getBackup function to perform the backup process
+        const zipContent = await getBackup(req, tenant, namespace, backupShared);
+
+        // Determine current UTC time in a readable format
+        const utcNow = new Date().toISOString().replace(/[:\-]|\.\d{3}/g, '');
+
+        // Determine if 'shared' should be part of the filename
+        const sharedSuffix = backupShared ? '_shared' : '';
+
+        // Set proper headers for file download
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename=${tenant}_${namespace}${sharedSuffix}_${utcNow}_backup.zip`);
+
+        // Send the zip file as a response
+        res.send(zipContent);
+    } catch (error) {
+        console.error('Error in /api/v1/getBackup endpoint:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

@@ -10,9 +10,8 @@
         <td><h6><span class="badge {{statusClass}}">{{statusPercentage}}</span></h6></td>
         <td><span>
             {{name}} 
-            &nbsp; <a href="https://{{tenantName}}.console.ves.volterra.io/web/workspaces/web-app-and-api-protection/namespaces/{{namespace}}/overview/performance/http/ves-io-http-loadbalancer-{{name}}/performance_monitoring/dashboard"
-            title="Perfmance Dashboard" target="_blank">
-                <i class="bi bi-box-arrow-up-right"></i>
+            &nbsp;
+
             </a></span>
         </td>
         <td>{{namespace}}</td>
@@ -43,7 +42,7 @@
     </tr>
     <tr class="collapse collapse-row details-collapse-trigger" id="details-{{name}}" data-tenant="{{tenantName}}" data-namespace="{{namespace}}" data-lbname="{{name}}" data-rowid="{{name}}">
         <td colspan="12" style="background-color: #f3f4fa;">
-            <div class="tableDetails p-3" style="background-color: white;" id="temp-details-{{name}}">
+            <div class="tableDetails p-3" style="" id="temp-details-{{name}}">
                 <!-- Details content will be dynamically injected here -->
                 <h5>Loading...</h5>
             </div>
