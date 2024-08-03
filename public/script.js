@@ -266,25 +266,21 @@ function cacheGetData(key, maxAgeInSeconds) {
 }
 
 
-/**
- * Clears the specified keys from the browser's local storage.
- * Used with variable keysToClear all normally cached data objects, when a major event 
- * requires data to be purged.
- * @param {Array} keys - An array of keys to be cleared from local storage.
- * @throws {Error} Throws an error if the input is not an array.
- */
-function cacheClear(keys) {
-    // Check if the provided input is an array
-    if (!Array.isArray(keys)) {
-        // Throw an error if the input is not an array
-        throw new Error('Input must be an array');
+function cacheClear(prefix) {
+    if (typeof prefix === 'undefined') {
+        // If no argument is passed, clear all local storage
+        localStorage.clear();
+    } else if (typeof prefix === 'string') {
+        // If a prefix string is passed, clear items starting with that prefix
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith(prefix)) {
+                localStorage.removeItem(key);
+            }
+        });
+    } else {
+        // Throw an error if the argument is not a string or undefined
+        throw new Error('Argument must be a string prefix or undefined');
     }
-
-    // Iterate over the array of keys and remove each item from localStorage
-    keys.forEach(key => {
-        // Remove the item from localStorage with the specified key
-        localStorage.removeItem(key);
-    });
 }
 
 /**
@@ -497,8 +493,8 @@ function formatHealth(number) {
 
 function getTemplate(templateName, forcerefresh = false) {
     const cacheKey = `template_${templateName}`;
-    // const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
-    const maxAgeInSeconds = 1; // Cache for 60 minutes
+    const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
+
 
     return new Promise((resolve, reject) => {
         // Check if the data should be fetched from cache
@@ -596,7 +592,7 @@ function stopTimer() {
 function getApiInventory(forcerefresh = false, checkselection = false, tenantFilter = null) {
     const cacheKey = 'dataInventory';
     const summaryCacheKey = 'dataInventorySummary';
-    const maxAgeInSeconds = 60 * 60; // 60 minutes for caching the response
+    const maxAgeInSeconds = 60 * 60 * 6; // 6 Hours for caching the response
 
     return new Promise((resolve, reject) => {
         const applyTenantFilter = (inventory) => {
@@ -643,7 +639,7 @@ function getApiInventory(forcerefresh = false, checkselection = false, tenantFil
                     const inventory = response.inventory;
                     const summary = compileInventorySummary(inventory);
                     cacheSetData(cacheKey, inventory); // Cache the full inventory data
-                    cacheSetData(summaryCacheKey, summary); // Cache the summarized inventory data
+                    cacheSetData(summaryCacheKey, summary); // Cache the summarized stats data
 
                     const filteredInventory = applyTenantFilter(inventory);
                     resolve({ inventory: filteredInventory, summary: summary });
@@ -1672,13 +1668,13 @@ $(document).ready(function () {
 
 function populateLogExport() {
 
-    document.getElementById('logexport-loading').style.display = 'block';
-    document.getElementById('logexport-loaded').style.display = 'none';
+    document.getElementById('inventory-loading').style.display = 'block';
+    document.getElementById('inventory-loaded').style.display = 'none';
 
     updateTenantSelect('logexport-tenant', 'logexport-namespace', 'logexport-loadbalancer', 'downloadLogs', '', () => {
         // After updating the tenant select, show the loaded element and hide the loading
-        document.getElementById('logexport-loaded').style.display = 'block';
-        document.getElementById('logexport-loading').style.display = 'none';
+        document.getElementById('inventory-loaded').style.display = 'block';
+        document.getElementById('inventory-loading').style.display = 'none';
     });
 }
 
@@ -1793,13 +1789,13 @@ $(document).on('click', '#downloadAPIEndpoints', function () {
 
 function populateApiEndpoints() {
 
-    document.getElementById('apiendpoint-loading').style.display = 'block';
-    document.getElementById('apiendpoint-loaded').style.display = 'none';
+    document.getElementById('inventory-loading').style.display = 'block';
+    document.getElementById('inventory-loaded').style.display = 'none';
 
     updateTenantSelect('apiendpoint-tenant', 'apiendpoint-namespace', 'apiendpoint-loadbalancer', 'downloadAPIEndpoints', 'api_discovery', () => {
         // After updating the tenant select, show the loaded element and hide the loading
-        document.getElementById('apiendpoint-loaded').style.display = 'block';
-        document.getElementById('apiendpoint-loading').style.display = 'none';
+        document.getElementById('inventory-loaded').style.display = 'block';
+        document.getElementById('inventory-loading').style.display = 'none';
     });
 }
 
@@ -2004,13 +2000,13 @@ $(document).on('click', '#downloadAPIEndpoints', function () {
 
 function populatePathLatency() {
 
-    document.getElementById('pathlatency-loading').style.display = 'block';
-    document.getElementById('pathlatency-loaded').style.display = 'none';
+    document.getElementById('inventory-loading').style.display = 'block';
+    document.getElementById('inventory-loaded').style.display = 'none';
 
     updateTenantSelect('pathlatency-tenant', 'pathlatency-namespace', 'pathlatency-loadbalancer', 'pathlatencySubmit', '', () => {
         // After updating the tenant select, show the loaded element and hide the loading
-        document.getElementById('pathlatency-loaded').style.display = 'block';
-        document.getElementById('pathlatency-loading').style.display = 'none';
+        document.getElementById('inventory-loaded').style.display = 'block';
+        document.getElementById('inventory-loading').style.display = 'none';
     });
 }
 
@@ -2800,21 +2796,56 @@ function downloadBackup() {
         });
 }
 
+// Refresh
 
+$(document).on('click', '#refreshOverviewStats', function () {
+    cacheClear('dataStats_');
+    cacheClear('dataTenantUsers_');
+    cacheClear('dataAllSecEvents_');
+    cacheClear('dataNSDetails_');
+    populateOverview();
+});
+$(document).on('click', '#refreshOverview', function () {
+    cacheClear();
+    populateOverview();
+});
+$(document).on('change', '#overviewSecondsBack', function () {
+    populateOverview();
+});
 
-// // Example usage:
-const utcDateTime = '2024-01-04T15:25:10.171824380Z';
-console.log("Local Date and Time:", convertDateTime(utcDateTime));                      // Converts to local date/time
-console.log("Specific Timezone (e.g., New York) Date and Time:", convertDateTime(utcDateTime, 'America/New_York')); // Converts to New York timezone
-console.log("Local Date Only:", convertDateTime(utcDateTime, '', true));                // Converts to local date only
-console.log("Specific Timezone (e.g., New York) Date Only:", convertDateTime(utcDateTime, 'America/New_York', true)); // Converts to New York date only
+$(document).on('click', '#refreshPathLatency', function () {
+    cacheClear('dataInventory');
+    populatePathLatency();
+});
+
+$(document).on('click', '#refreshLogExport', function () {
+    cacheClear('dataInventory');
+    populateLogExport();
+});
+
+$(document).on('click', '#refreshAPIEndpoints', function () {
+    cacheClear('dataInventory');
+    populateApiEndpoints();
+});
+
+$(document).on('click', '#refreshwafexclusions', function () {
+    cacheClear('dataInventory');
+    populateWafExclusion();
+});
+
+$(document).on('click', '#refreshEditSets', function () {
+    cacheClear('dataInventory');
+    populateEditSets();
+});
+
+$(document).on('click', '#refreshBackup', function () {
+    cacheClear('dataInventory');
+    populateBackup();
+});
 
 /// Test functions
 
 $(document).on('click', '#populateOverview', function () {
-    // Clear previous results
-    // $('#results').empty();
-
     populateOverview();
 });
 

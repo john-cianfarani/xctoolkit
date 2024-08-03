@@ -326,9 +326,20 @@ table.collapse.in {
 
 /* Styling for the stats table */
 .stats-table,
-.stats-table-lg,
-.stats-summary-table {
+.stats-table-lg {
     width: 20%;
+    height: 180px;
+    table-layout: fixed;
+    display: inline-block;
+    border-collapse: separate;
+    float: left;
+    margin-right: 20px;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+.stats-summary-table {
+    width: 250px;
     height: 180px;
     table-layout: fixed;
     display: inline-block;
@@ -347,10 +358,6 @@ table.collapse.in {
     width: 25%;
 }
 
-/* .stats-summary-table {
-    min-width: 20%;
-    max-width: 25%;
-} */
 
 .stats-userlogin-table {
     min-width: 25%;

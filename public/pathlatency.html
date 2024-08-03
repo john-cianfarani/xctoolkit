@@ -1,33 +1,27 @@
 <h1 class="roboto-medium">Path Latency</h1>
 <br> <br><br>
-<div class="float-end input-group" style="width: 225px">
-  <select id="overviewSecondsBack" class="form-control form-select" data-style="btn-primary">
-    <option value="86400" selected>Last 24hrs</option>
-    <option value="43200">Last 12hrs</option>
-    <option value="3600">Last Hour</option>
-    <!-- Add options here -->
-  </select>
+<div class="float-end input-group" style="width: 101px">
 
-  <button id="refreshOverview" type="button" class="btn btn-outline-primary">
+  <button id="refreshPathLatency" type="button" class="btn btn-outline-primary">
     <i class="bi bi-arrow-clockwise"></i> Refresh
   </button>
 </div>
 
-<button id="populatePathLatency">populate</button>
+<!-- <button id="populatePathLatency">populate</button> -->
 
-<div id="pathlatency-loading" class="float-start input-group" style="width: 225px">
+<div id="inventory-loading" class="float-start input-group" style="width: 225px">
   <button class="btn btn-primary" type="button" disabled>
     <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
     <span role="status">Inventory Loading ...</span>
   </button>
 </div>
-<div id="pathlatency-loaded" class="float-start input-group" style="width: 225px">
+<div id="inventory-loaded" class="float-start input-group" style="width: 225px">
   <button class="btn btn-primary" type="button" disabled>
     <i class="bi bi-check-circle-fill"></i>
     <span role="status">Inventory Loaded </span>
   </button>
 </div>
-<br />
+<br /><br />
 <br />
 <div class="float-start input-group">
   <select id="pathlatency-tenant" class="form-control form-select"></select>
@@ -51,8 +45,8 @@
   <select id="pathlatency-maxlogs" class="form-control form-select" style="max-width: 150px" data-style="btn-primary">
     <option value="20000">20k</option>
     <option value="10000">10k</option>
-    <option value="5000" selected>5k</option>
-    <option value="1500">1.5k</option>
+    <option value="5000" >5k</option>
+    <option value="1500" selected>1.5k</option>
   </select>
 
   <select id="pathlatency-topx" class="form-control form-select" style="max-width: 150px" data-style="btn-primary">
