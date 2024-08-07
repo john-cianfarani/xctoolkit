@@ -1,0 +1,26 @@
+# Use the LTS (Long Term Support) version of Node.js on Debian Bullseye
+FROM node:lts-bullseye
+
+# Set the working directory inside the container
+WORKDIR /xctoolkit
+
+# Ensure bash is installed
+RUN apt-get update && apt-get install -y bash
+
+# Copy package.json and package-lock.json into the working directory
+COPY --chown=node:node ../package*.json ./
+
+# Install dependencies in the container
+RUN npm install
+
+# Copy the rest of your application code with node as owner
+COPY --chown=node:node ../xctoolkit/ .
+
+# Switch to 'node' user before running the application
+USER node
+
+# Expose port 3080 for the application
+EXPOSE 3080
+
+# Command to run your app
+CMD ["node", "index.js"]

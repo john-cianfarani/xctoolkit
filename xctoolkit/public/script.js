@@ -32,8 +32,18 @@ const pageConfig = {
         url: 'api-keys.html',
         func: function () {
             console.log('API Keys page specific function executed.');
-            populateFormFromCookie()
-            // Add about page specific logic here
+            populateFormFromCookie();
+
+        }
+    },
+    testapikeys: {
+        url: 'testapikeys.html',
+        func: function () {
+            document.getElementById('testapikey-loading').style.display = 'none';
+            document.getElementById('testapikey-loaded').style.display = 'none';
+            //populatetestApiKeys();
+            console.log('Log testapikeys page specific function executed.');
+
         }
     },
     overview: {
@@ -42,7 +52,6 @@ const pageConfig = {
             console.log('Overview page specific function executed.');
             populateOverview();
             initPopovers();
-            // Add contact page specific logic here
         }
     },
     apiendpoints: {
@@ -50,7 +59,7 @@ const pageConfig = {
         func: function () {
             populateApiEndpoints();
             console.log('ApiEndpoints page specific function executed.');
-            // Add profile page specific logic here
+
         }
     },
     logexport: {
@@ -58,7 +67,7 @@ const pageConfig = {
         func: function () {
             populateLogExport()
             console.log('Log Export page specific function executed.');
-            // Add settings page specific logic here
+
         }
     },
     pathlatency: {
@@ -66,7 +75,6 @@ const pageConfig = {
         func: function () {
             populatePathLatency()
             console.log('Log pathlatency page specific function executed.');
-            // Add settings page specific logic here
         }
     },
     wafexclusion: {
@@ -74,7 +82,7 @@ const pageConfig = {
         func: function () {
             populateWafExclusion()
             console.log('Log wafexclusion page specific function executed.');
-            // Add settings page specific logic here
+
         }
     },
     editsets: {
@@ -82,7 +90,7 @@ const pageConfig = {
         func: function () {
             populateEditSets()
             console.log('Log editsets page specific function executed.');
-            // Add settings page specific logic here
+
         }
     },
     backup: {
@@ -90,7 +98,7 @@ const pageConfig = {
         func: function () {
             populateBackup()
             console.log('Log backup page specific function executed.');
-            // Add settings page specific logic here
+
         }
     }
 };
@@ -149,7 +157,7 @@ function checkCookie() {
     if (!apiCookie) {
         //if (!apiCookie || !isValidCookie(apiCookie)) {    
         //alert("Please set your API keys first!");
-        loadContent('apisetup', 'Settings > API Keys');
+        loadContent('apisetup');
 
     }
 }
@@ -509,7 +517,7 @@ function getTemplate(templateName, forcerefresh = false) {
 
         // Fetch the template from the remote location
         console.log("Fetching new template for:", templateName);
-        fetch(`/${templateName}.mustache`)
+        fetch(`/templates/${templateName}.mustache`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Failed to fetch template: ' + response.statusText);
@@ -954,30 +962,30 @@ function getApiTenantUsers(tenant, limit, forcerefresh) {
 
 
 
-$(document).ready(function () {
-    // Event delegation for all current and future collapse elements of a specific type/class
-    $('body').on('show.bs.collapse', '.collapse .collapse-row', function () {
-        console.log('1. show.bs.collapse triggered for ' + this.id);
-        var tenant = $(this).data('tenant');
-        var namespace = $(this).data('namespace');
-        var lbname = $(this).data('lbname');
-        console.log('1. Data:', tenant, namespace, lbname);
-        // populateRowDetails(this.id, tenant, namespace, lbname);
-    });
+// $(document).ready(function () {
+//     // Event delegation for all current and future collapse elements of a specific type/class
+//     $('body').on('show.bs.collapse', '.collapse .collapse-row', function () {
+//         console.log('1. show.bs.collapse triggered for ' + this.id);
+//         var tenant = $(this).data('tenant');
+//         var namespace = $(this).data('namespace');
+//         var lbname = $(this).data('lbname');
+//         console.log('1. Data:', tenant, namespace, lbname);
+//         // populateRowDetails(this.id, tenant, namespace, lbname);
+//     });
 
-});
+// });
 
 
-// Define the populateRowDetails function to update the details section
-function populateRowDetails(collapseId, tenant, namespace, lbname) {
-    // Placeholder text incorporating data attributes
-    var placeholderText = "Loading details for Tenant: " + tenant + ", Namespace: " + namespace + ", LB Name: " + lbname + "...";
+// // Define the populateRowDetails function to update the details section
+// function populateRowDetails(collapseId, tenant, namespace, lbname) {
+//     // Placeholder text incorporating data attributes
+//     var placeholderText = "Loading details for Tenant: " + tenant + ", Namespace: " + namespace + ", LB Name: " + lbname + "...";
 
-    // Find the collapse element and update its content
-    $('#' + collapseId + ' .tableDetails').html(placeholderText);
+//     // Find the collapse element and update its content
+//     $('#' + collapseId + ' .tableDetails').html(placeholderText);
 
-    console.log('Populating details for: ' + collapseId + " with Tenant: " + tenant + ", Namespace: " + namespace + ", LB Name: " + lbname);
-}
+//     console.log('Populating details for: ' + collapseId + " with Tenant: " + tenant + ", Namespace: " + namespace + ", LB Name: " + lbname);
+// }
 
 
 
@@ -1364,9 +1372,9 @@ function populateOverviewTenant(tenantName, inventory, stats) {
     if (apiKeyDetails && apiKeyDetails['delegated-state'] === 'enabled') {
         delegatedState = true;
         delegatedName = apiKeyDetails['delegated-name'];
-        userUrl = `https://${delegatedName}.example.com`; // Set URL for delegated state
+        userUrl = `https://${delegatedName}.console.ves.volterra.io/managed_tenant/${tenantName}`; // Set URL for delegated state
     } else {
-        userUrl = `https://${tenantName}.example.com`; // Set URL for non-delegated state
+        userUrl = `https://${tenantName}.console.ves.volterra.io`; // Set URL for non-delegated state
     }
 
     // Fetch user data and pad it if necessary
@@ -1632,21 +1640,21 @@ function populateOverviewRowDetails(tenant, namespace, lbname, secondsback) {
 
 function formatLatencyArrowSrc(clientRtt) {
     if (clientRtt === undefined || clientRtt === null) {
-        return 'dbl_arrow_black.png';  // Return black arrow if RTT is unknown
+        return '/images/dbl_arrow_black.png';  // Return black arrow if RTT is unknown
     }
 
     const rtt = parseFloat(clientRtt);  // Ensure the RTT is treated as a number
 
     if (isNaN(rtt)) {
-        return 'dbl_arrow_black.png';  // Return black arrow if RTT is not a number
+        return '/images/dbl_arrow_black.png';  // Return black arrow if RTT is not a number
     }
 
     if (rtt < 0.200) {
-        return 'dbl_arrow_green.png';  // Green arrow for RTT less than 0.200
+        return '/images/dbl_arrow_green.png';  // Green arrow for RTT less than 0.200
     } else if (rtt < 0.400) {
-        return 'dbl_arrow_orange.png';  // Orange arrow for RTT between 0.200 and 0.400
+        return '/images/dbl_arrow_orange.png';  // Orange arrow for RTT between 0.200 and 0.400
     } else {
-        return 'dbl_arrow_red.png';  // Red arrow for RTT greater than 0.400
+        return '/images/dbl_arrow_red.png';  // Red arrow for RTT greater than 0.400
     }
 }
 
@@ -2519,7 +2527,7 @@ function getConfigOnClick() {
             getButton.disabled = true; // Disable the "Get Configuration" button
 
             // Start the 5-minute countdown
-            startCountdown(1 * 60, timerDisplay, () => {
+            startCountdown(2 * 60, timerDisplay, () => {
                 // Cancel operation after countdown
                 editsetsCancel()
             });
@@ -2796,6 +2804,52 @@ function downloadBackup() {
         });
 }
 
+// Test API Keys
+
+$(document).on('click', '#testapikeySubmit', function () {
+    populatetestApiKeys();
+});
+
+// Function to make a POST request to test the API key
+async function testApiKey(apiKey, tenant) {
+    try {
+        const response = await fetch('/api/v1/testApikey', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                tenant: tenant,
+                encryptedKey: apiKey
+            })
+        });
+        const data = await response.json();
+        return data.success;
+    } catch (error) {
+        console.error('Failed to test API key:', error);
+        return false;
+    }
+}
+
+async function populatetestApiKeys() {
+    document.getElementById('testapikey-loading').style.display = 'block';
+    document.getElementById('testapikey-loaded').style.display = 'none';
+
+    const apiKeys = JSON.parse(decodeURIComponent(getCookie('apiKeys')) || '[]');
+    for (const key of apiKeys) {
+        if (key['apikey-state'] === 'disabled') {
+            document.getElementById('testapikey-results').innerHTML += `<p>API Key for tenant ${key['tenant-name']} is disabled and was not tested.</p>`;
+            continue;
+        }
+        const result = await testApiKey(key['apikey'], key['tenant-name']);
+        document.getElementById('testapikey-results').innerHTML += `<p>API Key for tenant ${key['tenant-name']} tested: ${result ? 'Success' : 'Failed'}.</p>`;
+    }
+    document.getElementById('testapikey-loading').style.display = 'none';
+    document.getElementById('testapikey-loaded').style.display = 'block';
+}
+
+
+
 // Refresh
 
 $(document).on('click', '#refreshOverviewStats', function () {
@@ -2868,6 +2922,7 @@ $(document).on('click', '#populatePathLatency', function () {
         });
 });
 
+////// Test Console Buttons /////
 
 $(document).on('click', '#testButton', function () {
     // Clear previous results
@@ -2926,7 +2981,7 @@ $(document).on('click', '#testButton4', function () {
     $('#results').empty();
 
     // Call the getApiInventory function with forcerefresh parameter
-    getApiStats(true, ONE_DAY)
+    getApiStats(false, ONE_DAY)
         .then(inventory => {
             // Handle the response
             $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
@@ -2948,7 +3003,7 @@ $(document).on('click', '#testButton5', async function () {
         const dataInventory = await getApiInventory(false);
         console.log('dataInventory:', dataInventory);
 
-        const inventory = await getApiTotalSecurityEvents(dataInventory, true, ONE_DAY);
+        const inventory = await getApiTotalSecurityEvents(dataInventory, false, ONE_DAY);
         // Handle the response
         console.log('inventory:', inventory);
         $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
@@ -2968,7 +3023,7 @@ $(document).on('click', '#testButton5b', async function () {
         const dataInventory = await getApiInventory(false);
         console.log('dataInventory:', dataInventory);
 
-        const inventory = await getApiAllSecurityEvents('f5-amer-ent', 'demo-shop', true, ONE_WEEK);
+        const inventory = await getApiAllSecurityEvents('f5-amer-ent', 'demo-shop', false, ONE_WEEK);
         // Handle the response
         console.log('inventory:', inventory);
         $('#results').append('<pre>' + JSON.stringify(inventory, null, 2) + '</pre>');
@@ -2986,7 +3041,7 @@ $(document).on('click', '#testButton6', async function () {
     // Call the getApiInventory function with forcerefresh parameter
     try {
 
-        const nsdetails = await getApiNSDetails('f5-amer-ent', 'j-cianfarani', true);
+        const nsdetails = await getApiNSDetails('f5-amer-ent', 'j-cianfarani', false);
         // Handle the response
         console.log('NS details:', nsdetails);
         $('#results').append('<pre>' + JSON.stringify(nsdetails, null, 2) + '</pre>');
@@ -3004,7 +3059,7 @@ $(document).on('click', '#testButton7', async function () {
     // Call the getApiInventory function with forcerefresh parameter
     try {
 
-        const users = await getApiTenantUsers('finastra', 5, true);
+        const users = await getApiTenantUsers('f5-amer-ent', 5, false);
         // Handle the response
         console.log('Tenant users:', users);
         $('#results').append('<pre>' + JSON.stringify(users, null, 2) + '</pre>');

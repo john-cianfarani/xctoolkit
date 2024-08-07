@@ -18,6 +18,7 @@ const {
     fetchStats,
     uploadCertificate,
     fetchInventory,
+    fetchWhoami,
     getNSDetails,
     getTenantUsers,
     getSecurityEvents,
@@ -31,7 +32,9 @@ const {
     getConfig,
     putConfig,
     getBackup,
+    getWhoami,
     generateCertificate,
+    decryptData,
     encryptApiKeys,
     fetchUsers,
     fetchConfigItems
@@ -279,6 +282,28 @@ app.post('/api/v1/getConfig', async (req, res) => {
         res.json({ success: true, config: configData });
     } catch (error) {
         console.error('Error in /api/v1/getConfig endpoint:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Used for testing API keys
+app.post('/api/v1/testApikey', async (req, res) => {
+    try {
+        // Extract parameters from the request body
+        const { tenant, encryptedKey } = req.body;
+
+        // Decrypt the API key
+        const apikey = decryptData(encryptedKey);
+        console.log("testApikey - API - Request Parameters:", tenant);
+
+        // Call the fetchAPI directly just to test the API Key
+        const responseData = await fetchWhoami(apikey, tenant);
+
+        console.log('API - testApikey Data:', JSON.stringify(responseData, null, 2));
+        // Respond with the configuration data
+        res.json({ success: true, config: responseData });
+    } catch (error) {
+        console.error('Error in /api/v1/testApikey endpoint:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

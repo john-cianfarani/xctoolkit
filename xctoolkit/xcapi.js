@@ -14,6 +14,8 @@ const JSZip = require('jszip');
 const forge = require('node-forge'); //Generate Certificates
 const pki = forge.pki; // Generate Certificates
 
+const config = require('./config.js');
+console.log('Config Secret:', config.encryptionKey);
 
 const encryptionKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
@@ -29,7 +31,7 @@ const headers = (tenant, apikey) => ({
     'Authorization': `APIToken ${apikey}`,
     'x-volterra-apigw-tenant': tenant
 });
-
+const XCBASEURL = 'console.ves.volterra.io';
 
 const ONE_MINUTE = 60; // 1 minute
 const FIVE_MINUTES = 5 * 60; // 5 minutes
@@ -43,7 +45,7 @@ async function fetchNamespaces(apikey, tenant) {
     const namespaces = {};
     try {
         // Construct the URL with variables using string interpolation
-        const url = `https://${tenant}.console.ves.volterra.io/api/web/namespaces`;
+        const url = `https://${tenant}.${XCBASEURL}/api/web/namespaces`;
 
         // Make GET request to the constructed URL with Authorization header
         const response = await axios.get(url, {
@@ -70,7 +72,7 @@ async function fetchNamespaces(apikey, tenant) {
 //     const lbs = {};
 //     try {
 //         // Construct the URL with variables using string interpolation
-//         const url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespace}/http_loadbalancers?report_fields=string`;
+//         const url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/http_loadbalancers?report_fields=string`;
 
 //         // Make GET request to the constructed URL with Authorization header
 //         const response = await axios.get(url, {
@@ -150,7 +152,7 @@ async function fetchLbs(tenant, apikey, namespace) {
 
     try {
         // Construct the URL for the GET request
-        const url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespace}/http_loadbalancers?report_fields=string`;
+        const url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/http_loadbalancers?report_fields=string`;
 
         // Make GET request to the constructed URL with Authorization header
         const response = await axios.get(url, {
@@ -236,7 +238,7 @@ async function fetchUsers(tenant, apikey, limit = null) {
     const users = [];
     try {
         // Construct the URL with variables using string interpolation
-        const url = `https://${tenant}.console.ves.volterra.io/api/web/custom/namespaces/system/user_roles`;
+        const url = `https://${tenant}.${XCBASEURL}/api/web/custom/namespaces/system/user_roles`;
 
         // Make GET request to the constructed URL with Authorization header
         const response = await axios.get(url, {
@@ -307,7 +309,7 @@ async function getTenantUsers(req, tenant, limit = 5) {
 
 //         // Construct the URL with variables using string interpolation
 
-//         let url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespace}/${type}`;
+//         let url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/${type}`;
 
 //         if (objname) {
 //             url += `/${objname}`;
@@ -333,7 +335,7 @@ async function getTenantUsers(req, tenant, limit = 5) {
 // Function to fetch configuration using provided API key
 //http_loadbalancers, app_firewalls, origin_pools, healthchecks, ip_prefix_sets, rate_limiter, rate_limiter_policys, routes
 async function fetchConfig(apikey, tenant, namespace, type, objname) {
-    let url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespace}/${type}`;
+    let url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/${type}`;
     try {
 
         if (objname) {
@@ -369,7 +371,7 @@ async function updateConfig(apikey, tenant, namespace, type, objname, newData) {
         }
 
         // Construct the URL for the PUT request based on the type and object name
-        const url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespace}/${type}/${objname}`;
+        const url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/${type}/${objname}`;
 
         console.log('update data:', newData);
         // Perform validation on newData here if necessary
@@ -438,9 +440,51 @@ async function fetchConfigItems(apikey, tenant, namespace, type) {
 }
 
 
+// Additional check logic as this function is used to test api keys
+async function fetchWhoami(apikey, tenant) {
+    let url = `https://${tenant}.${XCBASEURL}/api/web/custom/namespaces/system/whoami`;
+    try {
+        const response = await axios.get(url, { headers: headers(tenant, apikey) });
+
+        // Log content type and status code
+        const contentType = response.headers['content-type'];
+        console.log(`Received content type: ${contentType}`);
+        console.log(`HTTP status code: ${response.status}`);
+
+        // Check if the response is in JSON format
+        if (!contentType.includes('application/json')) {
+            console.error('Expected JSON response, but received:', contentType);
+            throw new Error('Invalid response type');
+        }
+
+        // Additional check for non-200 status codes
+        if (response.status !== 200) {
+            console.error(`API responded with status ${response.status}`);
+            throw new Error(`API responded with status ${response.status}`);
+        }
+
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching WhoAmI data:', error);
+        throw error;
+    }
+}
+
+
+async function getWhoami(req, tenant) {
+    try {
+        const apikey = getCorrectApiKey(req, tenant, 'read');  // Ensuring we retrieve a 'read' type API key
+        const responseData = await fetchWhoami(apikey, tenant);
+        return responseData;
+    } catch (error) {
+        console.error(`Error fetching WhoamI for tenant ${tenant}:`, error);
+        throw error;
+    }
+}
+
 async function fetchHealthchecks(tenant, apikey, namespace, lbname) {
     try {
-        const url = `https://${tenant}.console.ves.volterra.io/api/data/namespaces/${namespace}/graph/service/node/instances`;
+        const url = `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}/graph/service/node/instances`;
 
         const headers = {
             'accept': 'application/json',
@@ -548,8 +592,8 @@ async function fetchStats(tenant, apikey, allnsapi = true, namespace = null, sec
 
         // Construct the URL for the API request
         const url = allnsapi
-            ? `https://${tenant}.console.ves.volterra.io/api/data/namespaces/system/graph/all_ns_service`
-            : `https://${tenant}.console.ves.volterra.io/api/data/namespaces/${namespace}/graph/service`;
+            ? `https://${tenant}.${XCBASEURL}/api/data/namespaces/system/graph/all_ns_service`
+            : `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}/graph/service`;
 
         // Calculate the epoch time for the desired time range
         const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
@@ -695,12 +739,12 @@ async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter =
         // Construct the URL for the API request
         let url;
         if (allnsapi) {
-            url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/system/all_application_inventory`;
+            url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/system/all_application_inventory`;
         } else {
             if (!namespaceFilter) {
                 throw new Error('Namespace must be provided if allnsapi is set to false');
             }
-            url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespaceFilter}/application_inventory`;
+            url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespaceFilter}/application_inventory`;
         }
 
         // Construct the request data
@@ -903,7 +947,7 @@ async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter =
 
 //             console.log('Request:', requestData);
 
-//             const url = `https://${tenant}.console.ves.volterra.io/api/data/namespaces/${namespace}/app_security/events/aggregation`;
+//             const url = `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}/app_security/events/aggregation`;
 //             const response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
 
 //             const buckets = response.data.aggs.fieldAggregation_VH_NAME.field_aggregation.buckets;
@@ -975,8 +1019,8 @@ async function fetchSecurityEvents(tenant, apikey, allnsapi = true, namespace = 
 
         // Construct the URL for the API request
         const url = allnsapi
-            ? `https://${tenant}.console.ves.volterra.io/api/data/namespaces/system/app_security/all_ns_events/aggregation`
-            : `https://${tenant}.console.ves.volterra.io/api/data/namespaces/${namespace}/app_security/events/aggregation`;
+            ? `https://${tenant}.${XCBASEURL}/api/data/namespaces/system/app_security/all_ns_events/aggregation`
+            : `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}/app_security/events/aggregation`;
 
         // Calculate the epoch time for the desired time range
         const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
@@ -1358,7 +1402,7 @@ async function getStats(req, inventory, secondsback, lbname = null) {
 
 
 async function fetchLogs(apikey, tenant, namespace, lbname, secondsback, logtype, additionalfilters = '', maxlogs = 5000) {
-    const baseURL = `https://${tenant}.console.ves.volterra.io/api/data/namespaces/${namespace}`;
+    const baseURL = `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}`;
     let url;
     let logs = [];
     let totalCount = 0;
@@ -1677,7 +1721,7 @@ async function fetchApiEndpoint(apikey, tenant, namespace, lbname, startTime, en
     const endTimeFinal = endTime || now.toISOString();
     const startTimeFinal = startTime || new Date(now.getTime() - 168 * 60 * 60 * 1000).toISOString();
 
-    const url = `https://${tenant}.console.ves.volterra.io/api/ml/data/namespaces/${namespace}/virtual_hosts/ves-io-http-loadbalancer-${lbname}/api_endpoints?api_endpoint_info_request=1&start_time=${startTimeFinal}&end_time=${endTimeFinal}`;
+    const url = `https://${tenant}.${XCBASEURL}/api/ml/data/namespaces/${namespace}/virtual_hosts/ves-io-http-loadbalancer-${lbname}/api_endpoints?api_endpoint_info_request=1&start_time=${startTimeFinal}&end_time=${endTimeFinal}`;
 
     try {
         const response = await axios.get(url, {
@@ -1851,7 +1895,7 @@ async function uploadCertificate(tenant, apiKey, namespace, certName, certUrlPat
         };
 
         // Prepare the URL
-        const url = `https://${tenant}.console.ves.volterra.io/api/config/namespaces/${namespace}/certificates`; // Set the URL
+        const url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/certificates`; // Set the URL
 
         // Prepare the headers
         const headers = {
@@ -2249,6 +2293,7 @@ module.exports = {
     fetchInventory,
     fetchSecurityEvents,
     fetchLogs,
+    fetchWhoami,
     getNSDetails,
     getTenantUsers,
     getSecurityEvents,
@@ -2262,6 +2307,7 @@ module.exports = {
     getBackup,
     putConfig,
     getConfig,
+    getWhoami,
     uploadCertificate,
     generateCertificate,
     encryptApiKeys,
