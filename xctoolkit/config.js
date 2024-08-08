@@ -1,19 +1,19 @@
-// const CONFIG_SECRET_KEY = 'mysecretkey';
 
-// module.exports = {
-//     CONFIG_SECRET_KEY: CONFIG_SECRET_KEY
-// }
-
-// config.js
 
 const config = {
 
     server: {
         host: process.env.SERVER_HOST || 'http://localhost',
-        httpport: parseInt(process.env.HTTPPORT, 10) || 3080,
-        httpsport: parseInt(process.env.HTTPSPORT, 10) || 3080
+        enableHttp: process.env.ENABLE_HTTP || true,
+        httpPort: parseInt(process.env.HTTP_PORT, 10) || 3080,
+        enableHttps: process.env.ENABLE_HTTPS || true,
+        httpsPort: parseInt(process.env.HTTPS_PORT, 10) || 3443,
+        httpsPrivateKey: process.env.HTTPS_PRIVATE_KEY || './certs/key.pem',
+        httpsCertificate: process.env.HTTPS_CERTIFICATE || './certs/cert.pem'
+
     },
-    encryptionKey: process.env.SECRET_KEY || 'your_default_secret_key'
+    encryptionKey: process.env.SECRET_KEY || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+    logLevel: process.env.LOG_LEVEL || '2' // 0 - off, 1 - always on, 2 - info, 3 - verbose, 4 - debug
 };
 
 module.exports = config;

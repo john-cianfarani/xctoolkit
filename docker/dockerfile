@@ -1,26 +1,40 @@
 # Use the LTS (Long Term Support) version of Node.js on Debian Bullseye
 FROM node:lts-bullseye
 
-# Set the working directory inside the container
-WORKDIR /xctoolkit
+# Set the working directory to /app
+WORKDIR /app
 
-# Ensure bash is installed
-RUN apt-get update && apt-get install -y bash
+# Install bash and openssl for script compatibility and certificate handling
+RUN apt-get update && apt-get install -y bash openssl
 
-# Copy package.json and package-lock.json into the working directory
-COPY --chown=node:node ../package*.json ./
+# Create directories for certificates and the application
+RUN mkdir -p /app/certs 
+RUN mkdir -p /app/xctoolkit
 
-# Install dependencies in the container
+# Generate self-signed certificates for HTTPS (adjust subject fields as necessary)
+RUN openssl req -x509 -newkey rsa:4096 -keyout /app/certs/key.pem -out /app/certs/cert.pem -days 3650 -nodes \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=xctoolkit.local"
+
+# Copy package.json and package-lock.json into the working directory from the Docker context
+COPY package*.json /app/
+
+# Install npm dependencies
 RUN npm install
 
-# Copy the rest of your application code with node as owner
-COPY --chown=node:node ../xctoolkit/ .
+# Copy the application code into the container
+COPY xctoolkit/ /app/xctoolkit/
 
-# Switch to 'node' user before running the application
+# Change ownership of the /app directory to the 'node' user
+RUN chown -R node:node /app
+
+# Switch to 'node' user to run the application
 USER node
 
-# Expose port 3080 for the application
-EXPOSE 3080
+# Expose ports for HTTP and HTTPS
+EXPOSE 3080 3443
 
-# Command to run your app
+# Set the working directory to /app/xctoolkit before running the app
+WORKDIR /app/xctoolkit
+
+# Command to run your application
 CMD ["node", "index.js"]

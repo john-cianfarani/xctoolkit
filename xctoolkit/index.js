@@ -9,6 +9,11 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const util = require('util');
+const config = require('./config.js');
+const https = require('https');
+const http = require('http');
+const fs = require('fs')
+const app = express();
 
 const {
     fetchNamespaces,
@@ -40,15 +45,42 @@ const {
     fetchConfigItems
 } = require('./xcapi');
 
-const app = express();
-const port = 3080;
-
 // Sample encryption key
 const encryptionKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
+// const encryptionKey = 'exampleEncryptionKey';
+
+
+// const port = 3080;
+
+
 
 // Middleware to parse JSON bodies and cookies
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(cookieParser());
+
+
+// Start HTTP server if enabled
+if (config.server.enableHttp) {
+    app.listen(config.server.httpPort, () => {
+        console.log(`HTTP server running on ${config.server.host}:${config.server.httpPort}`);
+    });
+}
+
+// Start HTTPS server if enabled
+if (config.server.enableHttps) {
+    // Read private key and certificate
+    const privateKey = fs.readFileSync(config.server.httpsPrivateKey, 'utf8');
+    const certificate = fs.readFileSync(config.server.httpsCertificate, 'utf8');
+
+    const credentials = { key: privateKey, cert: certificate };
+
+    const httpsServer = https.createServer(credentials, app);
+    httpsServer.listen(config.server.httpsPort, () => {
+        console.log(`HTTPS server running on ${config.server.host}:${config.server.httpsPort}`);
+    });
+}
+
 
 
 
@@ -386,7 +418,7 @@ function validateJsonFormat(jsonData) {
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Start the server
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-});
+// // Start the server
+// app.listen(port, () => {
+//     console.log(`Server is running on port ${port}`);
+// });

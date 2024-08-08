@@ -1,3 +1,5 @@
+log// Developed by: John Cianfarani (https://github.com/jcianfarani)
+// Date: 2024-08-07
 /// Main functions to support retrieving data from the F5XC API
 
 // Naming Convention
@@ -40,6 +42,34 @@ const SIX_HOURS = 6 * 60 * 60; // 6 hours
 const ONE_DAY = 24 * 60 * 60; // 1 day
 const ONE_WEEK = 7 * 24 * 60 * 60; // 1 week
 
+
+// Customer Logging
+const LogLevel = {
+    OFF: 0,
+    ON: 1,         // Always log when this level is used.
+    INFO: 2,
+    VERBOSE: 3,
+    DEBUG: 4
+};
+
+let currentLogLevel = config.logLevel || LogLevel.INFO;
+
+const logLevelNames = {
+    [LogLevel.ON]: 'ON',
+    [LogLevel.INFO]: 'INFO',
+    [LogLevel.VERBOSE]: 'VERBOSE',
+    [LogLevel.DEBUG]: 'DEBUG'
+};
+
+function log(level, message) {
+    if (level === LogLevel.ON || level <= currentLogLevel) {
+        console.log(`${logLevelNames[level]}: ${message}`);
+    }
+}
+function setLogLevel(level) {
+    currentLogLevel = level;
+}
+
 // Function to make Pull list of Namespaces
 async function fetchNamespaces(apikey, tenant) {
     const namespaces = {};
@@ -68,50 +98,6 @@ async function fetchNamespaces(apikey, tenant) {
     }
 }
 
-// async function fetchLbs(tenant, apikey, namespace) {
-//     const lbs = {};
-//     try {
-//         // Construct the URL with variables using string interpolation
-//         const url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/http_loadbalancers?report_fields=string`;
-
-//         // Make GET request to the constructed URL with Authorization header
-//         const response = await axios.get(url, {
-//             headers: {
-//                 'Authorization': `APIToken ${apikey}`,
-//                 'accept': 'application/json'
-//             }
-//         });
-
-//         //Build return
-//         response.data.items.forEach(item => {
-
-//             const uid = item.uid;
-//             const name = item.name;
-//             const description = item.description;
-//             const namespace = item.namespace;
-//             const domains = item.get_spec.domains;
-
-
-//             const obj = {
-//                 name: name,
-//                 description: description,
-//                 namespace: namespace,
-//                 domains: domains
-//             };
-
-//             lbs[uid] = obj;
-
-//         });
-
-
-//         return lbs;
-
-//     } catch (error) {
-//         // Handle any errors that occur during the request
-//         console.error('Error fetching data:', error);
-//         throw error; // Re-throw the error to be caught by the caller if necessary
-//     }
-// }
 
 /**
  * Asynchronously fetches the load balancers (LBs) for a given tenant and namespace.
@@ -1847,8 +1833,10 @@ async function execBackup(apikey, tenant, namespace, types, manifest, files, bac
             // Build manifest entry
             if (!manifest[type]) manifest[type] = [];
             manifest[type].push({
-                name: item.name,
+                tenant: tenant,
                 namespace: item.namespace,
+                name: item.name,
+                filename: `${tenant}_${item.namespace}_${type}_${item.name}.json`,
                 resource_version: config.resource_version,
                 uid: config.system_metadata.uid,
                 modification_timestamp: config.system_metadata.modification_timestamp

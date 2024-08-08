@@ -1,9 +1,5 @@
 // script.js v1.2
 
-
-// validateX - To validate input fields
-// renderX - To render updates to the DOM
-
 // import transitions from "bootstrap";
 
 
@@ -274,19 +270,30 @@ function cacheGetData(key, maxAgeInSeconds) {
 }
 
 
+/**
+ * Clears the local storage cache. If a prefix is provided, only items
+ * with keys starting with the prefix are cleared.
+ *
+ * @param {string} [prefix] - Optional. The prefix of the keys to clear.
+ * @throws {Error} If the prefix argument is not a string or undefined.
+ */
 function cacheClear(prefix) {
+    // If no argument is passed, clear all local storage
     if (typeof prefix === 'undefined') {
-        // If no argument is passed, clear all local storage
         localStorage.clear();
-    } else if (typeof prefix === 'string') {
-        // If a prefix string is passed, clear items starting with that prefix
+    }
+    // If a prefix string is passed, clear items starting with that prefix
+    else if (typeof prefix === 'string') {
+        // Loop through all keys in local storage
         Object.keys(localStorage).forEach(key => {
+            // If the key starts with the prefix, remove it from local storage
             if (key.startsWith(prefix)) {
                 localStorage.removeItem(key);
             }
         });
-    } else {
-        // Throw an error if the argument is not a string or undefined
+    }
+    // Throw an error if the argument is not a string or undefined
+    else {
         throw new Error('Argument must be a string prefix or undefined');
     }
 }
@@ -499,15 +506,24 @@ function formatHealth(number) {
 
 
 
+/**
+ * Fetches a template from the server and caches it for future use.
+ *
+ * @param {string} templateName - The name of the template to fetch.
+ * @param {boolean} [forcerefresh=false] - Optional. If true, forces a refresh of the template from the server.
+ * @return {Promise<string>} A Promise that resolves to the fetched template.
+ */
 function getTemplate(templateName, forcerefresh = false) {
+    // The cache key used to store the template
     const cacheKey = `template_${templateName}`;
+    // The maximum age of the cached template in seconds
     const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
 
-
     return new Promise((resolve, reject) => {
-        // Check if the data should be fetched from cache
+        // Check if the template should be fetched from cache
         if (!forcerefresh) {
             const cachedTemplate = cacheGetData(cacheKey, maxAgeInSeconds);
+            // If the template is found in cache, resolve the promise with the cached template
             if (cachedTemplate !== null) {
                 console.log("Using cached template for:", templateName);
                 resolve(cachedTemplate);
@@ -535,10 +551,27 @@ function getTemplate(templateName, forcerefresh = false) {
     });
 }
 
+/**
+ * Toggles the theme of the website between light and dark mode.
+ * Stores the selected theme in the local storage.
+ */
 function toggleTheme() {
+    // Toggle the 'dark-mode' class on the body element.
+    // This class is used to apply the dark mode styles.
     const isDarkMode = document.body.classList.toggle('dark-mode');
+
+    // Set the data-bs-theme attribute on the root HTML element to 'dark' or 'light'
+    // based on the selected theme. This attribute is used by Bootstrap to apply the
+    // appropriate theme styles.
     document.documentElement.setAttribute('data-bs-theme', isDarkMode ? 'dark' : 'light');
+
+    // Store the selected theme in the local storage. This ensures that the theme
+    // is preserved across page reloads.
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+
+    // Update the logo image source based on the theme
+    const newImgSrc = isDarkMode ? '/images/xctoolkit_logo_dark.svg' : '/images/xctoolkit_logo.svg';
+    document.getElementById('logoimg').src = newImgSrc;
 }
 
 
@@ -549,15 +582,19 @@ $(document).on('click', '#toggleTheme', function () {
 function applySavedTheme() {
     const savedTheme = localStorage.getItem('theme'); // Retrieve the theme from local storage.
     const themeToggleCheckbox = document.getElementById('toggleTheme'); // Get the checkbox element.
+    const imageElement = document.getElementById('logoimg'); // Assuming you have an image that needs to change with the theme.
 
     // Check if a theme has been saved in localStorage.
     if (savedTheme) {
-        // Determine if the saved theme is 'dark'.
         if (savedTheme === 'dark') {
             document.body.classList.add('dark-mode'); // Add 'dark-mode' class to body.
             document.documentElement.setAttribute('data-bs-theme', 'dark'); // Set data attribute to 'dark'.
             if (themeToggleCheckbox) {
                 themeToggleCheckbox.checked = true; // Set the checkbox to checked if dark mode is active.
+            }
+            // Set image source for dark mode
+            if (imageElement) {
+                imageElement.src = '/images/xctoolkit_logo_dark.png';
             }
         } else {
             document.body.classList.remove('dark-mode'); // Remove 'dark-mode' class from body.
@@ -565,9 +602,12 @@ function applySavedTheme() {
             if (themeToggleCheckbox) {
                 themeToggleCheckbox.checked = false; // Ensure the checkbox is not checked if light mode is active.
             }
+            // Set image source for light mode
+            if (imageElement) {
+                imageElement.src = '/images/xctoolkit_logo.png';
+            }
         }
     }
-
 }
 
 function startCountdown(duration, displayElement, onFinish) {
@@ -1249,12 +1289,71 @@ $(document).on('click', '#submit-api-keys', function (event) {
 });
 
 // Function to validate a field
+// function validateField(field) {
+//     var isValid = true;
+//     var value = field.val();
+//     console.log('Validating field:', field, 'value:', value);
+
+//     if (field.hasClass('namespace-name')) {
+//         var namespaceType = field.closest('.api-key-row').find('.namespace-type').val();
+//         console.log('Namespace Type:', namespaceType);
+//         if (namespaceType === 'all') {
+//             isValid = true; // Skip validation for namespace-name when namespace-type is 'all'
+//             console.log('Namespace type is all, skipping validation for namespace-name');
+//         } else {
+//             isValid = /^[a-z0-9\-]{3,20}$/.test(value);
+//             console.log('Namespace name validation result:', isValid);
+//         }
+//     } else if (field.hasClass('delegated-name')) {
+//         var state = field.closest('.api-key-row').find('.delegated-state').val();
+//         console.log('Delegated State:', state);
+//         if (state === 'disabled') {
+//             field.prop('disabled', true);
+//             isValid = true; // If state is disabled, skip validation and disable input
+//             console.log('Delegated state is disabled, skipping validation for delegated-name');
+//         } else {
+//             field.prop('disabled', false);
+//             isValid = /^[a-z0-9\-]{4,16}$/.test(value); // Use same regex as tenant-name
+//             console.log('Delegated name validation result:', isValid);
+//         }
+//     } else if (field.hasClass('tenant-name')) {
+//         isValid = /^[a-z0-9\-]{4,16}$/.test(value);
+//         console.log('Tenant name validation result:', isValid);
+//     } else if (field.hasClass('apikey')) {
+//         isValid = /^[a-zA-Z0-9!@#$%^&*()_+={}\[\]:;"'<>,.?\/\\|-]{10,80}$/.test(value);
+//         console.log('API key validation result:', isValid);
+//     } else {
+//         isValid = true; // For any other fields not explicitly checked
+//         console.log('Default validation passed');
+//     }
+
+//     if (isValid) {
+//         field.removeClass('is-invalid');
+//         console.log('Field marked as valid');
+//     } else {
+//         field.addClass('is-invalid');
+//         console.log('Field marked as invalid');
+//     }
+
+//     console.log('Field validation complete:', field.attr('class'), 'ValidState:', isValid);
+//     return isValid;
+// }
+
+
 function validateField(field) {
     var isValid = true;
     var value = field.val();
     console.log('Validating field:', field, 'value:', value);
 
-    if (field.hasClass('namespace-name')) {
+    if (field.hasClass('namespace-type')) {
+        var apikeyRights = field.closest('.api-key-row').find('.apikey-rights').val();
+        if (value === 'all' && apikeyRights !== 'allns') {
+            isValid = false; // If namespace-type is 'all', apikey-rights must be 'allns'
+            console.log('Namespace type is all but apikey-rights is not allns, invalid combination');
+        } else {
+            console.log('Namespace type and apikey-rights validation passed');
+        }
+    } else if (field.hasClass('namespace-name')) {
         var namespaceType = field.closest('.api-key-row').find('.namespace-type').val();
         console.log('Namespace Type:', namespaceType);
         if (namespaceType === 'all') {
@@ -1273,7 +1372,7 @@ function validateField(field) {
             console.log('Delegated state is disabled, skipping validation for delegated-name');
         } else {
             field.prop('disabled', false);
-            isValid = /^[a-z0-9\-]{4,16}$/.test(value); // Use same regex as tenant-name
+            isValid = /^[a-z0-9\-]{4,16}$/.test(value);
             console.log('Delegated name validation result:', isValid);
         }
     } else if (field.hasClass('tenant-name')) {

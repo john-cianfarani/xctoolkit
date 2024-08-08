@@ -78,7 +78,13 @@ body {
 #logo {
     padding: 20px 5px;
     margin-bottom: 20px;
+    width: 189px;
+    height: 61px;
     /* border-bottom: 1px solid var(--border-color-light); */
+}
+
+#logo img {
+    width: 100%;
 }
 
 #service-target {
