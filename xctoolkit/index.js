@@ -16,14 +16,9 @@ const fs = require('fs')
 const app = express();
 
 const {
-    fetchNamespaces,
-    fetchConfig,
-    fetchLbs,
-    fetchHealthchecks,
-    fetchStats,
-    uploadCertificate,
-    fetchInventory,
+
     fetchWhoami,
+    getTenantAge,
     getNSDetails,
     getTenantUsers,
     getSecurityEvents,
@@ -37,12 +32,8 @@ const {
     getConfig,
     putConfig,
     getBackup,
-    getWhoami,
-    generateCertificate,
     decryptData,
     encryptApiKeys,
-    fetchUsers,
-    fetchConfigItems
 } = require('./xcapi');
 
 // Sample encryption key
@@ -136,6 +127,24 @@ app.post('/api/v1/getStats', async (req, res) => {
     }
 });
 
+app.post('/api/v1/getTenantAge', async (req, res) => {
+    try {
+        // Extract the inventory parameter from the request body
+        const { inventory } = req.body;
+
+        // Call the getTenantAge function to retrieve the age data for tenants
+        const tenantAges = await getTenantAge(req, inventory);
+
+        // Respond with the tenant ages data
+        res.json({ success: true, tenantAges });
+    } catch (error) {
+        console.error('Error in /api/v1/getTenantAge endpoint:', error);
+        // Handle any errors by responding with an error message
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
 app.post('/api/v1/getNSDetails', async (req, res) => {
     try {
         // Extract the request body
@@ -157,11 +166,11 @@ app.post('/api/v1/getTenantUsers', async (req, res) => {
     try {
         // Extract the request body
         const { tenant, limit } = req.body;
-        console.log("API - getTenantUsers: ", tenant, limit);
+        //console.log("API - getTenantUsers: ", tenant, limit);
 
         const userDetails = await getTenantUsers(req, tenant, limit);
 
-        console.log("API - getTenantUsers: ", userDetails);
+        //console.log("API - getTenantUsers: ", userDetails);
         res.json({ success: true, userDetails });
     } catch (error) {
         console.error('Error in /api/v1/getTenantUsers endpoint:', error);

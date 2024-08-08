@@ -1,4 +1,4 @@
-log// Developed by: John Cianfarani (https://github.com/jcianfarani)
+// Developed by: John Cianfarani (https://github.com/jcianfarani)
 // Date: 2024-08-07
 /// Main functions to support retrieving data from the F5XC API
 
@@ -17,13 +17,11 @@ const forge = require('node-forge'); //Generate Certificates
 const pki = forge.pki; // Generate Certificates
 
 const config = require('./config.js');
-console.log('Config Secret:', config.encryptionKey);
+
 
 const encryptionKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
-// Check environment variables for encryption key
-const key = process.env.ENCRYPTION_KEY || 'defaultValue';
-console.log('key', key);
+
 
 
 // Global headers
@@ -61,40 +59,154 @@ const logLevelNames = {
     [LogLevel.DEBUG]: 'DEBUG'
 };
 
+
+/**
+ * Logs a message with the specified log level.
+ * 
+ * @param {number} level - The log level.
+ * @param {string} message - The message to log.
+ */
 function log(level, message) {
+    // Check if the log level is ON or less than or equal to the current log level
     if (level === LogLevel.ON || level <= currentLogLevel) {
+        // Log the message with the specified log level and log level name
         console.log(`${logLevelNames[level]}: ${message}`);
     }
 }
 function setLogLevel(level) {
     currentLogLevel = level;
 }
+/**
+ * Masks the data except for the specified number of visible characters.
+ * 
+ * @param {string} data - The data to be masked.
+ * @param {number} visibleCount - The number of characters to show before masking.
+ * @returns {string} The masked data.
+ */
+function maskData(data, visibleCount = 3) {
+    // Ensure the visible count does not exceed the data length
+    visibleCount = Math.min(visibleCount, data.length);
+    const maskedPart = '*'.repeat(data.length - visibleCount);
+    return `${data.substring(0, visibleCount)}${maskedPart}`;
+}
 
-// Function to make Pull list of Namespaces
-async function fetchNamespaces(apikey, tenant) {
-    const namespaces = {};
+
+
+// Check environment variables for encryption key
+log(LogLevel.DEBUG, ('Config Secret:', config.encryptionKey));
+const key = process.env.ENCRYPTION_KEY || config.encryptionKey;
+// log(LogLevel.INFO, ('key', key));
+
+
+
+
+/**
+ * Asynchronously fetches a list of namespaces for a given tenant and returns them as an object.
+ *
+ * @param {string} apikey - The Volterra API key.
+ * @param {string} tenant - The Volterra tenant ID.
+ * @param {string} [objname=null] - Optional object name to append to the URL.
+ * @return {Promise<Object>} - A Promise that resolves to an object containing the fetched namespaces.
+ *                              The keys of the object are the tenant IDs and the values are objects
+ *                              containing the namespaces nested under the tenant.
+ * @throws {Error} - If there is an error fetching the data.
+ */
+async function fetchNamespaces(apikey, tenant, objname = null) {
+    // Initialize an empty object to store the namespaces nested under the tenant
+    const result = {
+        [tenant]: {} // Nest namespaces under the tenant
+    };
+
     try {
         // Construct the URL with variables using string interpolation
-        const url = `https://${tenant}.${XCBASEURL}/api/web/namespaces`;
+        let url = `https://${tenant}.${XCBASEURL}/api/web/namespaces`;
+
+        if (objname) {
+            // If an object name is provided, append it to the URL
+            url += `/${objname}`;
+        }
+
+        // Add query string for extra fields
+        url += `?report_fields`;
+
+        log(LogLevel.INFO, `fetchNamespaces - Fetching data with URL: ${url}`);
 
         // Make GET request to the constructed URL with Authorization header
         const response = await axios.get(url, {
-            headers: {
-                'Authorization': `APIToken ${apikey}`,
-                'accept': 'application/json'
-            }
+            headers: headers(tenant, apikey)
         });
 
-        response.data.items.forEach(item => {
-            namespaces[item.name] = item.description;
-        });
+        log(LogLevel.ON, `fetchNamespaces - Data fetched for tenant ${tenant} successfully: ${JSON.stringify(response.data)}`);
 
-        return namespaces;
+        // Check if response is for a single namespace or multiple
+        if (objname) {
+            // Handle single object response
+            const item = response.data;
+            result[tenant][objname] = {
+                description: item.description, // Namespace description
+                creation: item.system_metadata.creation_timestamp // Namespace creation timestamp
+            };
+        } else {
+            // Handle multiple items response
+            response.data.items.forEach(item => {
+                result[tenant][item.name] = {
+                    description: item.description, // Namespace description
+                    creation: item.system_metadata.creation_timestamp // Namespace creation timestamp
+                };
+            });
+        }
+
+        // Return the result object
+        return result;
 
     } catch (error) {
         // Handle any errors that occur during the request
         console.error('Error fetching data:', error);
         throw error; // Re-throw the error to be caught by the caller if necessary
+    }
+}
+
+
+async function getTenantAge(req, inventory) {
+    try {
+        // Step 1: Retrieve and decrypt API keys from the cookie
+        const decryptedApiKeys = getDecryptedApiKeys(req);
+
+        // Step 2: Filter and organize API keys by tenant, ignoring rights type
+        const tenantApiKeys = {};
+        decryptedApiKeys.forEach(apiKey => {
+            if (apiKey['apikey-state'] === 'disabled') {
+                return;
+            }
+            const tenant = apiKey['tenant-name'];
+            // Store the first API key encountered for each tenant
+            if (!tenantApiKeys[tenant]) {
+                tenantApiKeys[tenant] = apiKey['apikey'];
+            }
+        });
+
+        // Step 3: Fetch namespaces creation timestamp for the default namespace of each tenant
+        const tenantAges = await Promise.all(
+            Object.entries(tenantApiKeys).map(([tenant, apikey]) => {
+                log(LogLevel.INFO, `Fetching namespace for tenant ${tenant}`);
+                return fetchNamespaces(apikey, tenant, 'default').then(namespaceData => {
+                    const creationTimestamp = namespaceData[tenant]['default']?.creation;
+                    return { [tenant]: { creation_timestamp: creationTimestamp } };
+                });
+            })
+        );
+
+        // Step 4: Merge all fetched namespace data into one object
+        let mergedTenantAges = {};
+        tenantAges.forEach(tenantAge => {
+            mergedTenantAges = mergeDeep(mergedTenantAges, tenantAge);
+        });
+
+        // Return the combined tenant ages
+        return mergedTenantAges;
+    } catch (error) {
+        console.error('Error fetching tenant ages:', error);
+        throw error;
     }
 }
 
@@ -204,24 +316,50 @@ async function fetchLbs(tenant, apikey, namespace) {
 }
 
 
-// Function to fetch Namespace Details via fetchLbs
-// Modified getNSDetails to use fetchLbs
+/**
+ * Asynchronously fetches the details of the load balancers (LBs) for a given tenant and namespace.
+ * This function uses the fetchLbs function to make the API call and process the response.
+ * @param {Object} req - The request object.
+ * @param {string} tenant - The Volterra tenant ID.
+ * @param {string} namespace - The Volterra namespace.
+ * @returns {Promise<Object>} - A Promise that resolves to an object containing the fetched LB details.
+ * @throws {Error} - If there is an error fetching the data.
+ */
 async function getNSDetails(req, tenant, namespace) {
     try {
+        // Get the correct API key for the given tenant, namespace, and 'read' permission
         const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
-        // Now calling fetchLbs instead of making a new Axios call
+
+        // Call the fetchLbs function to fetch the LB details
         const lbsDetails = await fetchLbs(tenant, apikey, namespace);
 
-        console.log('Namespace Load Balancer Details:', lbsDetails);
-        return lbsDetails; // This will contain the processed load balancer details
+        // Log the fetched LB details for debugging purposes
+        log(LogLevel.DEBUG, ('Namespace Load Balancer Details:', lbsDetails));
+
+        // Return the processed load balancer details
+        return lbsDetails;
     } catch (error) {
+        // Log and propagate any errors that occur during the API call
         console.error(`Error fetching NS details for tenant ${tenant}, namespace ${namespace}:`, error);
-        throw error; // Propagate the error to be handled by the caller
+        throw error;
     }
 }
 
+
+
+/**
+ * Asynchronously fetches user details for a specific tenant.
+ *
+ * @param {string} tenant - The identifier for the tenant.
+ * @param {string} apikey - The API key for the tenant.
+ * @param {number} [limit=null] - Optional limit for the number of users to return.
+ * @returns {Promise<Object>} - A Promise that resolves to an object containing the user details for the tenant.
+ * @throws {Error} - If there is an error fetching the user details.
+ */
 async function fetchUsers(tenant, apikey, limit = null) {
+    // Initialize an empty array to store user details
     const users = [];
+
     try {
         // Construct the URL with variables using string interpolation
         const url = `https://${tenant}.${XCBASEURL}/api/web/custom/namespaces/system/user_roles`;
@@ -233,11 +371,12 @@ async function fetchUsers(tenant, apikey, limit = null) {
 
         // Build the return array with user details
         response.data.items.forEach(item => {
+            // Create an object for each user with the required details
             const obj = {
-                name: item.name,
-                fullname: `${item.first_name} ${item.last_name}`,
-                email: item.email,
-                lastlogin: item.last_login_timestamp
+                name: item.name, // User name
+                fullname: `${item.first_name} ${item.last_name}`, // User full name
+                email: item.email, // User email
+                lastlogin: item.last_login_timestamp // User last login timestamp
             };
 
             users.push(obj);
@@ -249,7 +388,9 @@ async function fetchUsers(tenant, apikey, limit = null) {
         // If a limit is specified, truncate the list to the top 'limit' users
         const limitedUsers = limit ? users.slice(0, limit) : users;
 
-        //console.log('fetchUsers - User Details for Tenant:', tenant, 'Users:', limitedUsers);
+        // Log the fetched user details for debugging purposes
+        log(LogLevel.DEBUG, `fetchUsers - User Details for Tenant: ${tenant}, Users: ${JSON.stringify(limitedUsers)}`);
+
         // Return the data structured with tenant as the key
         return { [tenant]: limitedUsers };
 
@@ -276,7 +417,7 @@ async function getTenantUsers(req, tenant, limit = 5) {
         // Call fetchUsers to retrieve the user details for the tenant
         const users = await fetchUsers(tenant, apikey, limit);
 
-        //console.log('getTenantUsers - User Details for Tenant:', tenant, 'Users:', users);
+        log(LogLevel.DEBUG, ('getTenantUsers - User Details for Tenant:', tenant, 'Users:', users));
         // return { [tenant]: users }; // Returning the users wrapped in an object with the tenant as the key
         return users; // Returning the users wrapped in an object with the tenant as the key
     } catch (error) {
@@ -287,68 +428,107 @@ async function getTenantUsers(req, tenant, limit = 5) {
 
 
 
-// async function fetchConfig(apikey, tenant, namespace, type, objname = null) {
-//     try {
 
-//         // types examples
-//         //http_loadbalancers, app_firewalls, origin_pools, healthchecks, ip_prefix_sets, rate_limiter, rate_limiter_policys, routes
 
-//         // Construct the URL with variables using string interpolation
-
-//         let url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/${type}`;
-
-//         if (objname) {
-//             url += `/${objname}`;
-//         }
-
-//         Make GET request to the constructed URL with Authorization header
-//         const response = await axios.get(url, {
-//             headers: {
-//                 'Authorization': `APIToken ${apikey}`,
-//                 'accept': 'application/json'
-//             }
-//         });
-
-//         return response.data;
-
-//     } catch (error) {
-//         // Handle any errors that occur during the request
-//         console.error('Error fetching configuration data:', error);
-//         throw error; // Re-throw the error to be caught by the caller if necessary
-//     }
-// }
-
-// Function to fetch configuration using provided API key
-//http_loadbalancers, app_firewalls, origin_pools, healthchecks, ip_prefix_sets, rate_limiter, rate_limiter_policys, routes
-async function fetchConfig(apikey, tenant, namespace, type, objname) {
+/**
+ * Fetches configuration data for a given tenant, namespace, type, and optional object name.
+ * @param {string} apikey - The API key for accessing the F5XC API.
+ * @param {string} tenant - The name of the tenant.
+ * @param {string} namespace - The name of the namespace.
+ * @param {string} type - The type of configuration data to fetch.
+ *                        Valid types include:
+ *                        - http_loadbalancers
+ *                        - app_firewalls
+ *                        - origin_pools
+ *                        - healthchecks
+ *                        - ip_prefix_sets
+ *                        - rate_limiter
+ *                        - rate_limiter_policys
+ *                        - routes
+ * @param {string} [objname=null] - The name of the specific object to fetch.
+ *                                  If not provided, all objects of the specified type are fetched.
+ * @returns {Promise<Object>} - A promise that resolves to the configuration data.
+ * @throws {Error} - If there is an error fetching the configuration data.
+ */
+async function fetchConfig(apikey, tenant, namespace, type, objname = null) {
+    // Construct the URL for the API request
     let url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/${type}`;
     try {
 
         if (objname) {
+            // If an object name is provided, append it to the URL
             url += `/${objname}`;
         }
+        // Make the API request and get the response
         const response = await axios.get(url, { headers: headers(tenant, apikey) });
+        // Return the configuration data
         return response.data;
     } catch (error) {
+        // Handle any errors that occur during the request
         console.error('Error fetching configuration data:', error);
         throw error;
     }
 }
 
 
+/**
+ * Asynchronously fetches configuration data for a given tenant, namespace, type, and optional object name.
+ * @param {Object} req - The request object.
+ * @param {string} tenant - The name of the tenant.
+ * @param {string} namespace - The name of the namespace.
+ * @param {string} type - The type of configuration data to fetch.
+ *                        Valid types include:
+ *                        - http_loadbalancers
+ *                        - app_firewalls
+ *                        - origin_pools
+ *                        - healthchecks
+ *                        - ip_prefix_sets
+ *                        - rate_limiter
+ *                        - rate_limiter_policys
+ *                        - routes
+ * @param {string} [objname=null] - The name of the specific object to fetch.
+ *                                  If not provided, all objects of the specified type are fetched.
+ * @returns {Promise<Object>} - A promise that resolves to the configuration data.
+ * @throws {Error} - If there is an error fetching the configuration data.
+ */
 async function getConfig(req, tenant, namespace, type, objname = null) {
     try {
-        const apikey = getCorrectApiKey(req, tenant, 'read');  // Ensuring we retrieve a 'read' type API key
+        // Retrieve the correct API key for the specified tenant and ensure it is a 'read' type
+        const apikey = getCorrectApiKey(req, tenant, 'read');
+
+        // Fetch the configuration data using the API key, tenant, namespace, type, and optional object name
         const configData = await fetchConfig(apikey, tenant, namespace, type, objname);
+
+        // Return the configuration data
         return configData;
     } catch (error) {
+        // Log the error and rethrow it to be caught by the caller if necessary
         console.error(`Error fetching configuration for ${type} in tenant ${tenant}, namespace ${namespace}:`, error);
         throw error;
     }
 }
 
 
-// Function to perform PUT request to update configuration for different types of objects
+/**
+ * Asynchronously updates configuration data for a given tenant, namespace, type, and object name.
+ * @param {string} apikey - The API key for the tenant.
+ * @param {string} tenant - The name of the tenant.
+ * @param {string} namespace - The name of the namespace.
+ * @param {string} type - The type of configuration data to update.
+ *                        Valid types include:
+ *                        - http_loadbalancers
+ *                        - app_firewalls
+ *                        - origin_pools
+ *                        - healthchecks
+ *                        - ip_prefix_sets
+ *                        - rate_limiter
+ *                        - rate_limiter_policys
+ *                        - routes
+ * @param {string} objname - The name of the specific object to update.
+ * @param {Object} newData - The new data to update the object with.
+ * @returns {Promise<Object>} - A promise that resolves to the updated configuration data.
+ * @throws {Error} - If there is an error updating the configuration data.
+ */
 async function updateConfig(apikey, tenant, namespace, type, objname, newData) {
     try {
         // Validate parameters to ensure they are provided
@@ -359,7 +539,9 @@ async function updateConfig(apikey, tenant, namespace, type, objname, newData) {
         // Construct the URL for the PUT request based on the type and object name
         const url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/${type}/${objname}`;
 
-        console.log('update data:', newData);
+        // Log the data being updated
+        log(LogLevel.VERBOSE, ('update data:', newData));
+
         // Perform validation on newData here if necessary
         if (!newData || typeof newData !== 'object' || Object.keys(newData).length === 0) {
             throw new Error("Invalid data provided for update.");
@@ -370,8 +552,11 @@ async function updateConfig(apikey, tenant, namespace, type, objname, newData) {
             headers: headers(tenant, apikey) // Utilize globally defined headers function
         });
 
-        console.log('PUT request successful:', response.data);
-        return response.data; // Return the server response to handle further (if needed)
+        // Log the successful update
+        log(LogLevel.VERBOSE, ('PUT request successful:', response.data));
+
+        // Return the server response to handle further (if needed)
+        return response.data;
 
     } catch (error) {
         // Handle any errors that occur during the request
@@ -416,7 +601,7 @@ async function fetchConfigItems(apikey, tenant, namespace, type) {
             list.push(obj);
         });
 
-        //console.log("list:", list);
+        log(LogLevel.DEBUG, ("fetchConfig List:", list));
         return list;
 
     } catch (error) {
@@ -434,8 +619,8 @@ async function fetchWhoami(apikey, tenant) {
 
         // Log content type and status code
         const contentType = response.headers['content-type'];
-        console.log(`Received content type: ${contentType}`);
-        console.log(`HTTP status code: ${response.status}`);
+        log(LogLevel.VERBOSE, (`fetchWhoami - Received content type: ${contentType}`));
+        log(LogLevel.VERBOSE, (`fetchWhoami - HTTP status code: ${response.status}`));
 
         // Check if the response is in JSON format
         if (!contentType.includes('application/json')) {
@@ -515,7 +700,6 @@ async function fetchHealthchecks(tenant, apikey, namespace, lbname) {
             const { metric, healthscore } = data;
             const metricsObj = {};
 
-            //console.log( `---  ${metric.upstream} -  ${metric.upstream} ---` );
 
             if (metric !== null) {
                 metric.upstream.forEach(metric => {
@@ -625,7 +809,7 @@ async function fetchStats(tenant, apikey, allnsapi = true, namespace = null, sec
             ]
         };
 
-        console.log('Request:', requestData);
+        log(LogLevel.DEBUG, ('Request:', requestData));
 
         // Make the API request and get the response
         const response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
@@ -721,7 +905,7 @@ async function fetchStats(tenant, apikey, allnsapi = true, namespace = null, sec
  */
 async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter = null) {
     try {
-        +        console.log('Fetching inventory for tenant:', tenant + ', apikey:', apikey, ', allnsapi:', allnsapi, ', namespaceFilter:', namespaceFilter);
+        +        log(LogLevel.INFO, ('Fetching inventory for tenant:', tenant + ', apikey:', apikey, ', allnsapi:', allnsapi, ', namespaceFilter:', namespaceFilter));
         // Construct the URL for the API request
         let url;
         if (allnsapi) {
@@ -738,7 +922,7 @@ async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter =
 
         // Make the API request and get the response
         const response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
-        +        console.log('API request successful');
+        +        log(LogLevel.INFO, ('API request successful'));
 
         // Initialize an empty object to store the parsed data
         const inventory = {};
@@ -878,20 +1062,19 @@ async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter =
 
         // Process the HTTP load balancers
         if (response.data.http_loadbalancers && response.data.http_loadbalancers.httplb_results) {
-            +            console.log('Processing HTTP load balancers');
+            log(LogLevel.INFO, ('Processing HTTP load balancers'));
             processResults('http_loadbalancers', response.data.http_loadbalancers.httplb_results);
         }
 
         // Process the TCP load balancers
         if (response.data.tcp_loadbalancers && response.data.tcp_loadbalancers.tcplb_results) {
-            +            console.log('Processing TCP load balancers');
+            log(LogLevel.INFO, ('Processing TCP load balancers'));
             processResults('tcp_loadbalancers', response.data.tcp_loadbalancers.tcplb_results);
         }
 
         return inventory;
     } catch (error) {
-        +        console.error('Error fetching inventory:', error);
-        -        console.error('Error fetching stats:', error);
+        console.error('Error fetching inventory:', error);
         throw error;
     }
 }
@@ -931,7 +1114,7 @@ async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter =
 //                 "start_time": startTime.toString(),
 //             };
 
-//             console.log('Request:', requestData);
+//             log(LogLevel.INFO, ('Request:', requestData));
 
 //             const url = `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}/app_security/events/aggregation`;
 //             const response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
@@ -1032,7 +1215,7 @@ async function fetchSecurityEvents(tenant, apikey, allnsapi = true, namespace = 
                 "start_time": startTime.toString(),
             };
 
-            console.log(`Request for type ${type}:`, requestData);
+            log(LogLevel.VERBOSE, (`Request for type ${type}:`, requestData));
 
             const response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
 
@@ -1140,7 +1323,8 @@ async function getSecurityEvents(req, inventory, secondsback, sec_event_type) {
                 return namespaces.map(namespace => {
                     try {
                         const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
-                        console.log(`Fetching security events for tenant ${tenant}, namespace ${namespace}, with API key: ${apikey}`);
+
+                        log(LogLevel.VERBOSE, (`Fetching security events for tenant ${tenant}, namespace ${namespace}, with API key: ${maskData(apikey)}`));
                         /// ALLNSAPI disabled for now as it's not working correctly on the XC side.
                         /// Suboptimal behaviour as this will require more API calls to be made.
                         return fetchSecurityEvents(tenant, apikey, false, namespace, secondsback, sec_event_type);
@@ -1243,7 +1427,7 @@ async function getSecurityEvents(req, inventory, secondsback, sec_event_type) {
 //         const securityEvents = await Promise.all(
 //             Object.values(uniqueApiKeys).map(apiKey => {
 //                 // Call the fetchSecurityEvents function for each API key
-//                 console.log(`Fetching security events for tenant ${apiKey['tenant-name']} and namespace ${apiKey['namespace-name']}`);
+//                 log(LogLevel.INFO, (`Fetching security events for tenant ${apiKey['tenant-name']} and namespace ${apiKey['namespace-name']}`));
 //                 return fetchSecurityEvents(apiKey['tenant-name'], apiKey['apikey'], apiKey['namespace-name'], secondsback, sec_event_type);
 //             })
 //         );
@@ -1298,7 +1482,7 @@ async function getInventory(req) {
             // Convert the values of the `uniqueApiKeys` object into an array and map over it
             Object.values(uniqueApiKeys).map(apiKey => {
                 // Determine if we need to fetch all namespaces or a specific namespace
-                console.log(`apikey-rights: ${apiKey['apikey-rights']}`);
+                log(LogLevel.INFO, (`apikey-rights: ${apiKey['apikey-rights']}`));
 
                 let allnsapi = {};
                 if (apiKey['apikey-rights'] === 'allns') {
@@ -1310,7 +1494,7 @@ async function getInventory(req) {
                 // `apiKey['tenant-name']` is the tenant
                 // `apiKey['apikey']` is the decrypted API key
                 // `allnsapi ? null : apiKey['namespace-name']` determines if we pass null for all namespaces or a specific namespace
-                console.log(`Fetching inventory for tenant ${apiKey['tenant-name']} and namespace ${apiKey['namespace-name']} and allnsapi ${allnsapi}`);
+                log(LogLevel.INFO, (`Fetching inventory for tenant ${apiKey['tenant-name']} and namespace ${apiKey['namespace-name']} and api call type:  ${allnsapi}`));
                 return fetchInventory(apiKey['tenant-name'], apiKey['apikey'], allnsapi, apiKey['namespace-name']);
             })
         );
@@ -1367,7 +1551,7 @@ async function getStats(req, inventory, secondsback, lbname = null) {
                 const allnsapi = apiKey['apikey-rights'] === 'allns';
                 const namespace = allnsapi ? null : apiKey['namespace-name'];
                 // Call the fetchStats function for each API key
-                console.log(`Fetching stats for tenant ${apiKey['tenant-name']} and namespace ${namespace} and allnsapi ${allnsapi}`);
+                log(LogLevel.INFO, (`Fetching stats for tenant ${apiKey['tenant-name']} and namespace ${namespace} and api call type: ${allnsapi}`));
                 return fetchStats(apiKey['tenant-name'], apiKey['apikey'], allnsapi, namespace, secondsback, lbname);
             })
         );
@@ -1464,7 +1648,7 @@ async function fetchLogs(apikey, tenant, namespace, lbname, secondsback, logtype
                 scroll_id = response.data.scroll_id || null;
                 retryCount = 0;
             } else if (response.status === 429 && retryCount < 3) {
-                console.log("Rate limit hit, retrying...", retryCount + 1);
+                log(LogLevel.INFO, ("Rate limit hit, retrying...", retryCount + 1));
                 retryCount++;
                 continue;
             } else {
@@ -1534,13 +1718,13 @@ async function getLogs(req, tenant, namespace, lbname, secondsback, logtype, add
             throw new Error('API key not found');
         }
 
-        console.log(`Fetching logs for tenant: ${tenant}, namespace: ${namespace}, load balancer: ${lbname}, seconds back: ${secondsback}, log type: ${logtype}, additional filters: ${JSON.stringify(additionalfilters)}, maximum logs: ${maxlogs}`);
+        log(LogLevel.INFO, (`Fetching logs for tenant: ${tenant}, namespace: ${namespace}, load balancer: ${lbname}, seconds back: ${secondsback}, log type: ${logtype}, additional filters: ${JSON.stringify(additionalfilters)}, maximum logs: ${maxlogs}`));
 
         // Call the fetchLogs function to retrieve the logs
         const rawLogs = await fetchLogs(apikey, tenant, namespace, lbname, secondsback, logtype, additionalfilters, maxlogs);
 
         // Log the raw logs received
-        console.log('getLogs Data property:', util.inspect(rawLogs, { showHidden: false, depth: null, colors: true }));
+        log(LogLevel.DEBUG, ('getLogs Data property:', util.inspect(rawLogs, { showHidden: false, depth: null, colors: true })));
 
         // Since CSV conversion is not needed, directly return the JSON logs
         return rawLogs;
@@ -1660,7 +1844,7 @@ async function getApiEndpoint(req, tenant, namespace, lbName, secondsback) {
             throw new Error('API key not found');
         }
 
-        console.log(`Fetching API endpoints for tenant ${tenant}, namespace ${namespace}, LB ${lbName} with API key: ${apikey}`);
+
 
         // Calculate the time interval for the stats
         const endTime = new Date().toISOString();
@@ -1671,7 +1855,7 @@ async function getApiEndpoint(req, tenant, namespace, lbName, secondsback) {
 
         // Convert the JSON data to CSV format
         const csvData = jsonToCSV(apiData);
-        console.log(`API Data fetched and converted for tenant ${tenant}, namespace ${namespace}, LB ${lbName}`);
+        log(LogLevel.INFO, (`API Data fetched and converted for tenant ${tenant}, namespace ${namespace}, LB ${lbName}`));
 
         return csvData;
     } catch (error) {
@@ -1733,7 +1917,7 @@ async function execCopyWafExclusion(req, sourceTenant, sourceNamespace, sourceLb
         const readApiKey = getCorrectApiKey(req, sourceTenant, sourceNamespace, 'read');
         const writeApiKey = getCorrectApiKey(req, destinationTenant, destinationNamespace, 'write');
 
-        console.log('Using API Keys:', readApiKey, ' - ', writeApiKey);
+
 
         if (!readApiKey) {
             throw new Error(`Read API key not found for tenant ${sourceTenant} and namespace ${sourceNamespace}`);
@@ -1751,15 +1935,15 @@ async function execCopyWafExclusion(req, sourceTenant, sourceNamespace, sourceLb
             throw new Error('WAF exclusion rules not found in source configuration');
         }
         const wafExclusionRules = sourceData.spec.waf_exclusion_rules;
-        //console.log('sourceData waf exclusion:', wafExclusionRules);
+        log(LogLevel.DEBUG, ('sourceData waf exclusion:', wafExclusionRules));
 
         // Modify destination JSON with the extracted rules
         destinationData.spec.waf_exclusion_rules = wafExclusionRules;
-        //console.log('destinationData:', destinationData);
+        log(LogLevel.DEBUG, ('destinationData:', destinationData));
         // Update destination configuration
         await updateConfig(writeApiKey, destinationTenant, destinationNamespace, 'http_loadbalancers', destinationLbName, destinationData);
 
-        console.log(`WAF exclusion rules successfully copied from ${sourceLbName} to ${destinationLbName}`);
+        log(LogLevel.INFO, (`WAF exclusion rules successfully copied from ${sourceLbName} to ${destinationLbName}`));
     } catch (error) {
         console.error('Error processing WAF exclusion rules:', error);
         throw error;
@@ -1801,7 +1985,7 @@ async function getBackup(req, tenant, namespace, backupShared = false) {
     const files = [];
 
     // Process items for the namespace including shared items if they are fetched by default
-    console.log('Fetching backup for namespace:', tenant, namespace);
+    log(LogLevel.INFO, ('Fetching backup for namespace:', tenant, namespace));
     await execBackup(apikey, tenant, namespace, objectTypes, manifest, files, backupShared);
 
     // Use JSZip or similar library to package files and manifest into a ZIP
@@ -1816,7 +2000,7 @@ async function getBackup(req, tenant, namespace, backupShared = false) {
 
 async function execBackup(apikey, tenant, namespace, types, manifest, files, backupShared) {
     for (const type of types) {
-        console.log('Fetching backup for type:', tenant, namespace, type);
+        log(LogLevel.VERBOSE, ('Fetching backup for type:', tenant, namespace, type));
         const items = await fetchConfigItems(apikey, tenant, namespace, type);
         for (const item of items) {
             if (!backupShared && item.namespace === 'shared') {
@@ -1825,7 +2009,7 @@ async function execBackup(apikey, tenant, namespace, types, manifest, files, bac
             if (item.name.startsWith('ves-io')) {
                 continue; // Skip system items
             }
-            console.log('Fetching backup for item:', tenant, item.namespace, type, item.name);
+            log(LogLevel.VERBOSE, ('Fetching backup for item:', tenant, item.namespace, type, item.name));
             const config = await fetchConfig(apikey, tenant, item.namespace, type, item.name);
             const fileContent = JSON.stringify(config);
             files.push({ name: `${tenant}_${item.namespace}_${type}_${item.name}.json`, content: fileContent });
@@ -1897,7 +2081,7 @@ async function uploadCertificate(tenant, apiKey, namespace, certName, certUrlPat
             headers: headers
         });
 
-        console.log('Certificate uploaded successfully:', response.data); // Log the response data
+        log(LogLevel.VERBOSE, ('Certificate uploaded successfully:', response.data)); // Log the response data
     } catch (error) {
         console.error('Error uploading certificate:', error); // Log any errors that occur
     }
@@ -1986,66 +2170,6 @@ async function generateCertificate(commonName, altNames, validityDays = 10) {
     });
 }
 
-
-
-
-
-
-/**
- * Stores the given data in the browser's local storage, under the specified key.
- * Also adds a timestamp to the data.
- * @param {string} key - The key under which the data will be stored in local storage.
- * @param {any} data - The data to be stored in local storage.
- */
-function cacheData(key, data) {
-    // Get the current timestamp
-    const timestamp = new Date().getTime();
-
-    // Create the cache entry object
-    const cacheEntry = {
-        data: data,
-        timestamp: timestamp
-    };
-
-    // Stringify the cache entry and store it in local storage
-    localStorage.setItem(key, JSON.stringify(cacheEntry));
-
-    // Log a message indicating the data has been stored in local storage
-    console.log(`Data stored in LocalStorage under key '${key}'`);
-}
-
-/**
- * Retrieves data from the browser's local storage, under the specified key.
- * If the data is present and not older than the specified maximum age, it is returned.
- * Otherwise, null is returned.
- * @param {string} key - The key under which the data is stored in local storage.
- * @param {number} maxAgeInSeconds - The maximum age (in seconds) of the cached data.
- * @returns {any|null} - The retrieved data if it is not older than the maximum age, null otherwise.
- */
-function getCachedData(key, maxAgeInSeconds) {
-    // Retrieve the cache entry from local storage
-    const cacheEntry = localStorage.getItem(key);
-    if (cacheEntry) {
-        // Parse the cache entry
-        const parsedEntry = JSON.parse(cacheEntry);
-        const currentTime = new Date().getTime();
-        const ageInSeconds = (currentTime - parsedEntry.timestamp) / 1000;
-        // Check if the data is not older than the maximum age
-        if (ageInSeconds <= maxAgeInSeconds) {
-            // Log a message indicating the use of cached data
-            console.log(`Using cached data for key '${key}'`);
-            // Return the cached data
-            return parsedEntry.data;
-        } else {
-            // Log a message indicating that the cached data is older than the maximum age
-            console.log(`Cached data for key '${key}' is older than ${maxAgeInSeconds} seconds`);
-            // Remove the cache entry from local storage
-            localStorage.removeItem(key);
-        }
-    }
-    // Return null if the cached data is not available or is older than the maximum age
-    return null;
-}
 
 /**
  * Function to encrypt API keys
@@ -2263,6 +2387,7 @@ function getCorrectApiKey(req, tenant, namespace = null, need = 'read') {
     }
 
     // Return the selected API key
+    log(LogLevel.VERBOSE, (`getCorrectApiKey - tenant: ${tenant}, namespace: ${namespace}, need: ${need} - selected API key: ${maskData(selectedKey.apikey)}`));
     return selectedKey.apikey;
 }
 
@@ -2282,6 +2407,7 @@ module.exports = {
     fetchSecurityEvents,
     fetchLogs,
     fetchWhoami,
+    getTenantAge,
     getNSDetails,
     getTenantUsers,
     getSecurityEvents,
@@ -2305,9 +2431,6 @@ module.exports = {
     encryptData,
     decryptData,
     mergeDeep,
-    cacheData,
-    getCachedData
-
 };
 
 

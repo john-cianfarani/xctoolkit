@@ -1,10 +1,16 @@
 <!-- Tenant Header -->
 <div id="tenant-tableHeader-{{tenantName}}" class="collapse-header" data-bs-toggle="collapse" data-bs-target="#tenant-tableCollapse-{{tenantName}}"
      aria-expanded="true" aria-controls="tenant-tableCollapse-{{tenantName}}" data-tenantName="{{tenantName}}" >
+
+     <div class="float-start">
     <i class="bi bi-chevron-right pull-right"></i>
     <i class="bi bi-chevron-down pull-right"></i>
+    </div>
     <span class="tenant-name selecthover" data-bs-toggle="collapse" data-bs-target="#tenant-tableCollapse-{{tenantName}}"
           aria-expanded="true" aria-controls="tenant-tableCollapse-{{tenantName}}">{{tenantName}}</span>
+          <div class="tenant-stats float-end">
+          Age:&nbsp; {{daysSinceCreation}} Days &nbsp;&nbsp;&nbsp;&nbsp;Created On:&nbsp;&nbsp;{{creationTimestamp}} 
+          </div>
 </div>
     <br />
 <div id="tenant-tableCollapse-{{tenantName}}" class="collapse-body collapse show">

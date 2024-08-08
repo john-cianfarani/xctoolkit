@@ -259,12 +259,12 @@ table.collapse.in {
     padding: 10px;
     border: 1px solid var(--border-color-dark);
     cursor: pointer;
-    display: flex;
-    align-items: center;
+    /* display: flex; */
+    /* align-items: center; */
 }
 
 .collapse-header .tenant-name {
-    flex-grow: 1;
+    /* flex-grow: 1; */
     margin-left: 10px;
 }
 

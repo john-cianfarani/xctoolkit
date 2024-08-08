@@ -517,7 +517,7 @@ function getTemplate(templateName, forcerefresh = false) {
     // The cache key used to store the template
     const cacheKey = `template_${templateName}`;
     // The maximum age of the cached template in seconds
-    const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
+    const maxAgeInSeconds = 1; // Cache for 60 minutes
 
     return new Promise((resolve, reject) => {
         // Check if the template should be fetched from cache
@@ -633,6 +633,29 @@ function stopTimer() {
         clearInterval(countdownTimer);
         console.log('Timer stopped');
     }
+}
+
+function processTenantAge(tenantAges, tenantName) {
+    // Extract the creation timestamp
+    const creationTimestamp = tenantAges[tenantName]?.creation_timestamp;
+
+    if (!creationTimestamp) {
+        console.log("No creation timestamp found for", tenantName);
+        return;
+    }
+
+    // Convert the timestamp to a Date object
+    const creationDate = new Date(creationTimestamp);
+
+    // Format the creation date to local timezone
+    const localDate = creationDate.toLocaleDateString();
+
+    // Calculate the difference in days since creation
+    const currentDate = new Date();
+    const timeDiff = currentDate - creationDate; // difference in milliseconds
+    const daysSinceCreation = Math.floor(timeDiff / (1000 * 60 * 60 * 24)); // convert milliseconds to days
+
+    return { localDate, daysSinceCreation };
 }
 
 
@@ -803,6 +826,40 @@ function getApiStats(inventory, forcerefresh, secondsback, lbname = null) {
     });
 }
 
+function getTenantAge(inventory) {
+    // Define a cache key specific to the tenant age data
+    const cacheKey = 'dataTenantAge';
+    const maxAgeInSeconds = 60 * 60; // 60 minutes, adjust as needed
+
+    return new Promise((resolve, reject) => {
+        // Check if the data should be fetched from cache
+        const cachedData = cacheGetData(cacheKey, maxAgeInSeconds);
+        if (cachedData !== null) {
+            resolve(cachedData);
+            return;
+        }
+
+        // Make AJAX call to /api/v1/getTenantAge endpoint
+        $.ajax({
+            url: '/api/v1/getTenantAge',
+            method: 'POST',
+            data: JSON.stringify({ inventory }),
+            contentType: 'application/json',
+            success: function (response) {
+                if (response.success) {
+                    const tenantAges = response.tenantAges;
+                    cacheSetData(cacheKey, tenantAges); // Cache the data
+                    resolve(tenantAges);
+                } else {
+                    reject(new Error(response.message));
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                reject(new Error(`${textStatus} - ${errorThrown}`));
+            }
+        });
+    });
+}
 
 
 /**
@@ -1408,42 +1465,47 @@ function populateOverview() {
 
     document.getElementById('inventory-loading').style.display = 'block';
     document.getElementById('inventory-loaded').style.display = 'none';
-
     document.getElementById('stats-loading').style.display = 'block';
     document.getElementById('stats-loaded').style.display = 'none';
 
     // First, fetch the inventory
     getApiInventory(false, true).then(inventory => {
-        // After inventory is fetched, fetch the stats
+        // After inventory is fetched, fetch the tenant ages
+        getTenantAge(inventory).then(tenantages => {
 
-        document.getElementById('inventory-loading').style.display = 'none';
-        document.getElementById('inventory-loaded').style.display = 'block';
+            document.getElementById('inventory-loading').style.display = 'none';
+            document.getElementById('inventory-loaded').style.display = 'block';
 
-        getApiStats(inventory, false, secondsback).then(stats => {
+            // After tenant ages are fetched, fetch the stats
+            getApiStats(inventory, false, secondsback).then(stats => {
 
-            document.getElementById('stats-loading').style.display = 'none';
-            document.getElementById('stats-loaded').style.display = 'block';
+                document.getElementById('stats-loading').style.display = 'none';
+                document.getElementById('stats-loaded').style.display = 'block';
 
-            const tenants = Object.keys(inventory.inventory);
-            tenants.sort();
+                const tenants = Object.keys(inventory.inventory);
+                tenants.sort();
 
-            // Map each tenant to a promise that resolves to its HTML
-            const renderPromises = tenants.map(tenantName => {
-                return populateOverviewTenant(tenantName, inventory, stats);
-            });
-
-            // Wait for all promises to resolve and then update the DOM
-            Promise.all(renderPromises)
-                .then(renderedHtmls => {
-                    const overviewHTML = renderedHtmls.join(''); // Join all HTML strings
-                    document.getElementById('overview-container').innerHTML = overviewHTML; // Update the DOM once
-                    initPopovers(); // Initialize popovers after HTML is inserted
-                })
-                .catch(error => {
-                    console.error("Failed to render some tenant overviews:", error);
+                // Map each tenant to a promise that resolves to its HTML, now including tenantAges
+                const renderPromises = tenants.map(tenantName => {
+                    return populateOverviewTenant(tenantName, inventory, stats, tenantages);
                 });
+
+                // Wait for all promises to resolve and then update the DOM
+                Promise.all(renderPromises)
+                    .then(renderedHtmls => {
+                        const overviewHTML = renderedHtmls.join(''); // Join all HTML strings
+                        document.getElementById('overview-container').innerHTML = overviewHTML; // Update the DOM once
+                        initPopovers(); // Initialize popovers after HTML is inserted
+                    })
+                    .catch(error => {
+                        console.error("Failed to render some tenant overviews:", error);
+                    });
+
+            }).catch(error => {
+                console.error("Failed to fetch stats:", error);
+            });
         }).catch(error => {
-            console.error("Failed to fetch stats:", error);
+            console.error("Failed to fetch tenant ages:", error);
         });
     }).catch(error => {
         console.error("Failed to fetch inventory:", error);
@@ -1452,9 +1514,11 @@ function populateOverview() {
 
 
 
-function populateOverviewTenant(tenantName, inventory, stats) {
+
+function populateOverviewTenant(tenantName, inventory, stats, tenantages) {
     const tenantData = inventory.inventory[tenantName]; // Specific tenant's data
     const summaryData = inventory.summary[tenantName]; // Summary data for the tenant
+    const ageData = processTenantAge(tenantages, tenantName);
 
 
     // Fetch API keys from cookies
@@ -1508,7 +1572,9 @@ function populateOverviewTenant(tenantName, inventory, stats) {
                 httpTotalMUM: summaryData.http_loadbalancers.malicious_user_mitigation,
                 httpTotalCSD: summaryData.http_loadbalancers.client_side_defense,
                 loadBalancers: preparedUsers,
-                userUrl: userUrl
+                userUrl: userUrl,
+                creationTimestamp: ageData.localDate,
+                daysSinceCreation: ageData.daysSinceCreation
             };
 
             // Use the getTemplate function to fetch the tenant template
@@ -2254,7 +2320,7 @@ async function populateLatencyLogsRequest(forcerefresh = false) {
         const template = await getTemplate('pathlatency_row', false);
         const renderedHTML = Mustache.render(template, { loadBalancers: formattedLogs });
         document.getElementById('pathlatency-table-body').innerHTML = renderedHTML;
-        $('#pathlatency-results').append('<pre>' + JSON.stringify(logsData, null, 2) + '</pre>');
+        // $('#pathlatency-results').append('<pre>' + JSON.stringify(logsData, null, 2) + '</pre>');
     } catch (error) {
         console.error('Failed to load template or render HTML:', error);
         alert('Failed to process template: ' + error.message);
@@ -3180,6 +3246,25 @@ $(document).on('click', '#testButton8', async function () {
         // Handle the response
         console.log('getSetsList users:', sets);
         $('#results').append('<pre>' + JSON.stringify(sets, null, 2) + '</pre>');
+    } catch (error) {
+        // Handle the error
+        $('#results').append('<p>Error: ' + error.message + '</p>');
+    }
+});
+
+$(document).on('click', '#testButton9', async function () {
+    // Clear previous results
+    $('#results').empty();
+
+    console.log('testButton9');
+    // Call the getApiInventory function with forcerefresh parameter
+    try {
+        const dataInventory = await getApiInventory(false);
+
+        const age = await getTenantAge(dataInventory);
+        // Handle the response
+        console.log('Tenant Age:', age);
+        $('#results').append('<pre>' + JSON.stringify(age, null, 2) + '</pre>');
     } catch (error) {
         // Handle the error
         $('#results').append('<p>Error: ' + error.message + '</p>');
