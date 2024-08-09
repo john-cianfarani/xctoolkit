@@ -137,3 +137,4 @@ dist
 
 xchelp-local.js
 xchelp.js
+.prettierrc
