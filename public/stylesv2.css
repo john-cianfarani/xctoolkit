@@ -45,6 +45,10 @@
     background: var(--bg-color-apikey-row) !important;
 }
 
+.default-text {
+    color: var(--text-color-gray);
+}
+
 /* Overall styles */
 body {
     font-family: "Roboto", sans-serif;
@@ -345,7 +349,7 @@ table.collapse.in {
 }
 
 .stats-summary-table {
-    width: 250px;
+    width: 260px;
     height: 180px;
     table-layout: fixed;
     display: inline-block;

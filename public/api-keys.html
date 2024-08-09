@@ -1,6 +1,32 @@
 <h1 class="roboto-medium">Add API Keys</h1>
 <br> <br><br>
 
+<div class="card">
+  <div class="card-header">
+    <h6>API Key Details</h6>
+  </div>
+  <div class="card-body">
+    For each tenant to be enabled enter the tenant name and namespace.
+    <ul>
+      <li>Set Namespace to "all" if you want to monitor all namespaces (excessive amount of namespace or lbs may still
+        cause timeouts).</li>
+      <li>Delegated Access should be set if the tenant is managed via another tenant, currently this only adjusts links
+        and
+        menu's to the tenant. API calls are still done directly to the main tenant.</li>
+      <li>API Keys should have access rights to the 'All Namespace', if Namespace is set to "custom" then the 'Per
+        Namespace'
+        rights should can be selected.</li>
+      <li>API Keys should have access rights to the 'All Namespace', if Namespace is set to "custom" then the 'Per
+        Namespace'
+        rights should can be selected.</li>
+      <li>If API Key State is set ot Disabled then it will not be used.</li>
+    </ul>
+    <br>
+
+  </div>
+</div>
+<br>
+
 <div id="api-keys-form">
   <div id="api-keys-container">
     <!-- First APIKey Row -->
@@ -68,8 +94,8 @@
                 <option value="perns">Per NS</option>
               </select>
               &nbsp;&nbsp;
-              <i class="bi bi-info-circle"
-                title="API Key - Add an apikey / service credential which has ALL Namespaces rights. &#10;Set the Key type either Write access or Read Only.  &#10; Use All Namespace calls or Per Namespace calls.  ALL NS must be used when Namespace Type is 'All'"></i>
+              <!-- <i class="bi bi-info-circle"
+                title="API Key - Add an apikey / service credential which has ALL Namespaces rights. &#10;Set the Key type either Write access or Read Only.  &#10; Use All Namespace calls or Per Namespace calls.  ALL NS must be used when Namespace Type is 'All'"></i> -->
               &nbsp;&nbsp;&nbsp;&nbsp;
               <span class="input-group-text" id="">API Key State</span>
               <select class="form-select apikey-state" aria-label="API Status">
@@ -77,7 +103,7 @@
                 <option value="disabled">Disabled</option>
               </select>
               &nbsp;&nbsp;
-              <i class="bi bi-info-circle" title="When set to Disabled will not show within any menu or be used."></i>
+              <!-- <i class="bi bi-info-circle" title="When set to Disabled will not show within any menu or be used."></i> -->
               <div class="invalid-feedback">Please select API Key Type.</div>
             </div>
           </td>

@@ -1,25 +1,26 @@
-// Developed by: John Cianfarani (https://github.com/jcianfarani)
-// Date: 2024-08-07
+// Developed by: John Cianfarani (https://github.com/john-cianfarani/xctoolkit)
+// First Published Date: 2024-08-09
 /// Main functions to support retrieving data from the F5XC API
 
 // Naming Convention
 // fetchX - Fetches data from the F5XC API
+// updateX - Updates data in the F5XC API
 // getX - Supports nodejs API calls to abstract and transform the F5XC API calls
+// putX - Supports nodejs API calls to abstract and transform the F5XC API calls for PUT requests
+// execX - Supports nodejs API calls to abstract and transform the F5XC API calls for complex requests that may require multiple steps
 // encrypt / decrypt - Encrypts and decrypts data
 
 const axios = require('axios');
 const fs = require('fs');
+const path = require('path');
 const util = require('util');
 const crypto = require('crypto');
 const JSZip = require('jszip');
-
 const forge = require('node-forge'); //Generate Certificates
 const pki = forge.pki; // Generate Certificates
 
-const config = require('./config.js');
-
-
-const encryptionKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+const config = require('./config.js'); // Configuration data
+const keyPath = path.join(__dirname, 'encryptionkey.txt'); // Path to the encryption key file 64 characters hex
 
 
 
@@ -66,11 +67,11 @@ const logLevelNames = {
  * @param {number} level - The log level.
  * @param {string} message - The message to log.
  */
-function log(level, message) {
+function log(level, message, message1 = '') {
     // Check if the log level is ON or less than or equal to the current log level
     if (level === LogLevel.ON || level <= currentLogLevel) {
         // Log the message with the specified log level and log level name
-        console.log(`${logLevelNames[level]}: ${message}`);
+        console.log(`${logLevelNames[level]}: ${message}${message1}`);
     }
 }
 function setLogLevel(level) {
@@ -92,12 +93,40 @@ function maskData(data, visibleCount = 3) {
 
 
 
-// Check environment variables for encryption key
-log(LogLevel.DEBUG, ('Config Secret:', config.encryptionKey));
-const key = process.env.ENCRYPTION_KEY || config.encryptionKey;
-// log(LogLevel.INFO, ('key', key));
+// Check environment variables and config file for encryption key
+
+const encryptionKey = process.env.KEY || ensureKeyPersistence();
+
+log(LogLevel.DEBUG, 'Environment Encryption Key:', process.env.KEY);
+log(LogLevel.DEBUG, 'File Encryption Key:', ensureKeyPersistence());
+log(LogLevel.DEBUG, 'Selected Encryption Key :', encryptionKey);
+
+if (process.env.KEY) {
+    log(LogLevel.INFO, 'Selected Encryption Key from Environment');
+} else {
+    log(LogLevel.INFO, 'Selected Encryption Key from encryptionkey.txt');
+}
 
 
+
+
+function ensureKeyPersistence() {
+    try {
+        // Check if the key already exists
+        if (!fs.existsSync(keyPath)) {
+            // If not, generate a new key
+            const newKey = crypto.randomBytes(32).toString('hex');
+            fs.writeFileSync(keyPath, newKey);
+            log(LogLevel.INFO, 'New encryption key generated and saved.');
+        }
+        // Load the key
+        const encryptionKey = fs.readFileSync(keyPath, 'utf-8').replace(/\s/g, ''); // Remove all whitespace and new lines
+        return encryptionKey;
+    } catch (error) {
+        console.error('Failed to handle the encryption key:', error);
+        throw error;
+    }
+}
 
 
 /**
@@ -136,7 +165,7 @@ async function fetchNamespaces(apikey, tenant, objname = null) {
             headers: headers(tenant, apikey)
         });
 
-        log(LogLevel.ON, `fetchNamespaces - Data fetched for tenant ${tenant} successfully: ${JSON.stringify(response.data)}`);
+        log(LogLevel.DEBUG, `fetchNamespaces - Data fetched for tenant ${tenant} successfully: ${JSON.stringify(response.data)}`);
 
         // Check if response is for a single namespace or multiple
         if (objname) {
@@ -254,10 +283,7 @@ async function fetchLbs(tenant, apikey, namespace) {
 
         // Make GET request to the constructed URL with Authorization header
         const response = await axios.get(url, {
-            headers: {
-                'Authorization': `APIToken ${apikey}`,
-                'Accept': 'application/json'
-            }
+            headers: headers(tenant, apikey)
         });
 
         // Process each LB in the response
@@ -366,7 +392,7 @@ async function fetchUsers(tenant, apikey, limit = null) {
 
         // Make GET request to the constructed URL with Authorization header
         const response = await axios.get(url, {
-            headers: headers(tenant, apikey)  // Assuming headers function is defined elsewhere and imported
+            headers: headers(tenant, apikey)
         });
 
         // Build the return array with user details
@@ -657,12 +683,6 @@ async function fetchHealthchecks(tenant, apikey, namespace, lbname) {
     try {
         const url = `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}/graph/service/node/instances`;
 
-        const headers = {
-            'accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': `APIToken ${apikey}`,
-            'x-volterra-apigw-tenant': tenant
-        };
 
         // Calculate the epoch time for the last 5 minutes
         const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
@@ -688,7 +708,7 @@ async function fetchHealthchecks(tenant, apikey, namespace, lbname) {
             }]
         };
 
-        const response = await axios.post(url, requestData, { headers });
+        const response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
 
         // Initialize an empty object to store the parsed data
         const obj = {};
@@ -1724,7 +1744,7 @@ async function getLogs(req, tenant, namespace, lbname, secondsback, logtype, add
         const rawLogs = await fetchLogs(apikey, tenant, namespace, lbname, secondsback, logtype, additionalfilters, maxlogs);
 
         // Log the raw logs received
-        log(LogLevel.DEBUG, ('getLogs Data property:', util.inspect(rawLogs, { showHidden: false, depth: null, colors: true })));
+        //log(LogLevel.DEBUG, ('getLogs Data property:', util.inspect(rawLogs, { showHidden: false, depth: null, colors: true })));
 
         // Since CSV conversion is not needed, directly return the JSON logs
         return rawLogs;
@@ -2203,7 +2223,7 @@ function encryptApiKeys(apiKeys) {
                 "namespace-name": apiKey["namespace-name"],
                 "apikey-rights": apiKey["apikey-rights"],
                 "apikey-state": apiKey["apikey-state"],
-                "delagted-state": apiKey["delegated-state"],
+                "delegated-state": apiKey["delegated-state"],
                 "delegated-name": apiKey["delegated-name"],
                 "apikey-format": 'enc',
                 "apikey": encryptData(apiKey["apikey"])

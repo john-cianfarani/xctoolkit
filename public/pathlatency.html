@@ -21,7 +21,22 @@
     <span role="status">Inventory Loaded </span>
   </button>
 </div>
-<br /><br />
+<br><br><br>
+
+<div class="card">
+  <div class="card-header">
+    <h6>Path Latency Details</h6>
+  </div>
+  <div class="card-body">
+    <h6 class="card-title">Process</h6>
+    This will extract a recent number of selected access logs from the selected tenant, namespace and loadbalancer.<br>
+    Removes any path with an extension that match the following:<br>
+    <code>jpg|jpeg|png|gif|svg|webp|ico|css|js|woff2?|ttf|otf|eot|pdf|json|xml|mp4|webm|avi|mov|mp3|wav|ogg|htaccess</code>
+    <br><br>
+    The remaining log entries will be grouped by path and latency metrics will be averaged and displayed.
+  </div>
+</div>
+
 <br />
 <div class="float-start input-group">
   <select id="pathlatency-tenant" class="form-control form-select"></select>
@@ -45,13 +60,13 @@
   <select id="pathlatency-maxlogs" class="form-control form-select" style="max-width: 150px" data-style="btn-primary">
     <option value="20000">20k</option>
     <option value="10000">10k</option>
-    <option value="5000" >5k</option>
+    <option value="5000">5k</option>
     <option value="1500" selected>1.5k</option>
   </select>
 
   <select id="pathlatency-topx" class="form-control form-select" style="max-width: 150px" data-style="btn-primary">
-    <option value="10" selected>Top 10</option>
-    <option value="25">Top 25</option>
+    <option value="10">Top 10</option>
+    <option value="25" selected>Top 25</option>
     <option value="50">Top 50</option>
   </select>
   <button id="pathlatencySubmit" type="button" class="btn btn-success" disabled>

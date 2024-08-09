@@ -1,0 +1,11 @@
+**/.git
+**/.vscode
+**/.gitignore
+**/Makefile
+**/README.md
+**/encryptionkey.txt
+**/xchelp*
+**/.pem
+**/logs
+**/*.log
+**/node_modules

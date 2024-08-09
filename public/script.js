@@ -109,9 +109,8 @@ const pageConfig = {
 $(document).ready(function () {
     const currentPage = localStorage.getItem('currentPage') || 'default';
     applySavedTheme()
-    //console.log('Current page:', currentPage);
     loadContent(currentPage);
-    checkCookie();
+    //checkCookie();
     populateTenantSelect();
 });
 
@@ -517,7 +516,7 @@ function getTemplate(templateName, forcerefresh = false) {
     // The cache key used to store the template
     const cacheKey = `template_${templateName}`;
     // The maximum age of the cached template in seconds
-    const maxAgeInSeconds = 1; // Cache for 60 minutes
+    const maxAgeInSeconds = ONE_HOUR; // Cache for 60 minutes
 
     return new Promise((resolve, reject) => {
         // Check if the template should be fetched from cache
@@ -663,7 +662,7 @@ function processTenantAge(tenantAges, tenantName) {
 function getApiInventory(forcerefresh = false, checkselection = false, tenantFilter = null) {
     const cacheKey = 'dataInventory';
     const summaryCacheKey = 'dataInventorySummary';
-    const maxAgeInSeconds = 60 * 60 * 6; // 6 Hours for caching the response
+    const maxAgeInSeconds = SIX_HOURS; // 6 Hours for caching the response
 
     return new Promise((resolve, reject) => {
         const applyTenantFilter = (inventory) => {
@@ -792,7 +791,7 @@ function compileInventorySummary(inventory) {
 function getApiStats(inventory, forcerefresh, secondsback, lbname = null) {
     // Set the cache key and maximum age for the data
     const cacheKey = `dataStats_${secondsback}`;
-    const maxAgeInSeconds = 60 * 60; // 60 minutes
+    const maxAgeInSeconds = SIX_HOURS;
 
     return new Promise((resolve, reject) => {
         // Check if the data should be fetched from cache
@@ -829,7 +828,7 @@ function getApiStats(inventory, forcerefresh, secondsback, lbname = null) {
 function getTenantAge(inventory) {
     // Define a cache key specific to the tenant age data
     const cacheKey = 'dataTenantAge';
-    const maxAgeInSeconds = 60 * 60; // 60 minutes, adjust as needed
+    const maxAgeInSeconds = SIX_HOURS;
 
     return new Promise((resolve, reject) => {
         // Check if the data should be fetched from cache
@@ -874,7 +873,7 @@ function getApiTotalSecurityEvents(inventory, forcerefresh, secondsback) {
     const sec_event_type = 'total';
     // Set the cache key based on the secondsback parameter
     const cacheKey = `dataTotalSecEvents_${secondsback}`;
-    const maxAgeInSeconds = 10 * 60; // 10 minutes
+    const maxAgeInSeconds = SIX_HOURS;
 
     return new Promise((resolve, reject) => {
         // Check if the data should be fetched from cache
@@ -914,7 +913,7 @@ function getApiAllSecurityEvents(tenant, namespace, forcerefresh, secondsback) {
     const sec_event_type = 'all';
     // Set the cache key based on the secondsback parameter
     const cacheKey = `dataAllSecEvents_${tenant}_${namespace}_${secondsback}`;
-    const maxAgeInSeconds = 10 * 60; // 10 minutes
+    const maxAgeInSeconds = SIX_HOURS;
 
     // Fake an inventory object so I don't have to create multiple downstream functions to work around the XC API call isssue with security events
     const inventory = {};
@@ -970,7 +969,7 @@ function getApiAllSecurityEvents(tenant, namespace, forcerefresh, secondsback) {
 function getApiNSDetails(tenant, namespace, forcerefresh) {
     // Set the cache key based on tenant and namespace
     const cacheKey = `dataNSDetails_${tenant}_${namespace}`;
-    const maxAgeInSeconds = 10 * 60; // 10 minutes for caching the response
+    const maxAgeInSeconds = SIX_HOURS;
 
     return new Promise((resolve, reject) => {
         // Check if the data should be fetched from cache
@@ -1015,7 +1014,7 @@ function getApiNSDetails(tenant, namespace, forcerefresh) {
 function getApiTenantUsers(tenant, limit, forcerefresh) {
     // Set the cache key based on tenant and an optional limit
     const cacheKey = `dataTenantUsers_${tenant}`;
-    const maxAgeInSeconds = 30 * 60; // 10 minutes for caching the response
+    const maxAgeInSeconds = SIX_HOURS;
 
     return new Promise((resolve, reject) => {
         // Check if the data should be fetched from cache
@@ -1345,56 +1344,6 @@ $(document).on('click', '#submit-api-keys', function (event) {
     }
 });
 
-// Function to validate a field
-// function validateField(field) {
-//     var isValid = true;
-//     var value = field.val();
-//     console.log('Validating field:', field, 'value:', value);
-
-//     if (field.hasClass('namespace-name')) {
-//         var namespaceType = field.closest('.api-key-row').find('.namespace-type').val();
-//         console.log('Namespace Type:', namespaceType);
-//         if (namespaceType === 'all') {
-//             isValid = true; // Skip validation for namespace-name when namespace-type is 'all'
-//             console.log('Namespace type is all, skipping validation for namespace-name');
-//         } else {
-//             isValid = /^[a-z0-9\-]{3,20}$/.test(value);
-//             console.log('Namespace name validation result:', isValid);
-//         }
-//     } else if (field.hasClass('delegated-name')) {
-//         var state = field.closest('.api-key-row').find('.delegated-state').val();
-//         console.log('Delegated State:', state);
-//         if (state === 'disabled') {
-//             field.prop('disabled', true);
-//             isValid = true; // If state is disabled, skip validation and disable input
-//             console.log('Delegated state is disabled, skipping validation for delegated-name');
-//         } else {
-//             field.prop('disabled', false);
-//             isValid = /^[a-z0-9\-]{4,16}$/.test(value); // Use same regex as tenant-name
-//             console.log('Delegated name validation result:', isValid);
-//         }
-//     } else if (field.hasClass('tenant-name')) {
-//         isValid = /^[a-z0-9\-]{4,16}$/.test(value);
-//         console.log('Tenant name validation result:', isValid);
-//     } else if (field.hasClass('apikey')) {
-//         isValid = /^[a-zA-Z0-9!@#$%^&*()_+={}\[\]:;"'<>,.?\/\\|-]{10,80}$/.test(value);
-//         console.log('API key validation result:', isValid);
-//     } else {
-//         isValid = true; // For any other fields not explicitly checked
-//         console.log('Default validation passed');
-//     }
-
-//     if (isValid) {
-//         field.removeClass('is-invalid');
-//         console.log('Field marked as valid');
-//     } else {
-//         field.addClass('is-invalid');
-//         console.log('Field marked as invalid');
-//     }
-
-//     console.log('Field validation complete:', field.attr('class'), 'ValidState:', isValid);
-//     return isValid;
-// }
 
 
 function validateField(field) {
