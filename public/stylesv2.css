@@ -234,7 +234,7 @@ body {
 
 .table-overview-subdetails-middle {
     background-color: var(--bg-color-white) !important;
-    padding: 0px 10px 0px 10px !important;
+    padding: 10px !important;
     overflow: auto;
 }
 
