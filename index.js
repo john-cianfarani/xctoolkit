@@ -50,7 +50,7 @@ app.use(cookieParser());
 // Start HTTP server if enabled
 if (config.server.enableHttp) {
     app.listen(config.server.httpPort, () => {
-        console.log(`HTTP server running on ${config.server.host}:${config.server.httpPort}`);
+        console.log(`HTTP server running on HTTP://${config.server.host}:${config.server.httpPort}`);
     });
 }
 
@@ -67,7 +67,7 @@ if (config.server.enableHttps) {
 
     const httpsServer = https.createServer(credentials, app);
     httpsServer.listen(config.server.httpsPort, () => {
-        console.log(`HTTPS server running on ${config.server.host}:${config.server.httpsPort}`);
+        console.log(`HTTPS server running on HTTPS://${config.server.host}:${config.server.httpsPort}`);
     });
 }
 
