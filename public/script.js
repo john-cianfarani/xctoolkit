@@ -32,6 +32,14 @@ const pageConfig = {
 
         }
     },
+    delegatedapisetup: {
+        url: 'delegated-keys.html',
+        func: function () {
+            console.log('Delegated API Keys page specific function executed.');
+            //populateDelegatedCookie();
+
+        }
+    },
     testapikeys: {
         url: 'testapikeys.html',
         func: function () {
@@ -1243,6 +1251,18 @@ $(document).on('click', '#add-api-key', function () {
     console.log('Row appended'); // Confirm row append
 });
 
+// Add API Key Button Click Event
+$(document).on('click', '#add-delegated-api-key', function () {
+    console.log('Add API Key button clicked');
+    var newRow = $(".api-key-row").first().clone(); // Clone the first row
+    newRow.find('input, select').val(''); // Clear input values
+    newRow.find('.apikey-format').val('clear'); // Select default value for API Key Format
+    newRow.find('.apikey-state').val('enabled'); // Select default value for API Key Format    
+    newRow.find('.remove-api-key').prop('disabled', false); // Enable remove button for new row
+    $("#api-keys-container").append(newRow); // Append the new row to the container
+    console.log('Row appended'); // Confirm row append
+});
+
 // Remove API Key Button Click Event
 $(document).on('click', '.remove-api-key', function () {
     var row = $(this).closest('.api-key-row');
@@ -1345,6 +1365,82 @@ $(document).on('click', '#submit-api-keys', function (event) {
 });
 
 
+// Delegated API Form Submission
+$(document).on('click', '#submit-delegated-api-keys', function (event) {
+    event.preventDefault(); // Prevent default form submission
+    console.log('Submit button clicked');
+
+    // Validate all fields
+    var isValidForm = true;
+    $(".api-key-row input, .api-key-row select").each(function () {
+        if (!validateField($(this))) {
+            isValidForm = false;
+        }
+    });
+
+    if (isValidForm) {
+        // Construct JSON object from form data
+        var apiKeys = [];
+        $(".api-key-row").each(function () {
+            var apiKey = {
+                "tenant-name": $(this).find(".tenant-name").val(),
+                "apikey-format": $(this).find(".apikey-format").val(),
+                "apikey-state": $(this).find(".apikey-state").val(),
+                "apikey": $(this).find(".apikey").val()
+            };
+            apiKeys.push(apiKey);
+        });
+
+        console.log('Delegated API Keys:', apiKeys); // Log the constructed JSON object
+
+        // Send JSON object to server via POST request
+        $.ajax({
+            type: "POST",
+            url: "/api/v1/setdelegatedapikey",
+            contentType: "application/json",
+            data: JSON.stringify(apiKeys),
+            success: function (response) {
+                console.log('Server response:', response);
+                if (response.success) {
+                    alert("API keys set successfully!");
+                    loadContent('apisetup', 'Settings > API Keys');
+                    populateTenantSelect();
+                } else {
+                    alert("Failed to set API keys.");
+                }
+            },
+            error: function () {
+                console.log('AJAX request failed');
+                alert("An error occurred while setting API keys.");
+            }
+        });
+    } else {
+        console.log('Form is invalid, showing alert');
+        alert('Please correct the errors in the form');
+    }
+});
+
+
+
+
+
+
+
+// Delegated API Key Switch Steps
+
+$(document).on('click', '#delegated-form', function () {
+    document.getElementById('api-keys-form').style.display = 'block';
+    document.getElementById('card-step1').style.display = 'block';
+    document.getElementById('card-step2').style.display = 'none';
+    document.getElementById('delegated-tenants-form').style.display = 'none';
+});
+
+$(document).on('click', '#delegated-tenants', function () {
+    document.getElementById('api-keys-form').style.display = 'none';
+    document.getElementById('card-step1').style.display = 'none';
+    document.getElementById('card-step2').style.display = 'block';
+    document.getElementById('delegated-tenants-form').style.display = 'block';
+});
 
 function validateField(field) {
     var isValid = true;

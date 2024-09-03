@@ -149,8 +149,8 @@ body {
 .tenant-name,
 .namespace-name,
 .apikey {
-    width: 200px;
-    max-width: 200px;
+    width: 250px;
+    max-width: 250px;
 }
 
 .namespace-type {
