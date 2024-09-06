@@ -1,0 +1,70 @@
+<!-- Tenant Header -->
+  <div id="tenant-tableHeader-{{tenantName}}" class="collapse-header" data-bs-toggle="collapse"
+    data-bs-target="#tenant-tableCollapse-{{tenantName}}" aria-expanded="true"
+    aria-controls="tenant-tableCollapse-{{tenantName}}" data-tenantName="{{tenantName}}">
+
+    <div class="float-start">
+      <i class="bi bi-chevron-right pull-right"></i>
+      <i class="bi bi-chevron-down pull-right"></i>
+    </div>
+    <span class="tenant-name selecthover" data-bs-toggle="collapse"
+      data-bs-target="#tenant-tableCollapse-{{tenantName}}" aria-expanded="true"
+      aria-controls="tenant-tableCollapse-{{tenantName}}">{{tenantName}}</span>
+
+  </div>
+
+  <br />
+  <div id="tenant-tableCollapse-{{tenantName}}" class="collapse-body collapse show">
+
+    <table>
+
+      <tr>
+        <td>
+          <h6>Delegated Tenants</h6>
+        </td>
+        <td></td>
+        <td>
+          <h6>Selected Tenants</h6>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <select id="delegated-tenants-{{tenantName}}" class="form-select" multiple
+            style="height: 250px; width: 250px;" aria-label="Multiple select example">
+            {{#delegatedTenants}}
+            <option value="{{value}}">{{value}}</option>
+            {{/delegatedTenants}}
+
+          </select>
+        </td>
+        <td style="padding: 50px;">
+          <button type="button" data-tenantName="{{tenantName}}" class="btn btn-primary move-items-btn">
+            <i class="bi bi-chevron-double-right"></i>
+          </button>
+          <br><br>
+          <button type="button" data-tenantName="{{tenantName}}" class="btn btn-danger remove-items-btn">
+            <i class="bi bi-x-square"></i>
+          </button>
+        </td>
+        <td>
+          <select id="selected-tenants-{{tenantName}}" class="form-select" multiple style="height: 250px; width: 250px;"
+            aria-label="Multiple select example">
+
+            {{#selectedTenants}}
+            <option value="{{value}}">{{value}}</option>
+            {{/selectedTenants}}
+
+          </select>
+        </td>
+      </tr>
+
+    </table>
+
+
+
+
+  </div>
+
+
+

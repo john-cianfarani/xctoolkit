@@ -2,11 +2,11 @@
 <br> <br><br>
 
 <div class="btn-group" role="group" aria-label="Basic radio toggle button group">
-  <input type="radio" class="btn-check" name="btnradio" id="delegated-form" autocomplete="off" checked>
-  <label class="btn btn-outline-primary" for="delegated-form">Step 1: Add Keys</label>
+  <input type="radio" class="btn-check" name="btnradio" id="step1-delegated-form" autocomplete="off" checked>
+  <label class="btn btn-outline-primary" for="step1-delegated-form">Step 1: Add Keys</label>
 
-  <input type="radio" class="btn-check" name="btnradio" id="delegated-tenants" autocomplete="off">
-  <label class="btn btn-outline-primary" for="delegated-tenants">Step 2: Select Tenants</label>
+  <input type="radio" class="btn-check" name="btnradio" id="step2-delegated-tenants" autocomplete="off">
+  <label class="btn btn-outline-primary" for="step2-delegated-tenants">Step 2: Select Tenants</label>
 
 </div>
 <br><br>
@@ -18,7 +18,8 @@
     This section is to add tenants which have access delegated via another tenant.
     <ul>
       <li>Delegated tenants currently require 'All Namespaces' and are assumed to have write access</li>
-      <li>If API Key State is set ot Disabled then it will not be used, and all associated managed tenants will not be queried</li>
+      <li>If API Key State is set ot Disabled then it will not be used, and all associated managed tenants will not be
+        queried</li>
       <li>Once submitted, proceed to Step 2</li>
     </ul>
 
@@ -32,7 +33,7 @@
   <div class="card-body">
     This section is to select the tenants to be able to manage.
     <ul>
-      <li>Add tenants to 'Active side' and hit submit </li>
+      <li>Add tenants to 'Selected Tenants' and hit submit </li>
 
     </ul>
 
@@ -92,7 +93,7 @@
       <i class="bi bi-plus-square"></i>
       Add API Key
     </button>
-    <button type="submit" id="submit-api-keys" class="btn btn-success ms-3">
+    <button type="submit" id="submit-delegated-api-keys" class="btn btn-success ms-3">
       <i class="bi bi-arrow-down-square"></i>
       Submit
     </button>
@@ -104,5 +105,75 @@
 
 <div id="delegated-tenants-form" style="display: none;">
 
-  Test
+  <h6>Please Add Delegated Tenant API Keys First</h6>
+
+
+  <!-- Tenant Header -->
+  <!-- <div id="tenant-tableHeader-{{tenantName}}" class="collapse-header" data-bs-toggle="collapse"
+    data-bs-target="#tenant-tableCollapse-{{tenantName}}" aria-expanded="true"
+    aria-controls="tenant-tableCollapse-{{tenantName}}" data-tenantName="{{tenantName}}">
+
+    <div class="float-start">
+      <i class="bi bi-chevron-right pull-right"></i>
+      <i class="bi bi-chevron-down pull-right"></i>
+    </div>
+    <span class="tenant-name selecthover" data-bs-toggle="collapse"
+      data-bs-target="#tenant-tableCollapse-{{tenantName}}" aria-expanded="true"
+      aria-controls="tenant-tableCollapse-{{tenantName}}">{{tenantName}}</span>
+
+  </div>
+
+  <br />
+  <div id="tenant-tableCollapse-{{tenantName}}" class="collapse-body collapse show">
+
+    <table>
+
+      <tr>
+        <td>
+          <h6>Delegated Tenants</h6>
+        </td>
+        <td></td>
+        <td>
+          <h6>Selected Tenants</h6>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <select id="delegated-tenants-{{tenantName}}" class="form-select" multiple
+            style="height: 250px; width: 250px;" aria-label="Multiple select example">
+            <option selected>Open this select menu</option>
+            <option value="1">One</option>
+            <option value="2">Two</option>
+            <option value="3">Three</option>
+          </select>
+        </td>
+        <td style="padding: 50px;">
+          <button type="button" data-tenantName="{{tenantName}}" class="btn btn-primary move-items-btn">
+            <i class="bi bi-chevron-double-right"></i>
+          </button>
+          <br><br>
+          <button type="button" data-tenantName="{{tenantName}}" class="btn btn-danger remove-items-btn">
+            <i class="bi bi-x-square"></i>
+          </button>
+        </td>
+        <td>
+          <select id="selected-tenants-{{tenantName}}" class="form-select" multiple style="height: 250px; width: 250px;"
+            aria-label="Multiple select example">
+          </select>
+        </td>
+      </tr>
+
+    </table>
+
+
+
+
+  </div> -->
+
 </div>
+<br><br>
+<button type="submit" id="submit-selected-delegated-tenants" class="btn btn-success ms-3" style="display: none;">
+  <i class="bi bi-arrow-down-square"></i>
+  Submit
+</button>

@@ -36,7 +36,7 @@ const pageConfig = {
         url: 'delegated-keys.html',
         func: function () {
             console.log('Delegated API Keys page specific function executed.');
-            //populateDelegatedCookie();
+            populateDelegatedFormFromCookie();
 
         }
     },
@@ -510,6 +510,44 @@ function formatHealth(number) {
     return `${num}%`;
 }
 
+function moveItems(sourceSelector, targetSelector) {
+
+    console.log(sourceSelector, targetSelector);
+    const source = document.querySelector(sourceSelector);
+    const target = document.querySelector(targetSelector);
+
+    // Move selected options from source to target
+    Array.from(source.selectedOptions).forEach(option => {
+        target.appendChild(option.cloneNode(true)); // Use cloneNode to keep the original in place if needed elsewhere
+        option.remove(); // Remove the option from the source
+    });
+
+    // Sort options in the target select box
+    sortSelectBox(target);
+}
+
+function removeItems(selector) {
+    const select = document.querySelector(selector);
+
+    // Remove selected options
+    Array.from(select.selectedOptions).forEach(option => {
+        option.remove();
+    });
+
+    // Sort remaining options in the select box
+    sortSelectBox(select);
+}
+
+function sortSelectBox(selectElement) {
+    let options = Array.from(selectElement.options);
+    options.sort((a, b) => a.text.localeCompare(b.text)); // Sort alphabetically by option text
+
+    // Clear and re-add sorted options to the select element
+    selectElement.innerHTML = '';
+    options.forEach(option => {
+        selectElement.add(option);
+    });
+}
 
 
 
@@ -1099,34 +1137,72 @@ function getApiTenantUsers(tenant, limit, forcerefresh) {
 
 
 
+// function populateTenantSelect() {
+//     const cookieName = 'apiKeys';
+//     const cookieValue = getCookie(cookieName);
+
+//     if (cookieValue) {
+//         try {
+//             // Decode URI components and parse the JSON string
+//             const decodedCookieValue = decodeURIComponent(cookieValue);
+//             const apiKeys = JSON.parse(decodedCookieValue);
+
+//             // Extract and deduplicate tenant names, ignoring disabled tenants
+//             const tenants = apiKeys
+//                 .filter(apiKey => !apiKey.disabled)
+//                 .map(apiKey => apiKey["tenant-name"]);
+//             const uniqueTenants = [...new Set(tenants)];
+
+//             // Populate the select element
+//             const select = $('#service-tenant');
+//             select.empty(); // Clear existing options
+//             select.append('<option value="all">All Tenants</option>'); // Add "All Tenants" option
+//             uniqueTenants.forEach(tenant => {
+//                 select.append(`<option value="${tenant}">${tenant}</option>`);
+//             });
+//         } catch (e) {
+//             console.error('Error parsing JSON from cookie:', e);
+//         }
+//     }
+// }
+
+
 function populateTenantSelect() {
-    const cookieName = 'apiKeys';
-    const cookieValue = getCookie(cookieName);
+    // Retrieve cookies and decode URI components, defaulting to an empty string if cookies are not found
+    const apiKeysCookie = decodeURIComponent(getCookie('apiKeys') || '');
+    const delegatedApiKeysCookie = decodeURIComponent(getCookie('delegated_apiKeys') || '');
 
-    if (cookieValue) {
-        try {
-            // Decode URI components and parse the JSON string
-            const decodedCookieValue = decodeURIComponent(cookieValue);
-            const apiKeys = JSON.parse(decodedCookieValue);
+    try {
+        // Parse the JSON strings from cookies, default to empty arrays if parsing fails or cookies are empty
+        const apiKeys = apiKeysCookie ? JSON.parse(apiKeysCookie) : [];
+        const delegatedApiKeys = delegatedApiKeysCookie ? JSON.parse(delegatedApiKeysCookie) : [];
 
-            // Extract and deduplicate tenant names, ignoring disabled tenants
-            const tenants = apiKeys
-                .filter(apiKey => !apiKey.disabled)
-                .map(apiKey => apiKey["tenant-name"]);
-            const uniqueTenants = [...new Set(tenants)];
+        // Extract tenant names from apiKeys filtering by enabled state
+        const tenantsFromApiKeys = apiKeys
+            .filter(apiKey => apiKey['apikey-state'] === 'enabled')
+            .map(apiKey => apiKey['tenant-name']);
 
-            // Populate the select element
-            const select = $('#service-tenant');
-            select.empty(); // Clear existing options
-            select.append('<option value="all">All Tenants</option>'); // Add "All Tenants" option
-            uniqueTenants.forEach(tenant => {
-                select.append(`<option value="${tenant}">${tenant}</option>`);
-            });
-        } catch (e) {
-            console.error('Error parsing JSON from cookie:', e);
-        }
+        // Extract all selected-tenants from enabled delegatedApiKeys entries
+        const selectedTenants = delegatedApiKeys
+            .filter(apiKey => apiKey['apikey-state'] === 'enabled' && apiKey['selected-tenants'])
+            .flatMap(apiKey => apiKey['selected-tenants']); // Use flatMap to flatten the array of arrays
+
+        // Combine all tenants and selected-tenants and remove duplicates
+        const allTenants = [...new Set([...tenantsFromApiKeys, ...selectedTenants])];
+
+        // Populate the select element
+        const select = $('#service-tenant');
+        select.empty(); // Clear existing options
+        select.append('<option value="all">All Tenants</option>'); // Add "All Tenants" option
+        allTenants.forEach(tenant => {
+            select.append(`<option value="${tenant}">${tenant}</option>`);
+        });
+    } catch (e) {
+        console.error('Error parsing JSON from cookies:', e);
     }
 }
+
+
 
 
 
@@ -1222,6 +1298,180 @@ function populateFormFromCookie() {
         }
     }
 }
+
+
+function populateDelegatedFormFromCookie() {
+    console.log('Populating Cookies');
+    let apiKeysCookie = getCookie('delegated_apiKeys');
+    if (apiKeysCookie) {
+        try {
+            let decodedCookie = decodeURIComponent(apiKeysCookie);
+            let apiKeys = JSON.parse(decodedCookie);
+            console.log('API Keys from cookie:', apiKeys);
+
+            for (let i = 0; i < apiKeys.length; i++) {
+                let key = apiKeys[i];
+                if (i > 0) {
+                    $('#add-delegated-api-key').click(); // Add a new row for each key except the first one
+                }
+                let row = $(".api-key-row").eq(i);
+                console.log('Tenant Name:', key['tenant-name']);
+                console.log('API Key Format:', key['apikey-format']);
+                console.log('API Key:', key['apikey']);
+
+                console.log('Row found:', row.length);
+                let tenantNameElement = row.find('.tenant-name');
+                let apiKeyFormatElement = row.find('.apikey-format');
+                let apiKeyStateElement = row.find('.apikey-state');
+                let apiKeyElement = row.find('.apikey');
+
+                console.log('Tenant Name element found:', tenantNameElement.length);
+                console.log('API Key Format element found:', apiKeyFormatElement.length);
+                console.log('API Key element found:', apiKeyElement.length);
+
+                tenantNameElement.val(key['tenant-name']);
+                apiKeyFormatElement.val(key['apikey-format']);
+                apiKeyStateElement.val(key['apikey-state']);
+                apiKeyElement.val(key['apikey']);
+
+                console.log('Tenant Name set to:', tenantNameElement.val());
+                console.log('API Key Format set to:', apiKeyFormatElement.val());
+                console.log('API Key set to:', apiKeyElement.val());
+
+            }
+        } catch (e) {
+            console.error('Failed to parse API keys cookie:', e);
+        }
+    }
+}
+
+$(document).on('click', '.move-items-btn', function () {
+    var tenantName = $(this).data('tenantname'); // Get the tenant name from data attribute
+    console.log("Moving tenant:", tenantName);
+    moveItems(`#delegated-tenants-${tenantName}`, `#selected-tenants-${tenantName}`);
+});
+
+$(document).on('click', '.remove-items-btn', function () {
+    var tenantName = $(this).data('tenantname'); // Get the tenant name from data attribute
+    moveItems(`#selected-tenants-${tenantName}`, `#delegated-tenants-${tenantName}`);
+    //removeItems(`#selected-tenants-${tenantName}`);
+});
+
+$(document).on('click', '#submit-selected-delegated-tenants', function () {
+    submitDelegatedTenants();
+    populateTenantSelect();
+});
+
+
+async function populateDelegatedTenants() {
+    // Step 1: Check for existing tenant data in cookies using the getCookie function
+    const delegatedApiKeysStr = decodeURIComponent(getCookie('delegated_apiKeys'));
+
+    if (!delegatedApiKeysStr) {
+        console.log('No tenants found in cookies.');
+        document.getElementById('submit-selected-delegated-tenants').style.display = 'none';
+        return;
+    }
+
+
+    console.log('Tenants found in cookies:', delegatedApiKeysStr);
+    const delegatedApiKeys = JSON.parse(delegatedApiKeysStr);
+
+    // Step 2: Fetch the Mustache template just once before processing tenants
+    try {
+        const template = await getTemplate('delegated_tenant');
+
+        // Step 3: Fetch all managed tenants data
+        const response = await fetch('/api/v1/getManagedTenants', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        if (!response.ok) {
+            throw new Error('Failed to fetch managed tenants data: ' + response.statusText);
+        }
+        const data = await response.json();
+        console.log("Managed Tenants Data:", data);
+        const managedTenants = data.managedtenants;
+
+        // Step 4: Prepare data for template
+
+
+
+        const templatesData = delegatedApiKeys.map(tenant => {
+            const activeChildren = managedTenants[tenant['tenant-name']].filter(child => child.tenant_status === 'TENANT_STATUS_ACTIVE');
+            console.log("Active Children for Tenant", tenant['tenant-name'], activeChildren);
+            const delegatedTenants = activeChildren.map(child => child.tenant_name);
+            const selectedTenants = tenant['selected-tenants'] || [];
+
+            // Remove selected tenants from the delegated tenants list
+            const delegatedList = delegatedTenants.filter(t => !selectedTenants.includes(t));
+
+            return {
+                tenantName: tenant['tenant-name'],
+                delegatedTenants: delegatedList.map(name => ({ value: name })),
+                selectedTenants: selectedTenants.map(name => ({ value: name }))
+            };
+        });
+
+        console.log("Data for Template Rendering", templatesData);
+
+        // Step 5: Render Mustache template for each tenant using the pre-fetched template and combine
+        const renderedHtml = templatesData.map(data => {
+            return Mustache.render(template, data);
+        }).join('');
+
+        // Step 6: Update the DOM
+        document.getElementById('delegated-tenants-form').innerHTML = renderedHtml;
+        document.getElementById('submit-selected-delegated-tenants').style.display = 'block';
+
+    } catch (error) {
+        console.error('Failed to fetch template or process tenant data:', error);
+    }
+}
+
+
+function submitDelegatedTenants() {
+    const delegatedApiKeysStr = decodeURIComponent(getCookie('delegated_apiKeys'));
+    if (!delegatedApiKeysStr) {
+        console.error('No delegated tenants found in cookies.');
+        return;
+    }
+
+    let delegatedApiKeys = JSON.parse(delegatedApiKeysStr);
+    console.log("Initial Delegated Keys:", delegatedApiKeys);
+
+    delegatedApiKeys = delegatedApiKeys.map(entry => {
+        const tenantName = entry['tenant-name'];
+        const selectId = `selected-tenants-${tenantName}`;
+        const selectElement = document.getElementById(selectId);
+        if (!selectElement) {
+            console.error('Select element not found:', selectId);
+            return entry; // Return the original entry if select element is not found
+        }
+
+        // Retrieve all options from the select element
+        const options = Array.from(selectElement.options);
+        console.log(`Options for ${tenantName}:`, options);
+
+        // Map all options to their values
+        const allTenantOptions = options.map(option => option.value);
+
+        return {
+            ...entry,
+            'selected-tenants': allTenantOptions // Update the selected-tenants with all options
+        };
+    });
+
+    const updatedDelegatedApiKeysStr = JSON.stringify(delegatedApiKeys);
+    document.cookie = 'delegated_apiKeys=' + encodeURIComponent(updatedDelegatedApiKeysStr) + '; path=/';
+    console.log("Updated Cookie:", document.cookie);
+
+    alert('Delegated tenants updated successfully!');
+
+}
+
 
 
 
@@ -1379,11 +1629,21 @@ $(document).on('click', '#submit-delegated-api-keys', function (event) {
     });
 
     if (isValidForm) {
-        // Construct JSON object from form data
         var apiKeys = [];
+        var tenantNames = new Set(); // To track unique tenant names
+        var hasDuplicate = false;
+
         $(".api-key-row").each(function () {
+            var tenantName = $(this).find(".tenant-name").val();
+            if (tenantNames.has(tenantName)) {
+                alert("Duplicate tenant name found: " + tenantName + ". Each tenant name must be unique.");
+                hasDuplicate = true;
+                return false; // Break out of the each loop
+            }
+            tenantNames.add(tenantName);
+
             var apiKey = {
-                "tenant-name": $(this).find(".tenant-name").val(),
+                "tenant-name": tenantName,
                 "apikey-format": $(this).find(".apikey-format").val(),
                 "apikey-state": $(this).find(".apikey-state").val(),
                 "apikey": $(this).find(".apikey").val()
@@ -1391,7 +1651,13 @@ $(document).on('click', '#submit-delegated-api-keys', function (event) {
             apiKeys.push(apiKey);
         });
 
-        console.log('Delegated API Keys:', apiKeys); // Log the constructed JSON object
+        if (hasDuplicate) {
+            console.log('Duplicate tenant names detected, submission halted');
+            alert('Duplicate tenant names detected, submission halted');
+            return; // Stop further execution if there are duplicates
+        }
+
+        //console.log('Delegated API Keys:', apiKeys); // Optionally log the constructed JSON object
 
         // Send JSON object to server via POST request
         $.ajax({
@@ -1403,8 +1669,7 @@ $(document).on('click', '#submit-delegated-api-keys', function (event) {
                 console.log('Server response:', response);
                 if (response.success) {
                     alert("API keys set successfully!");
-                    loadContent('apisetup', 'Settings > API Keys');
-                    populateTenantSelect();
+                    loadContent('delegatedapisetup');
                 } else {
                     alert("Failed to set API keys.");
                 }
@@ -1426,20 +1691,22 @@ $(document).on('click', '#submit-delegated-api-keys', function (event) {
 
 
 
+
 // Delegated API Key Switch Steps
 
-$(document).on('click', '#delegated-form', function () {
+$(document).on('click', '#step1-delegated-form', function () {
     document.getElementById('api-keys-form').style.display = 'block';
     document.getElementById('card-step1').style.display = 'block';
     document.getElementById('card-step2').style.display = 'none';
     document.getElementById('delegated-tenants-form').style.display = 'none';
 });
 
-$(document).on('click', '#delegated-tenants', function () {
+$(document).on('click', '#step2-delegated-tenants', function () {
     document.getElementById('api-keys-form').style.display = 'none';
     document.getElementById('card-step1').style.display = 'none';
     document.getElementById('card-step2').style.display = 'block';
     document.getElementById('delegated-tenants-form').style.display = 'block';
+    populateDelegatedTenants();
 });
 
 function validateField(field) {

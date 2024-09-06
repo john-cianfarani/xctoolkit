@@ -140,7 +140,7 @@ function ensureKeyPersistence() {
  *                              containing the namespaces nested under the tenant.
  * @throws {Error} - If there is an error fetching the data.
  */
-async function fetchNamespaces(apikey, tenant, objname = null) {
+async function fetchNamespaces(apikey, tenant, parent_tenant = null, objname = null) {
     // Initialize an empty object to store the namespaces nested under the tenant
     const result = {
         [tenant]: {} // Nest namespaces under the tenant
@@ -148,7 +148,14 @@ async function fetchNamespaces(apikey, tenant, objname = null) {
 
     try {
         // Construct the URL with variables using string interpolation
-        let url = `https://${tenant}.${XCBASEURL}/api/web/namespaces`;
+        let url;
+
+        if (parent_tenant) {
+            url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/web/namespaces`;
+        } else {
+            url = `https://${tenant}.${XCBASEURL}/api/web/namespaces`;
+        }
+
 
         if (objname) {
             // If an object name is provided, append it to the URL
@@ -195,11 +202,92 @@ async function fetchNamespaces(apikey, tenant, objname = null) {
     }
 }
 
+async function fetchManagedTenants(apikey, tenant) {
+    // Initialize an empty array to store the processed tenants data
+    const result = {};
+
+    try {
+        // Construct the URL for fetching managed tenants by the user
+        const url = `https://${tenant}.${XCBASEURL}/api/web/namespaces/system/managed_tenants_by_user`;
+
+        log(LogLevel.INFO, `fetchManagedTenants - Fetching data with URL: ${url}`);
+
+        // Make the GET request to the constructed URL with Authorization headers
+        const response = await axios.get(url, {
+            headers: headers(tenant, apikey)
+        });
+
+        log(LogLevel.DEBUG, `fetchManagedTenants - Data fetched for tenant ${tenant} successfully: ${JSON.stringify(response.data)}`);
+
+        // Check if the 'access_config' property exists and is an array
+        if (response.data.access_config && Array.isArray(response.data.access_config)) {
+            // Process each tenant item in the access_config array
+            response.data.access_config.forEach(item => {
+                const tenantName = item.link.name;
+                const tenantData = {
+                    tenant_fullname: item.name,
+                    tenant_name: tenantName,
+                    href: item.link.href,
+                    tenant_status: item.tenant_status
+                };
+
+                // Group processed tenants by the tenant name
+                if (!result[tenant]) {
+                    result[tenant] = [];
+                }
+                result[tenant].push(tenantData);
+            });
+        } else {
+            console.error('Unexpected data structure:', JSON.stringify(response.data));
+            throw new Error('Unexpected data structure in access_config');
+        }
+
+        // Return the processed result object
+        return result;
+
+    } catch (error) {
+        // Handle any errors that occur during the request
+        console.error('Error fetching data:', error);
+        throw error; // Re-throw the error to be caught by the caller if necessary
+    }
+}
+
+async function getManagedTenantsList(req) {
+    const apiKeysCookie = req.cookies.delegated_apiKeys;
+    if (!apiKeysCookie) {
+        throw new Error("No delegated_apiKeys cookie found");
+    }
+
+    const delegatedApiKeys = JSON.parse(apiKeysCookie);
+    const results = {};
+
+    for (const apiKey of delegatedApiKeys) {
+        if (apiKey['apikey-state'] === 'enabled') {
+            try {
+                // Get the unencrypted API key for each tenant
+                const tenant = apiKey['tenant-name'];
+                const apikey = getDelegatedApiKey(req, tenant);
+
+                // Fetch managed tenants using the decrypted API key
+                const fetchedData = await fetchManagedTenants(apikey, tenant);
+
+                // Merge fetched data into the results object
+                mergeDeep(results, fetchedData);
+            } catch (error) {
+                console.error(`Error processing tenant ${apiKey['tenant-name']}:`, error.message);
+                // Optionally continue to next tenant or handle error differently
+            }
+        }
+    }
+
+    return results;
+}
 
 async function getTenantAge(req, inventory) {
     try {
         // Step 1: Retrieve and decrypt API keys from the cookie
         const decryptedApiKeys = getDecryptedApiKeys(req);
+        const decryptedDelegatedApiKeys = getDecryptedApiKeys(req, 'delegated_apiKeys');
 
         // Step 2: Filter and organize API keys by tenant, ignoring rights type
         const tenantApiKeys = {};
@@ -210,15 +298,27 @@ async function getTenantAge(req, inventory) {
             const tenant = apiKey['tenant-name'];
             // Store the first API key encountered for each tenant
             if (!tenantApiKeys[tenant]) {
-                tenantApiKeys[tenant] = apiKey['apikey'];
+                tenantApiKeys[tenant] = { apikey: apiKey['apikey'], parent_tenant: null };
+            }
+        });
+
+        // Include child tenants from delegated API keys
+        decryptedDelegatedApiKeys.forEach(delegatedApiKey => {
+            if (delegatedApiKey['apikey-state'] === 'enabled') {
+                delegatedApiKey['selected-tenants'].forEach(childTenant => {
+                    tenantApiKeys[childTenant] = {
+                        apikey: delegatedApiKey['apikey'],
+                        parent_tenant: delegatedApiKey['tenant-name']  // Set parent tenant for child tenants
+                    };
+                });
             }
         });
 
         // Step 3: Fetch namespaces creation timestamp for the default namespace of each tenant
         const tenantAges = await Promise.all(
-            Object.entries(tenantApiKeys).map(([tenant, apikey]) => {
-                log(LogLevel.INFO, `Fetching namespace for tenant ${tenant}`);
-                return fetchNamespaces(apikey, tenant, 'default').then(namespaceData => {
+            Object.entries(tenantApiKeys).map(([tenant, { apikey, parent_tenant }]) => {
+                log(LogLevel.INFO, `Fetching namespace for tenant ${tenant} with parent tenant ${parent_tenant}`);
+                return fetchNamespaces(apikey, tenant, parent_tenant, 'default').then(namespaceData => {
                     const creationTimestamp = namespaceData[tenant]['default']?.creation;
                     return { [tenant]: { creation_timestamp: creationTimestamp } };
                 });
@@ -238,6 +338,7 @@ async function getTenantAge(req, inventory) {
         throw error;
     }
 }
+
 
 
 /**
@@ -382,14 +483,19 @@ async function getNSDetails(req, tenant, namespace) {
  * @returns {Promise<Object>} - A Promise that resolves to an object containing the user details for the tenant.
  * @throws {Error} - If there is an error fetching the user details.
  */
-async function fetchUsers(tenant, apikey, limit = null) {
+async function fetchUsers(apikey, tenant, parent_tenant = null, limit = null) {
     // Initialize an empty array to store user details
     const users = [];
 
     try {
-        // Construct the URL with variables using string interpolation
-        const url = `https://${tenant}.${XCBASEURL}/api/web/custom/namespaces/system/user_roles`;
 
+        let url;
+        if (parent_tenant) {
+            // Use managed tenant URL format if parent_tenant is specified
+            url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/web/custom/namespaces/system/user_roles`;
+        } else {
+            url = `https://${tenant}.${XCBASEURL}/api/web/custom/namespaces/system/user_roles`;
+        }
         // Make GET request to the constructed URL with Authorization header
         const response = await axios.get(url, {
             headers: headers(tenant, apikey)
@@ -439,18 +545,22 @@ async function fetchUsers(tenant, apikey, limit = null) {
  */
 async function getTenantUsers(req, tenant, limit = 5) {
     try {
-        const apikey = getCorrectApiKey(req, tenant, 'read');
-        // Call fetchUsers to retrieve the user details for the tenant
-        const users = await fetchUsers(tenant, apikey, limit);
+        // Retrieve both apikey and parent_tenant
+        const { apikey, parent_tenant } = getCorrectApiKey(req, tenant, 'read');
 
-        log(LogLevel.DEBUG, ('getTenantUsers - User Details for Tenant:', tenant, 'Users:', users));
-        // return { [tenant]: users }; // Returning the users wrapped in an object with the tenant as the key
-        return users; // Returning the users wrapped in an object with the tenant as the key
+        // Call fetchUsers to retrieve the user details for the tenant
+        // Adjust fetchUsers if needed to handle parent_tenant, or simply pass it along if the function can use it
+        const users = await fetchUsers(apikey, tenant, parent_tenant, limit); // Added parent_tenant if needed
+
+        log(LogLevel.DEBUG, `getTenantUsers - User Details for Tenant: ${tenant}, Users: ${JSON.stringify(users)}`);
+        // return { [tenant]: users }; // Optionally return users wrapped in an object with the tenant as the key
+        return users; // Returning the users directly
     } catch (error) {
         console.error(`Error fetching user details for tenant ${tenant}:`, error);
         throw error;  // Propagate the error to be handled by the caller
     }
 }
+
 
 
 
@@ -771,19 +881,29 @@ async function fetchHealthchecks(tenant, apikey, namespace, lbname) {
  * HTTP_APP_LATENCY: inconsistent doesn't always show up.
  * HTTP_RESPONSE_LATENCY: Average latency per HTTP Request
  */
-async function fetchStats(tenant, apikey, allnsapi = true, namespace = null, secondsback, lbname = null) {
+async function fetchStats(apikey, tenant, parent_tenant = null, allnsapi = true, namespace = null, secondsback, lbname = null) {
     try {
-        // If allnsapi is true, set namespace to 'system'
-        if (allnsapi) {
-            namespace = 'system';
-        } else if (!namespace) {
+        // Validate namespace presence when required
+        if (!allnsapi && !namespace) {
             throw new Error('Namespace must be provided if allnsapi is set to false');
         }
 
-        // Construct the URL for the API request
-        const url = allnsapi
-            ? `https://${tenant}.${XCBASEURL}/api/data/namespaces/system/graph/all_ns_service`
-            : `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}/graph/service`;
+        // Update namespace default when allnsapi is true
+        if (allnsapi) {
+            namespace = 'system';
+        }
+
+        // Construct the API request URL
+        let url;
+        if (parent_tenant) {
+            // Use managed tenant URL format if parent_tenant is specified
+            url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/data/namespaces/system/graph/all_ns_service`;
+        } else {
+            // Use regular tenant URL format
+            url = allnsapi
+                ? `https://${tenant}.${XCBASEURL}/api/data/namespaces/system/graph/all_ns_service`
+                : `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}/graph/service`;
+        }
 
         // Calculate the epoch time for the desired time range
         const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
@@ -913,22 +1033,212 @@ async function fetchStats(tenant, apikey, allnsapi = true, namespace = null, sec
 
 
 
+// /**
+//  * Fetches the inventory of HTTP and TCP load balancers in the specified tenant.
+//  *
+//  * @param {string} tenant - The F5XC tenant.
+//  * @param {string} apikey - The F5XC API key.
+//  * @param {boolean} [allnsapi=true] - Whether to use the all namespaces api or just the app inventory api for the specified namespace.
+//  * @param {string} [namespaceFilter=null] - The namespace to filter results or for the inventory api url required if allnsapi is false).
+//  * @returns {Promise<Object>} - A promise that resolves to an object containing the inventory data.
+//  * @throws {Error} - If a namespace is provided but allnsapi is set to false.
+//  */
+// async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter = null) {
+//     try {
+//         +        log(LogLevel.INFO, ('Fetching inventory for tenant:', tenant + ', apikey:', apikey, ', allnsapi:', allnsapi, ', namespaceFilter:', namespaceFilter));
+//         // Construct the URL for the API request
+//         let url;
+//         if (allnsapi) {
+//             url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/system/all_application_inventory`;
+//         } else {
+//             if (!namespaceFilter) {
+//                 throw new Error('Namespace must be provided if allnsapi is set to false');
+//             }
+//             url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespaceFilter}/application_inventory`;
+//         }
+
+//         // Construct the request data
+//         const requestData = { "http_load_balancer_filter": {}, "tcp_load_balancer_filter": {} };
+
+//         // Make the API request and get the response
+//         const response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
+//         +        log(LogLevel.INFO, ('API request successful'));
+
+//         // Initialize an empty object to store the parsed data
+//         const inventory = {};
+
+//         /**
+//          * Processes the results of the inventory API request and adds them to the inventory object.
+//          *
+//          * @param {string} lbtype - The type of load balancer ("http_loadbalancers" or "tcp_loadbalancers").
+//          * @param {Array} results - The array of load balancer objects.
+//          */
+//         //  JSON Example.
+//         // {
+//         //     "tenant_name": {
+//         //         "namespace_name": {
+//         //             "http_loadbalancers": {  // Or "tcp_loadbalancers"
+//         //                 "load_balancer_name": {
+//         //                     "config": {
+//         //                         "name": "string",
+//         //                         "namespace": "string",
+//         //                         "loadbalancer_algorithm": "string",
+//         //                         "dns_info": "string",
+//         //                         "vip_type": "string",
+//         //                         "domains": ["string"],
+//         //                         "http_listen_port_choice": "string",
+//         //                         "certification_status": "string",
+//         //                         "waf_policy_ref": [
+//         //                             {
+//         //                                 "tenant": "string",
+//         //                                 "namespace": "string",
+//         //                                 "name": "string"
+//         //                             }
+//         //                         ],
+//         //                         "http": true,
+//         //                         "waf": true,
+//         //                         "ddos_protection": true,
+//         //                         "bot_protection": true,
+//         //                         "api_protection": true,
+//         //                         "client_side_defense": true,
+//         //                         "namespace_service_policy": true,
+//         //                         "service_policy": true,
+//         //                         "ip_reputation": true,
+//         //                         "malicious_user_detection": true,
+//         //                         "private_advertisement": true,
+//         //                         "public_advertisement": true,
+//         //                         "waf_exclusion": true,
+//         //                         "ddos_mitigation": true,
+//         //                         "slow_ddos_mitigation": true,
+//         //                         "malicious_user_mitigation": true,
+//         //                         "trusted_client": true,
+//         //                         "trusted_client_ip_headers": true,
+//         //                         "api_schema_validation": true,
+//         //                         "api_definition": true,
+//         //                         "data_guard": true,
+//         //                         "csrf_protection": true,
+//         //                         "graph_ql_inspection": true,
+//         //                         "cookie_protection": true,
+//         //                         "client_blocking": true,
+//         //                         "cors_policy": true,
+//         //                         "routes": true,
+//         //                         "origin_server_subset": true,
+//         //                         "default_loadbalancer": true,
+//         //                         "mutual_tls": true,
+//         //                         "tls_security_level": "string",
+//         //                         "idle_timeout": 0,
+//         //                         "connection_idle_timeout": 0,
+//         //                         "certification_expiration_date": "string",
+//         //                         "api_discovery": true
+//         //                     }
+//         //                 }
+//         //             },
+//         //         }
+//         //     }
+//         // }
+
+//         function processResults(lbtype, results) {
+//             results.forEach(lb => {
+//                 const namespace = lb.namespace;
+//                 const lbName = lb.name;
+
+//                 // Skip if namespaceFilter is provided and does not match the current namespace
+//                 if (namespaceFilter && namespace !== namespaceFilter) return;
+
+//                 if (!inventory[tenant]) inventory[tenant] = {};
+//                 if (!inventory[tenant][namespace]) inventory[tenant][namespace] = {};
+//                 if (!inventory[tenant][namespace][lbtype]) inventory[tenant][namespace][lbtype] = {};
+
+//                 inventory[tenant][namespace][lbtype][lbName] = {
+//                     config: {
+//                         name: lb.name,
+//                         namespace: lb.namespace,
+//                         loadbalancer_algorithm: lb.loadbalancer_algorithm,
+//                         dns_info: lb.dns_info,
+//                         vip_type: lb.vip_type,
+//                         domains: lb.domains,
+//                         http_listen_port_choice: lb.http_listen_port_choice,
+//                         certification_status: lb.certification_status,
+//                         waf_policy_ref: lb.waf_policy_ref,
+//                         http: !!lb.http_enabled,
+//                         waf: !!lb.waf_enabled,
+//                         ddos_protection: !!lb.ddos_protection_enabled,
+//                         bot_protection: !!lb.bot_protection_enabled,
+//                         api_protection: !!lb.api_protection_enabled,
+//                         client_side_defense: !!lb.client_side_defense_enabled,
+//                         namespace_service_policy: !!lb.namespace_service_policy_enabled,
+//                         service_policy: !!lb.service_policy_enabled,
+//                         ip_reputation: !!lb.ip_reputation_enabled,
+//                         malicious_user_detection: !!lb.malicious_user_detection_enabled,
+//                         private_advertisement: !!lb.private_advertisement_enabled,
+//                         public_advertisement: !!lb.public_advertisment_enabled,
+//                         waf_exclusion: !!lb.waf_exclusion_enabled,
+//                         ddos_mitigation: !!lb.ddos_mitigation_enabled,
+//                         slow_ddos_mitigation: !!lb.slow_ddos_mitigation_enabled,
+//                         malicious_user_mitigation: !!lb.malicious_user_mitigation_enabled,
+//                         trusted_client: !!lb.trusted_client_enabled,
+//                         trusted_client_ip_headers: !!lb.trusted_client_ip_headers_enabled,
+//                         api_schema_validation: !!lb.api_schema_validation_enabled,
+//                         api_definition: !!lb.api_definition_enabled,
+//                         data_guard: !!lb.data_guard_enabled,
+//                         csrf_protection: !!lb.csrf_protection_enabled,
+//                         graph_ql_inspection: !!lb.graph_ql_inspection_enabled,
+//                         cookie_protection: !!lb.cookie_protection_enabled,
+//                         client_blocking: !!lb.client_blocking_enabled,
+//                         cors_policy: !!lb.cors_policy_enabled,
+//                         routes: !!lb.routes_enabled,
+//                         origin_server_subset: !!lb.origin_server_subset_enabled,
+//                         default_loadbalancer: !!lb.default_loadbalancer_enabled,
+//                         mutual_tls: !!lb.mutual_tls_enabled,
+//                         tls_security_level: lb.tls_security_level,
+//                         idle_timeout: lb.idle_timeout,
+//                         connection_idle_timeout: lb.connection_idle_timeout,
+//                         certification_expiration_date: lb.certification_expiration_date,
+//                         api_discovery: !!lb.api_discovery_enabled
+//                     }
+//                 };
+//             });
+//         }
+
+//         // Process the HTTP load balancers
+//         if (response.data.http_loadbalancers && response.data.http_loadbalancers.httplb_results) {
+//             log(LogLevel.INFO, ('Processing HTTP load balancers'));
+//             processResults('http_loadbalancers', response.data.http_loadbalancers.httplb_results);
+//         }
+
+//         // Process the TCP load balancers
+//         if (response.data.tcp_loadbalancers && response.data.tcp_loadbalancers.tcplb_results) {
+//             log(LogLevel.INFO, ('Processing TCP load balancers'));
+//             processResults('tcp_loadbalancers', response.data.tcp_loadbalancers.tcplb_results);
+//         }
+
+//         return inventory;
+//     } catch (error) {
+//         console.error('Error fetching inventory:', error);
+//         throw error;
+//     }
+// }
+
 /**
  * Fetches the inventory of HTTP and TCP load balancers in the specified tenant.
  *
  * @param {string} tenant - The F5XC tenant.
  * @param {string} apikey - The F5XC API key.
  * @param {boolean} [allnsapi=true] - Whether to use the all namespaces api or just the app inventory api for the specified namespace.
- * @param {string} [namespaceFilter=null] - The namespace to filter results or for the inventory api url required if allnsapi is false).
+ * @param {string} [namespaceFilter=null] - The namespace to filter results or for the inventory api url required if allnsapi is false.
+ * @param {string} [parent_tenant=null] - The name of the parent tenant to use for API requests, if applicable.
  * @returns {Promise<Object>} - A promise that resolves to an object containing the inventory data.
  * @throws {Error} - If a namespace is provided but allnsapi is set to false.
  */
-async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter = null) {
+async function fetchInventory(apikey, tenant, parent_tenant = null, allnsapi = true, namespaceFilter = null) {
     try {
-        +        log(LogLevel.INFO, ('Fetching inventory for tenant:', tenant + ', apikey:', apikey, ', allnsapi:', allnsapi, ', namespaceFilter:', namespaceFilter));
-        // Construct the URL for the API request
+        log(LogLevel.INFO, `Fetching inventory for tenant: ${tenant}, apikey: ${maskData(apikey)}, allnsapi: ${allnsapi}, namespaceFilter: ${namespaceFilter}, parent_tenant: ${parent_tenant}`);
+        // Construct the URL for the API request based on whether a parent tenant is specified
         let url;
-        if (allnsapi) {
+
+        if (parent_tenant) {
+            url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/config/namespaces/system/all_application_inventory`;
+        } else if (allnsapi) {
             url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/system/all_application_inventory`;
         } else {
             if (!namespaceFilter) {
@@ -936,86 +1246,16 @@ async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter =
             }
             url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespaceFilter}/application_inventory`;
         }
-
+        log(LogLevel.INFO, 'API Inventory request for', url);
         // Construct the request data
         const requestData = { "http_load_balancer_filter": {}, "tcp_load_balancer_filter": {} };
 
         // Make the API request and get the response
         const response = await axios.post(url, requestData, { headers: headers(tenant, apikey) });
-        +        log(LogLevel.INFO, ('API request successful'));
+        log(LogLevel.DEBUG, 'API request successful', JSON.stringify(response.data, null, 4));
 
         // Initialize an empty object to store the parsed data
         const inventory = {};
-
-        /**
-         * Processes the results of the inventory API request and adds them to the inventory object.
-         *
-         * @param {string} lbtype - The type of load balancer ("http_loadbalancers" or "tcp_loadbalancers").
-         * @param {Array} results - The array of load balancer objects.
-         */
-        //  JSON Example.
-        // {
-        //     "tenant_name": {
-        //         "namespace_name": {
-        //             "http_loadbalancers": {  // Or "tcp_loadbalancers"
-        //                 "load_balancer_name": {
-        //                     "config": {
-        //                         "name": "string",
-        //                         "namespace": "string",
-        //                         "loadbalancer_algorithm": "string",
-        //                         "dns_info": "string",
-        //                         "vip_type": "string",
-        //                         "domains": ["string"],
-        //                         "http_listen_port_choice": "string",
-        //                         "certification_status": "string",
-        //                         "waf_policy_ref": [
-        //                             {
-        //                                 "tenant": "string",
-        //                                 "namespace": "string",
-        //                                 "name": "string"
-        //                             }
-        //                         ],
-        //                         "http": true,
-        //                         "waf": true,
-        //                         "ddos_protection": true,
-        //                         "bot_protection": true,
-        //                         "api_protection": true,
-        //                         "client_side_defense": true,
-        //                         "namespace_service_policy": true,
-        //                         "service_policy": true,
-        //                         "ip_reputation": true,
-        //                         "malicious_user_detection": true,
-        //                         "private_advertisement": true,
-        //                         "public_advertisement": true,
-        //                         "waf_exclusion": true,
-        //                         "ddos_mitigation": true,
-        //                         "slow_ddos_mitigation": true,
-        //                         "malicious_user_mitigation": true,
-        //                         "trusted_client": true,
-        //                         "trusted_client_ip_headers": true,
-        //                         "api_schema_validation": true,
-        //                         "api_definition": true,
-        //                         "data_guard": true,
-        //                         "csrf_protection": true,
-        //                         "graph_ql_inspection": true,
-        //                         "cookie_protection": true,
-        //                         "client_blocking": true,
-        //                         "cors_policy": true,
-        //                         "routes": true,
-        //                         "origin_server_subset": true,
-        //                         "default_loadbalancer": true,
-        //                         "mutual_tls": true,
-        //                         "tls_security_level": "string",
-        //                         "idle_timeout": 0,
-        //                         "connection_idle_timeout": 0,
-        //                         "certification_expiration_date": "string",
-        //                         "api_discovery": true
-        //                     }
-        //                 }
-        //             },
-        //         }
-        //     }
-        // }
 
         function processResults(lbtype, results) {
             results.forEach(lb => {
@@ -1098,6 +1338,76 @@ async function fetchInventory(tenant, apikey, allnsapi = true, namespaceFilter =
         throw error;
     }
 }
+
+//  JSON Example of fetchInventory response
+// {
+//     "tenant_name": {
+//         "namespace_name": {
+//             "http_loadbalancers": {  // Or "tcp_loadbalancers"
+//                 "load_balancer_name": {
+//                     "config": {
+//                         "name": "string",
+//                         "namespace": "string",
+//                         "loadbalancer_algorithm": "string",
+//                         "dns_info": "string",
+//                         "vip_type": "string",
+//                         "domains": ["string"],
+//                         "http_listen_port_choice": "string",
+//                         "certification_status": "string",
+//                         "waf_policy_ref": [
+//                             {
+//                                 "tenant": "string",
+//                                 "namespace": "string",
+//                                 "name": "string"
+//                             }
+//                         ],
+//                         "http": true,
+//                         "waf": true,
+//                         "ddos_protection": true,
+//                         "bot_protection": true,
+//                         "api_protection": true,
+//                         "client_side_defense": true,
+//                         "namespace_service_policy": true,
+//                         "service_policy": true,
+//                         "ip_reputation": true,
+//                         "malicious_user_detection": true,
+//                         "private_advertisement": true,
+//                         "public_advertisement": true,
+//                         "waf_exclusion": true,
+//                         "ddos_mitigation": true,
+//                         "slow_ddos_mitigation": true,
+//                         "malicious_user_mitigation": true,
+//                         "trusted_client": true,
+//                         "trusted_client_ip_headers": true,
+//                         "api_schema_validation": true,
+//                         "api_definition": true,
+//                         "data_guard": true,
+//                         "csrf_protection": true,
+//                         "graph_ql_inspection": true,
+//                         "cookie_protection": true,
+//                         "client_blocking": true,
+//                         "cors_policy": true,
+//                         "routes": true,
+//                         "origin_server_subset": true,
+//                         "default_loadbalancer": true,
+//                         "mutual_tls": true,
+//                         "tls_security_level": "string",
+//                         "idle_timeout": 0,
+//                         "connection_idle_timeout": 0,
+//                         "certification_expiration_date": "string",
+//                         "api_discovery": true
+//                     }
+//                 }
+//             },
+//         }
+//     }
+// }
+
+
+
+
+
+
 
 
 // async function fetchSecurityEvents(tenant, apikey, namespace, secondsback, sec_event_type) {
@@ -1475,51 +1785,111 @@ async function getSecurityEvents(req, inventory, secondsback, sec_event_type) {
  * @throws {Error} Throws an error if there's an error fetching the inventory.
  * 
  */
+// async function getInventory(req) {
+//     try {
+//         // Step 1: Retrieve and decrypt API keys from the cookie
+//         const decryptedApiKeys = getDecryptedApiKeys(req);
+
+//         // Step 2: Remove duplicates and prioritize read keys over write keys
+//         const uniqueApiKeys = {};
+//         decryptedApiKeys.forEach(apiKey => {
+//             // Skip any disabled API keys
+//             if (apiKey['apikey-state'] === 'disabled') {
+//                 return;
+//             }
+//             // Create a unique key based on tenant name and namespace name
+//             const key = `${apiKey['tenant-name']}-${apiKey['namespace-name']}`;
+//             // Store the API key if it's the first one we've seen for this tenant-namespace pair
+//             // Or if it's a read key and the current stored key is a write key
+//             if (!uniqueApiKeys[key] || (uniqueApiKeys[key]['apikey-type'] === 'write' && apiKey['apikey-type'] === 'read')) {
+//                 uniqueApiKeys[key] = apiKey;
+//             }
+//         });
+
+//         // Step 3: Fetch inventories for each unique tenant-namespace pair
+//         // `Promise.all` is used to run multiple asynchronous operations in parallel
+//         const inventories = await Promise.all(
+//             // Convert the values of the `uniqueApiKeys` object into an array and map over it
+//             Object.values(uniqueApiKeys).map(apiKey => {
+//                 // Determine if we need to fetch all namespaces or a specific namespace
+//                 log(LogLevel.INFO, (`apikey-rights: ${apiKey['apikey-rights']}`));
+
+//                 let allnsapi = {};
+//                 if (apiKey['apikey-rights'] === 'allns') {
+//                     allnsapi = true;
+//                 } else {
+//                     allnsapi = false;
+//                 }
+//                 // Call the `fetchInventory` function for each API key
+//                 // `apiKey['tenant-name']` is the tenant
+//                 // `apiKey['apikey']` is the decrypted API key
+//                 // `allnsapi ? null : apiKey['namespace-name']` determines if we pass null for all namespaces or a specific namespace
+//                 log(LogLevel.INFO, (`Fetching inventory for tenant ${apiKey['tenant-name']} and namespace ${apiKey['namespace-name']} and api call type:  ${allnsapi}`));
+//                 return fetchInventory(apiKey['apikey'], apiKey['tenant-name'], allnsapi, apiKey['namespace-name']);
+//             })
+//         );
+
+//         // Step 4: Merge all fetched inventories into one
+//         let mergedInventory = {};
+//         inventories.forEach(inventory => {
+//             mergedInventory = mergeDeep(mergedInventory, inventory);
+//         });
+
+//         return mergedInventory; // Return the combined inventory
+//     } catch (error) {
+//         console.error('Error fetching inventory:', error);
+//         throw error;
+//     }
+// }
+
+
+/**
+ * Asynchronously retrieves the complete inventory by fetching inventories for each unique tenant-namespace pair.
+ * Now includes handling for delegated tenants from the 'delegated_apiKeys' cookie.
+ * @param {Object} req - The request object containing the cookies.
+ * @returns {Promise<Object>} A promise that resolves to the combined inventory.
+ * @throws {Error} Throws an error if there's an error fetching the inventory.
+ * 
+ */
 async function getInventory(req) {
     try {
-        // Step 1: Retrieve and decrypt API keys from the cookie
+        // Step 1: Retrieve and decrypt API keys from the cookie for primary and delegated tenants
         const decryptedApiKeys = getDecryptedApiKeys(req);
+        const decryptedDelegatedApiKeys = getDecryptedApiKeys(req, 'delegated_apiKeys');
 
-        // Step 2: Remove duplicates and prioritize read keys over write keys
+        // Step 2: Remove duplicates and prioritize read keys over write keys for primary API keys
         const uniqueApiKeys = {};
         decryptedApiKeys.forEach(apiKey => {
-            // Skip any disabled API keys
-            if (apiKey['apikey-state'] === 'disabled') {
-                return;
-            }
-            // Create a unique key based on tenant name and namespace name
+            if (apiKey['apikey-state'] === 'disabled') return;
             const key = `${apiKey['tenant-name']}-${apiKey['namespace-name']}`;
-            // Store the API key if it's the first one we've seen for this tenant-namespace pair
-            // Or if it's a read key and the current stored key is a write key
             if (!uniqueApiKeys[key] || (uniqueApiKeys[key]['apikey-type'] === 'write' && apiKey['apikey-type'] === 'read')) {
                 uniqueApiKeys[key] = apiKey;
             }
         });
 
-        // Step 3: Fetch inventories for each unique tenant-namespace pair
-        // `Promise.all` is used to run multiple asynchronous operations in parallel
-        const inventories = await Promise.all(
-            // Convert the values of the `uniqueApiKeys` object into an array and map over it
-            Object.values(uniqueApiKeys).map(apiKey => {
-                // Determine if we need to fetch all namespaces or a specific namespace
-                log(LogLevel.INFO, (`apikey-rights: ${apiKey['apikey-rights']}`));
+        // Step 3: Prepare inventory fetch promises for primary API keys
+        const inventoryPromises = Object.values(uniqueApiKeys).map(apiKey => {
+            const allnsapi = apiKey['apikey-rights'] === 'allns';
+            return fetchInventory(apiKey['apikey'], apiKey['tenant-name'], null, allnsapi, apiKey['namespace-name']);
+        });
 
-                let allnsapi = {};
-                if (apiKey['apikey-rights'] === 'allns') {
-                    allnsapi = true;
-                } else {
-                    allnsapi = false;
-                }
-                // Call the `fetchInventory` function for each API key
-                // `apiKey['tenant-name']` is the tenant
-                // `apiKey['apikey']` is the decrypted API key
-                // `allnsapi ? null : apiKey['namespace-name']` determines if we pass null for all namespaces or a specific namespace
-                log(LogLevel.INFO, (`Fetching inventory for tenant ${apiKey['tenant-name']} and namespace ${apiKey['namespace-name']} and api call type:  ${allnsapi}`));
-                return fetchInventory(apiKey['tenant-name'], apiKey['apikey'], allnsapi, apiKey['namespace-name']);
-            })
-        );
+        // Step 4: Handle delegated tenants separately to keep the logic distinct
+        decryptedDelegatedApiKeys.forEach(delegatedApiKey => {
+            if (delegatedApiKey['apikey-state'] !== 'enabled') return;
+            if (delegatedApiKey['selected-tenants']) {
+                delegatedApiKey['selected-tenants'].forEach(selectedTenant => {
+                    log(LogLevel.INFO, (`Fetching Inventory for delegated tenant ${selectedTenant} from tenant ${delegatedApiKey['tenant-name']}`));
+                    inventoryPromises.push(
+                        fetchInventory(delegatedApiKey['apikey'], selectedTenant, delegatedApiKey['tenant-name'], true, null)
+                    );
+                });
+            }
+        });
 
-        // Step 4: Merge all fetched inventories into one
+        // Step 5: Fetch all inventories in parallel using Promise.all
+        const inventories = await Promise.all(inventoryPromises);
+
+        // Step 6: Merge all fetched inventories into one
         let mergedInventory = {};
         inventories.forEach(inventory => {
             mergedInventory = mergeDeep(mergedInventory, inventory);
@@ -1534,61 +1904,58 @@ async function getInventory(req) {
 
 
 
-/**
- * Asynchronously retrieves the complete stats by fetching stats for each unique tenant-namespace pair.
- * @param {Object} req - The request object containing the cookies.
- * @param {Object} inventory - The inventory object containing the namespaces.
- * @param {number} secondsback - The time range in seconds to fetch stats for.
- * @param {string} [lbname=null] - The load balancer name to filter results.
- * @returns {Promise<Object>} A promise that resolves to the combined stats.
- * @throws {Error} Throws an error if there's an error fetching the stats.
- */
+
 async function getStats(req, inventory, secondsback, lbname = null) {
     try {
         // Step 1: Retrieve and decrypt API keys from the cookie
         const decryptedApiKeys = getDecryptedApiKeys(req);
+        const decryptedDelegatedApiKeys = getDecryptedApiKeys(req, 'delegated_apiKeys');
 
-        // Step 2: Remove duplicates and prioritize read keys over write keys
+        // Step 2: Remove duplicates and prioritize read keys over write keys for primary API keys
         const uniqueApiKeys = {};
         decryptedApiKeys.forEach(apiKey => {
-            // Skip any disabled API keys
-            if (apiKey['apikey-state'] === 'disabled') {
-                return;
-            }
-            // Create a unique key based on tenant name and namespace name or 'allns' if apikey-rights is allns
+            if (apiKey['apikey-state'] === 'disabled') return;
             const key = apiKey['apikey-rights'] === 'allns' ? `${apiKey['tenant-name']}-allns` : `${apiKey['tenant-name']}-${apiKey['namespace-name']}`;
-            // Store the API key if it's the first one we've seen for this tenant-namespace pair
-            // Or if it's a read key and the current stored key is a write key
             if (!uniqueApiKeys[key] || (uniqueApiKeys[key]['apikey-type'] === 'write' && apiKey['apikey-type'] === 'read')) {
                 uniqueApiKeys[key] = apiKey;
             }
         });
 
-        // Step 3: Fetch stats for each unique tenant-namespace pair
-        const stats = await Promise.all(
-            Object.values(uniqueApiKeys).map(apiKey => {
-                // Determine if we need to fetch all namespaces or a specific namespace
-                const allnsapi = apiKey['apikey-rights'] === 'allns';
-                const namespace = allnsapi ? null : apiKey['namespace-name'];
-                // Call the fetchStats function for each API key
-                log(LogLevel.INFO, (`Fetching stats for tenant ${apiKey['tenant-name']} and namespace ${namespace} and api call type: ${allnsapi}`));
-                return fetchStats(apiKey['tenant-name'], apiKey['apikey'], allnsapi, namespace, secondsback, lbname);
-            })
-        );
+        // Step 3: Prepare inventory fetch promises for primary API keys
+        const statsPromises = Object.values(uniqueApiKeys).map(apiKey => {
+            const allnsapi = apiKey['apikey-rights'] === 'allns';
+            const namespace = allnsapi ? null : apiKey['namespace-name'];
+            return fetchStats(apiKey['apikey'], apiKey['tenant-name'], null, allnsapi, namespace, secondsback, lbname);
+        });
 
-        // Step 4: Merge all fetched stats into one
+        // Step 4: Handle delegated tenants separately to keep the logic distinct
+        decryptedDelegatedApiKeys.forEach(delegatedApiKey => {
+            if (delegatedApiKey['apikey-state'] !== 'enabled') return;
+            if (delegatedApiKey['selected-tenants']) {
+                delegatedApiKey['selected-tenants'].forEach(selectedTenant => {
+                    statsPromises.push(
+                        fetchStats(delegatedApiKey['apikey'], selectedTenant, delegatedApiKey['tenant-name'], true, null, secondsback, lbname)
+                    );
+                });
+            }
+        });
+
+        // Step 5: Fetch all stats in parallel using Promise.all
+        const stats = await Promise.all(statsPromises);
+
+        // Step 6: Merge all fetched stats into one
         let mergedStats = {};
         stats.forEach(stat => {
             mergedStats = mergeDeep(mergedStats, stat);
         });
 
-        // Return the combined stats
-        return mergedStats;
+        return mergedStats; // Return the combined stats
     } catch (error) {
         console.error('Error fetching stats:', error);
         throw error;
     }
 }
+
 
 
 async function fetchLogs(apikey, tenant, namespace, lbname, secondsback, logtype, additionalfilters = '', maxlogs = 5000) {
@@ -1999,6 +2366,7 @@ async function getSetsList(req, tenant, namespace) {
 
 async function getBackup(req, tenant, namespace, backupShared = false) {
     const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+
     const objectTypes = ['http_loadbalancers', 'tcp_loadbalancers', 'app_firewalls', 'origin_pools', 'healthchecks', 'ip_prefix_sets', 'bgp_asn_sets', 'service_policys', 'rate_limiter_policys', 'routes'];
 
     const manifest = {};
@@ -2268,20 +2636,23 @@ function decryptData(data) {
     return decryptedData;
 }
 
+
 /**
- * Function to get and decrypt API keys from the cookie.
- * 
+ * Gets the decrypted API keys from the specified cookie.
+ *
  * @param {Object} req - The request object containing the cookies.
- * @throws {Error} Throws an error if the API keys cookie is not found.
+ * @param {string} [cookieName='apiKeys'] - The name of the cookie containing the API keys.
+ * @throws {Error} Throws an error if the specified API keys cookie is not found.
  * @returns {Array} An array of API keys with decrypted "apikey" values.
  */
-function getDecryptedApiKeys(req) {
-    // Get the API keys cookie from the request object
-    const apiKeysCookie = req.cookies.apiKeys;
+function getDecryptedApiKeys(req, cookieName = 'apiKeys') {
+    // Get the specified API keys cookie from the request object
+    const apiKeysCookie = req.cookies[cookieName];
 
-    // Throw an error if the API keys cookie is not found
+    // Throw an error if the specified API keys cookie is not found
     if (!apiKeysCookie) {
-        throw new Error('API keys cookie not found');
+        return [];
+        //throw new Error(`${cookieName} cookie not found`);
     }
 
     // Parse the API keys cookie into an array
@@ -2289,6 +2660,7 @@ function getDecryptedApiKeys(req) {
 
     // Decrypt the "apikey" value of each API key if it is encrypted
     return apiKeys.map(apiKey => {
+        // If the API key is encrypted, decrypt the "apikey" value
         if (apiKey["apikey-format"] === 'enc') {
             return {
                 ...apiKey, // Copy all properties of the API key object
@@ -2298,6 +2670,7 @@ function getDecryptedApiKeys(req) {
         return apiKey; // Return the API key as is if it is not encrypted
     });
 }
+
 
 /**
  * Recursively merges two objects into a new object.
@@ -2345,17 +2718,34 @@ function mergeDeepSum(target, source) {
     return target;
 }
 
+
+function getDelegatedApiKey(req, parentTenant) {
+    // Get the decrypted API keys from the 'delegated_apiKeys' cookie
+    const apiKeys = getDecryptedApiKeys(req, 'delegated_apiKeys');
+
+    // Filter API keys to find the first matching tenant where the key is enabled
+    const enabledKey = apiKeys.find(apiKey =>
+        apiKey['tenant-name'] === parentTenant &&
+        apiKey['apikey-state'] === 'enabled'
+    );
+
+    // If no enabled keys found, throw an error
+    if (!enabledKey) {
+        throw new Error(`No enabled API key found for tenant: ${parentTenant}`);
+    }
+
+    // Log the retrieval of the key
+    log(LogLevel.VERBOSE, `getDelegatedApiKey - tenant: ${parentTenant} - selected API key: ${maskData(enabledKey.apikey)}`);
+
+    // Return the decrypted and enabled API key
+    return enabledKey.apikey;
+}
+
+
 /**
- * Function to select the correct API key.
- * 
- * @param {Object} req - The request object containing the cookies.
- * @param {string} tenant - The name of the tenant.
- * @param {string|null} [namespace=null] - The name of the namespace. Default is null.
- * @param {string} [need='read'] - The type of API key required. Default is 'read'.
- * @throws {Error} Throws an error if no suitable API key is found.
- * @returns {string} The selected API key.
  * 
  * Detailed Logic:
+ *  - Check to see if tenant is a delegated tenant, if so return the parent apikey and parent tenant name.
  *  - Initial Filtering Based on Tenant and Namespace:
  *    • Tenant Match: Key must belong to the specified tenant.
  *    • Namespace Match: If a namespace is specified, the key must be tied specifically to that namespace or marked as applicable to all namespaces ('all').
@@ -2375,17 +2765,28 @@ function mergeDeepSum(target, source) {
  ** 
  */
 function getCorrectApiKey(req, tenant, namespace = null, need = 'read') {
-    // Get the decrypted API keys from the cookie
+    // Retrieve decrypted API keys from the 'apiKeys' cookie
     const apiKeys = getDecryptedApiKeys(req);
+    // Retrieve decrypted delegated API keys from the 'delegated_apiKeys' cookie
+    const decryptedDelegatedApiKeys = getDecryptedApiKeys(req, 'delegated_apiKeys');
 
-    // Filter API keys to find the first matching tenant and namespace or "all"
+    // First, check for delegated API keys to see if the requested tenant is a child tenant
+    for (const delegatedKey of decryptedDelegatedApiKeys) {
+        if (delegatedKey['apikey-state'] === 'enabled' && delegatedKey['selected-tenants'].includes(tenant)) {
+            // If the tenant is a child tenant of a delegated parent, use the parent's API key
+            log(LogLevel.VERBOSE, `Delegated parent tenant: ${delegatedKey['tenant-name']} used for child tenant: ${tenant}`);
+            return { apikey: delegatedKey['apikey'], parent_tenant: delegatedKey['tenant-name'] };
+        }
+    }
+
+    // If no delegated parent tenant is found, proceed with the usual logic for apiKeys
     let filteredKeys = apiKeys.filter(apiKey =>
         apiKey['tenant-name'] === tenant &&
         (!namespace || apiKey['namespace-name'] === namespace || apiKey['namespace-type'] === 'all') &&
         apiKey['apikey-state'] !== 'disabled'
     );
 
-    // If no keys found with exact namespace match, try any namespace for tenant
+    // If no keys found with exact namespace match, try any namespace for the tenant
     if (!filteredKeys.length) {
         filteredKeys = apiKeys.filter(apiKey =>
             apiKey['tenant-name'] === tenant &&
@@ -2403,13 +2804,14 @@ function getCorrectApiKey(req, tenant, namespace = null, need = 'read') {
 
     // If no keys match, throw an error
     if (!selectedKey) {
-        throw new Error('No suitable API key found');
+        throw new Error(`No suitable API key found for tenant ${tenant}`);
     }
 
-    // Return the selected API key
-    log(LogLevel.VERBOSE, (`getCorrectApiKey - tenant: ${tenant}, namespace: ${namespace}, need: ${need} - selected API key: ${maskData(selectedKey.apikey)}`));
-    return selectedKey.apikey;
+    // Return the selected API key and null for parent_tenant since it's not a delegated case
+    log(LogLevel.VERBOSE, `getCorrectApiKey - tenant: ${tenant}, namespace: ${namespace}, need: ${need} - selected API key: ${maskData(selectedKey.apikey)}`);
+    return { apikey: selectedKey.apikey, parent_tenant: null };
 }
+
 
 
 
@@ -2417,6 +2819,7 @@ function getCorrectApiKey(req, tenant, namespace = null, need = 'read') {
 //Export Functions
 module.exports = {
     fetchNamespaces,
+    fetchManagedTenants,
     fetchConfig,
     fetchConfigItems,
     fetchLbs,
@@ -2427,6 +2830,7 @@ module.exports = {
     fetchSecurityEvents,
     fetchLogs,
     fetchWhoami,
+    getManagedTenantsList,
     getTenantAge,
     getNSDetails,
     getTenantUsers,

@@ -23,6 +23,7 @@ const certPath = path.join(__dirname, './certs/cert.pem');
 const {
 
     fetchWhoami,
+    getManagedTenantsList,
     getTenantAge,
     getNSDetails,
     getTenantUsers,
@@ -96,6 +97,21 @@ app.post('/api/v1/setapikey', (req, res) => {
     res.json({ success: true, message: 'API keys received and processed successfully.' });
 });
 
+// Endpoint to handle Delegated API key submission
+app.post('/api/v1/setdelegatedapikey', (req, res) => {
+    // Assuming req.body contains the submitted API keys array
+    const submittedApiKeys = req.body;
+
+    // Encrypt the API keys
+    const encryptedApiKeys = encryptApiKeys(submittedApiKeys);
+
+    // Set encrypted keys as cookie
+    res.cookie('delegated_apiKeys', JSON.stringify(encryptedApiKeys), { httpOnly: false, maxAge: 60 * 60 * 24 * 60 * 1000, expires: false });
+
+    // Respond with a success message
+    res.json({ success: true, message: 'API keys received and processed successfully.' });
+});
+
 
 app.post('/api/v1/getInventory', async (req, res) => {
     try {
@@ -103,6 +119,18 @@ app.post('/api/v1/getInventory', async (req, res) => {
         const inventory = await getInventory(req);
         // Respond with the inventory data
         res.json({ success: true, inventory });
+    } catch (error) {
+        // Handle any errors by responding with an error message
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/api/v1/getManagedTenants', async (req, res) => {
+    try {
+        // Call the `getManagedTenantsList` function to get the list of all delegated tenants
+        const managedtenants = await getManagedTenantsList(req);
+        // Respond with the delegated tenants list
+        res.json({ success: true, managedtenants });
     } catch (error) {
         // Handle any errors by responding with an error message
         res.status(500).json({ success: false, message: error.message });
