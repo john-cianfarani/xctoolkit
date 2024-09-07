@@ -357,14 +357,14 @@ app.post('/api/v1/getConfig', async (req, res) => {
 app.post('/api/v1/testApikey', async (req, res) => {
     try {
         // Extract parameters from the request body
-        const { tenant, encryptedKey } = req.body;
+        const { tenant, encryptedKey, parent_tenant } = req.body;
 
         // Decrypt the API key
         const apikey = decryptData(encryptedKey);
         console.log("testApikey - API - Request Parameters:", tenant);
 
         // Call the fetchAPI directly just to test the API Key
-        const responseData = await fetchWhoami(apikey, tenant);
+        const responseData = await fetchWhoami(apikey, tenant, parent_tenant);
 
         //console.log('API - testApikey Data:', JSON.stringify(responseData, null, 2));
         // Respond with the configuration data

@@ -11,6 +11,7 @@
 // encrypt / decrypt - Encrypts and decrypts data
 
 const axios = require('axios');
+const axiosRetry = require('axios-retry').default;
 const fs = require('fs');
 const path = require('path');
 const util = require('util');
@@ -34,12 +35,55 @@ const headers = (tenant, apikey) => ({
 });
 const XCBASEURL = 'console.ves.volterra.io';
 
+
+
+// Configure retry
+axiosRetry(axios, {
+    retries: config.apiRetries || 3, // Set the maximum number of retry attempts
+    retryDelay: exponentialBackoffWithJitter,
+    shouldResetTimeout: true, // Reset the timeout on each retry
+    retryCondition: (error) => {
+        // Retry on network errors or certain HTTP status codes
+        const retryStatusCodes = [429, 500, 502, 503, 504];
+        return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+            (error.response && retryStatusCodes.includes(error.response.status));
+    },
+    onRetry: (retryCount, error, requestConfig) => {
+        // Log retry attempts
+        console.log(`Retry attempt #${retryCount} for request ${requestConfig.url}`);
+        if (error.response) {
+            // Log the status code if the retry is due to a server response
+            console.log(`Retry due to server response: ${error.response.status}`);
+        } else {
+            // Log network errors or other issues not related to HTTP responses
+            console.log(`Retry due to network error or no response.`);
+        }
+    }
+});
+
+// Custom delay function with jitter
+function exponentialBackoffWithJitter(retryCount) {
+    const baseDelay = 100; // Base delay in milliseconds
+    const maxJitter = config.apiBackoffJitter || 100; // Maximum jitter to add
+
+    // Calculate exponential backoff
+    const exponentialDelay = Math.pow(2, retryCount) * baseDelay;
+
+    // Calculate jitter (randomly reduce or increase the delay slightly)
+    const jitter = Math.floor(Math.random() * (maxJitter + 1)) - (maxJitter / 2);
+
+    // Combine exponential backoff with jitter
+    return exponentialDelay + jitter;
+}
+
+
 const ONE_MINUTE = 60; // 1 minute
 const FIVE_MINUTES = 5 * 60; // 5 minutes
 const ONE_HOUR = 60 * 60; // 1 hour
 const SIX_HOURS = 6 * 60 * 60; // 6 hours
 const ONE_DAY = 24 * 60 * 60; // 1 day
 const ONE_WEEK = 7 * 24 * 60 * 60; // 1 week
+
 
 
 // Customer Logging
@@ -375,12 +419,20 @@ async function getTenantAge(req, inventory) {
 // }
 
  */
-async function fetchLbs(tenant, apikey, namespace) {
+async function fetchLbs(apikey, tenant, parent_tenant = null, namespace) {
     const lbs = {}; // Object to store the fetched LBs
 
     try {
         // Construct the URL for the GET request
-        const url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/http_loadbalancers?report_fields=string`;
+        let url;
+
+        if (parent_tenant) {
+            url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/config/namespaces/${namespace}/http_loadbalancers?report_fields=string`;
+        } else {
+            url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/http_loadbalancers?report_fields=string`;
+        }
+
+
 
         // Make GET request to the constructed URL with Authorization header
         const response = await axios.get(url, {
@@ -455,10 +507,10 @@ async function fetchLbs(tenant, apikey, namespace) {
 async function getNSDetails(req, tenant, namespace) {
     try {
         // Get the correct API key for the given tenant, namespace, and 'read' permission
-        const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+        const { apikey, parent_tenant } = getCorrectApiKey(req, tenant, namespace, 'read');
 
         // Call the fetchLbs function to fetch the LB details
-        const lbsDetails = await fetchLbs(tenant, apikey, namespace);
+        const lbsDetails = await fetchLbs(apikey, tenant, parent_tenant, namespace);
 
         // Log the fetched LB details for debugging purposes
         log(LogLevel.DEBUG, ('Namespace Load Balancer Details:', lbsDetails));
@@ -586,9 +638,16 @@ async function getTenantUsers(req, tenant, limit = 5) {
  * @returns {Promise<Object>} - A promise that resolves to the configuration data.
  * @throws {Error} - If there is an error fetching the configuration data.
  */
-async function fetchConfig(apikey, tenant, namespace, type, objname = null) {
+async function fetchConfig(apikey, tenant, parent_tenant = null, namespace, type, objname = null) {
     // Construct the URL for the API request
-    let url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/${type}`;
+    let url;
+    if (parent_tenant) {
+        url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/config/namespaces/${namespace}/${type}`;
+    } else {
+        url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/${type}`;
+    }
+
+
     try {
 
         if (objname) {
@@ -630,10 +689,10 @@ async function fetchConfig(apikey, tenant, namespace, type, objname = null) {
 async function getConfig(req, tenant, namespace, type, objname = null) {
     try {
         // Retrieve the correct API key for the specified tenant and ensure it is a 'read' type
-        const apikey = getCorrectApiKey(req, tenant, 'read');
+        const { apikey, parent_tenant } = getCorrectApiKey(req, tenant, 'read');
 
         // Fetch the configuration data using the API key, tenant, namespace, type, and optional object name
-        const configData = await fetchConfig(apikey, tenant, namespace, type, objname);
+        const configData = await fetchConfig(apikey, tenant, parent_tenant, namespace, type, objname);
 
         // Return the configuration data
         return configData;
@@ -665,7 +724,7 @@ async function getConfig(req, tenant, namespace, type, objname = null) {
  * @returns {Promise<Object>} - A promise that resolves to the updated configuration data.
  * @throws {Error} - If there is an error updating the configuration data.
  */
-async function updateConfig(apikey, tenant, namespace, type, objname, newData) {
+async function updateConfig(apikey, tenant, parent_tenant = null, namespace, type, objname, newData) {
     try {
         // Validate parameters to ensure they are provided
         if (!type || !objname) {
@@ -673,7 +732,13 @@ async function updateConfig(apikey, tenant, namespace, type, objname, newData) {
         }
 
         // Construct the URL for the PUT request based on the type and object name
-        const url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/${type}/${objname}`;
+        let url;
+        if (parent_tenant) {
+            url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/config/namespaces/${namespace}/${type}/${objname}`;
+        } else {
+            url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/${type}/${objname}`;
+        }
+
 
         // Log the data being updated
         log(LogLevel.VERBOSE, ('update data:', newData));
@@ -703,8 +768,8 @@ async function updateConfig(apikey, tenant, namespace, type, objname, newData) {
 
 async function putConfig(req, tenant, namespace, type, objname, newData) {
     try {
-        const apikey = getCorrectApiKey(req, tenant, 'write');  // Ensuring we retrieve a 'write' type API key
-        const updateResponse = await updateConfig(apikey, tenant, namespace, type, objname, newData);
+        const { apikey, parent_tenant } = getCorrectApiKey(req, tenant, 'write');  // Ensuring we retrieve a 'write' type API key
+        const updateResponse = await updateConfig(apikey, tenant, parent_tenant, namespace, type, objname, newData);
         return updateResponse;
     } catch (error) {
         console.error(`Error updating configuration for ${type}/${objname} in tenant ${tenant}, namespace ${namespace}:`, error);
@@ -714,10 +779,10 @@ async function putConfig(req, tenant, namespace, type, objname, newData) {
 
 
 
-async function fetchConfigItems(apikey, tenant, namespace, type) {
+async function fetchConfigItems(apikey, tenant, parent_tenant = null, namespace, type) {
     const list = [];
     try {
-        const data = await fetchConfig(apikey, tenant, namespace, type);
+        const data = await fetchConfig(apikey, tenant, parent_tenant, namespace, type);
 
         const items = data.items;
         items.forEach(item => {
@@ -748,8 +813,15 @@ async function fetchConfigItems(apikey, tenant, namespace, type) {
 
 
 // Additional check logic as this function is used to test api keys
-async function fetchWhoami(apikey, tenant) {
-    let url = `https://${tenant}.${XCBASEURL}/api/web/custom/namespaces/system/whoami`;
+async function fetchWhoami(apikey, tenant, parent_tenant = null) {
+    let url;
+
+    if (parent_tenant) {
+        url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/web/custom/namespaces/system/whoami`;
+    } else {
+        url = `https://${tenant}.${XCBASEURL}/api/web/custom/namespaces/system/whoami`;
+    }
+
     try {
         const response = await axios.get(url, { headers: headers(tenant, apikey) });
 
@@ -780,8 +852,8 @@ async function fetchWhoami(apikey, tenant) {
 
 async function getWhoami(req, tenant) {
     try {
-        const apikey = getCorrectApiKey(req, tenant, 'read');  // Ensuring we retrieve a 'read' type API key
-        const responseData = await fetchWhoami(apikey, tenant);
+        const { apikey, parent_tenant } = getCorrectApiKey(req, tenant, 'read');  // Ensuring we retrieve a 'read' type API key
+        const responseData = await fetchWhoami(apikey, tenant, parent_tenant);
         return responseData;
     } catch (error) {
         console.error(`Error fetching WhoamI for tenant ${tenant}:`, error);
@@ -789,9 +861,15 @@ async function getWhoami(req, tenant) {
     }
 }
 
-async function fetchHealthchecks(tenant, apikey, namespace, lbname) {
+async function fetchHealthchecks(apikey, tenant, parent_tenant = null, namespace, lbname) {
     try {
-        const url = `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}/graph/service/node/instances`;
+        let url;
+        if (parent_tenant) {
+            url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/data/namespaces/${namespace}/graph/service/node/instances`;
+        } else {
+            url = `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}/graph/service/node/instances`;
+        }
+
 
 
         // Calculate the epoch time for the last 5 minutes
@@ -1322,13 +1400,13 @@ async function fetchInventory(apikey, tenant, parent_tenant = null, allnsapi = t
 
         // Process the HTTP load balancers
         if (response.data.http_loadbalancers && response.data.http_loadbalancers.httplb_results) {
-            log(LogLevel.INFO, ('Processing HTTP load balancers'));
+            log(LogLevel.INFO, 'Processing HTTP load balancers for ', tenant);
             processResults('http_loadbalancers', response.data.http_loadbalancers.httplb_results);
         }
 
         // Process the TCP load balancers
         if (response.data.tcp_loadbalancers && response.data.tcp_loadbalancers.tcplb_results) {
-            log(LogLevel.INFO, ('Processing TCP load balancers'));
+            log(LogLevel.INFO, 'Processing TCP load balancers for ', tenant);
             processResults('tcp_loadbalancers', response.data.tcp_loadbalancers.tcplb_results);
         }
 
@@ -1496,7 +1574,7 @@ async function fetchInventory(apikey, tenant, parent_tenant = null, allnsapi = t
 // }
 // XC API for Security Events is not working correctly
 
-async function fetchSecurityEvents(tenant, apikey, allnsapi = true, namespace = null, secondsback, sec_event_type) {
+async function fetchSecurityEvents(apikey, tenant, parent_tenant = null, allnsapi = true, namespace = null, secondsback, sec_event_type) {
     try {
         // Define the security event types
         const secEventTypes = ['waf_sec_event', 'bot_defense_sec_event', 'api_sec_event', 'svc_policy_sec_event'];
@@ -1517,9 +1595,26 @@ async function fetchSecurityEvents(tenant, apikey, allnsapi = true, namespace = 
         }
 
         // Construct the URL for the API request
-        const url = allnsapi
-            ? `https://${tenant}.${XCBASEURL}/api/data/namespaces/system/app_security/all_ns_events/aggregation`
-            : `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}/app_security/events/aggregation`;
+        let url;
+        if (parent_tenant) {
+            // When parent_tenant is specified
+            if (allnsapi) {
+                // URL for all namespaces under a managed tenant
+                url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/data/namespaces/system/app_security/all_ns_events/aggregation`;
+            } else {
+                // URL for a specific namespace under a managed tenant
+                url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/data/namespaces/${namespace}/app_security/events/aggregation`;
+            }
+        } else {
+            // When parent_tenant is not specified
+            if (allnsapi) {
+                // URL for all namespaces
+                url = `https://${tenant}.${XCBASEURL}/api/data/namespaces/system/app_security/all_ns_events/aggregation`;
+            } else {
+                // URL for a specific namespace
+                url = `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}/app_security/events/aggregation`;
+            }
+        }
 
         // Calculate the epoch time for the desired time range
         const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
@@ -1652,12 +1747,12 @@ async function getSecurityEvents(req, inventory, secondsback, sec_event_type) {
 
                 return namespaces.map(namespace => {
                     try {
-                        const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+                        const { apikey, parent_tenant } = getCorrectApiKey(req, tenant, namespace, 'read');
 
                         log(LogLevel.VERBOSE, (`Fetching security events for tenant ${tenant}, namespace ${namespace}, with API key: ${maskData(apikey)}`));
                         /// ALLNSAPI disabled for now as it's not working correctly on the XC side.
                         /// Suboptimal behaviour as this will require more API calls to be made.
-                        return fetchSecurityEvents(tenant, apikey, false, namespace, secondsback, sec_event_type);
+                        return fetchSecurityEvents(apikey, tenant, parent_tenant, false, namespace, secondsback, sec_event_type);
                     } catch (error) {
                         console.error(`No suitable API key found for tenant ${tenant}, namespace ${namespace}`);
                         return Promise.resolve({}); // Return an empty object in case of error
@@ -1778,70 +1873,6 @@ async function getSecurityEvents(req, inventory, secondsback, sec_event_type) {
 
 
 
-/**
- * Asynchronously retrieves the complete inventory by fetching inventories for each unique tenant-namespace pair.
- * @param {Object} req - The request object containing the cookies.
- * @returns {Promise<Object>} A promise that resolves to the combined inventory.
- * @throws {Error} Throws an error if there's an error fetching the inventory.
- * 
- */
-// async function getInventory(req) {
-//     try {
-//         // Step 1: Retrieve and decrypt API keys from the cookie
-//         const decryptedApiKeys = getDecryptedApiKeys(req);
-
-//         // Step 2: Remove duplicates and prioritize read keys over write keys
-//         const uniqueApiKeys = {};
-//         decryptedApiKeys.forEach(apiKey => {
-//             // Skip any disabled API keys
-//             if (apiKey['apikey-state'] === 'disabled') {
-//                 return;
-//             }
-//             // Create a unique key based on tenant name and namespace name
-//             const key = `${apiKey['tenant-name']}-${apiKey['namespace-name']}`;
-//             // Store the API key if it's the first one we've seen for this tenant-namespace pair
-//             // Or if it's a read key and the current stored key is a write key
-//             if (!uniqueApiKeys[key] || (uniqueApiKeys[key]['apikey-type'] === 'write' && apiKey['apikey-type'] === 'read')) {
-//                 uniqueApiKeys[key] = apiKey;
-//             }
-//         });
-
-//         // Step 3: Fetch inventories for each unique tenant-namespace pair
-//         // `Promise.all` is used to run multiple asynchronous operations in parallel
-//         const inventories = await Promise.all(
-//             // Convert the values of the `uniqueApiKeys` object into an array and map over it
-//             Object.values(uniqueApiKeys).map(apiKey => {
-//                 // Determine if we need to fetch all namespaces or a specific namespace
-//                 log(LogLevel.INFO, (`apikey-rights: ${apiKey['apikey-rights']}`));
-
-//                 let allnsapi = {};
-//                 if (apiKey['apikey-rights'] === 'allns') {
-//                     allnsapi = true;
-//                 } else {
-//                     allnsapi = false;
-//                 }
-//                 // Call the `fetchInventory` function for each API key
-//                 // `apiKey['tenant-name']` is the tenant
-//                 // `apiKey['apikey']` is the decrypted API key
-//                 // `allnsapi ? null : apiKey['namespace-name']` determines if we pass null for all namespaces or a specific namespace
-//                 log(LogLevel.INFO, (`Fetching inventory for tenant ${apiKey['tenant-name']} and namespace ${apiKey['namespace-name']} and api call type:  ${allnsapi}`));
-//                 return fetchInventory(apiKey['apikey'], apiKey['tenant-name'], allnsapi, apiKey['namespace-name']);
-//             })
-//         );
-
-//         // Step 4: Merge all fetched inventories into one
-//         let mergedInventory = {};
-//         inventories.forEach(inventory => {
-//             mergedInventory = mergeDeep(mergedInventory, inventory);
-//         });
-
-//         return mergedInventory; // Return the combined inventory
-//     } catch (error) {
-//         console.error('Error fetching inventory:', error);
-//         throw error;
-//     }
-// }
-
 
 /**
  * Asynchronously retrieves the complete inventory by fetching inventories for each unique tenant-namespace pair.
@@ -1958,8 +1989,15 @@ async function getStats(req, inventory, secondsback, lbname = null) {
 
 
 
-async function fetchLogs(apikey, tenant, namespace, lbname, secondsback, logtype, additionalfilters = '', maxlogs = 5000) {
-    const baseURL = `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}`;
+async function fetchLogs(apikey, tenant, parent_tenant = null, namespace, lbname, secondsback, logtype, additionalfilters = '', maxlogs = 5000) {
+    let baseURL;
+
+    if (parent_tenant) {
+        baseURL = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/data/namespaces/${namespace}`;
+    } else {
+        baseURL = `https://${tenant}.${XCBASEURL}/api/data/namespaces/${namespace}`;
+    }
+
     let url;
     let logs = [];
     let totalCount = 0;
@@ -2099,7 +2137,7 @@ function formatFilters(additionalfilters) {
  */
 async function getLogs(req, tenant, namespace, lbname, secondsback, logtype, additionalfilters, maxlogs) {
     try {
-        const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+        const { apikey, parent_tenant } = getCorrectApiKey(req, tenant, namespace, 'read');
         if (!apikey) {
             console.error(`No suitable API key found for tenant ${tenant}, namespace ${namespace}`);
             throw new Error('API key not found');
@@ -2108,7 +2146,7 @@ async function getLogs(req, tenant, namespace, lbname, secondsback, logtype, add
         log(LogLevel.INFO, (`Fetching logs for tenant: ${tenant}, namespace: ${namespace}, load balancer: ${lbname}, seconds back: ${secondsback}, log type: ${logtype}, additional filters: ${JSON.stringify(additionalfilters)}, maximum logs: ${maxlogs}`));
 
         // Call the fetchLogs function to retrieve the logs
-        const rawLogs = await fetchLogs(apikey, tenant, namespace, lbname, secondsback, logtype, additionalfilters, maxlogs);
+        const rawLogs = await fetchLogs(apikey, tenant, parent_tenant, namespace, lbname, secondsback, logtype, additionalfilters, maxlogs);
 
         // Log the raw logs received
         //log(LogLevel.DEBUG, ('getLogs Data property:', util.inspect(rawLogs, { showHidden: false, depth: null, colors: true })));
@@ -2225,7 +2263,7 @@ async function getLatencyLogs(req, tenant, namespace, lbname, secondsback, maxlo
 async function getApiEndpoint(req, tenant, namespace, lbName, secondsback) {
     try {
         // Fetch the appropriate API key
-        const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+        const { apikey, parent_tenant } = getCorrectApiKey(req, tenant, namespace, 'read');
         if (!apikey) {
             console.error(`No suitable API key found for tenant ${tenant}, namespace ${namespace}`);
             throw new Error('API key not found');
@@ -2238,7 +2276,7 @@ async function getApiEndpoint(req, tenant, namespace, lbName, secondsback) {
         const startTime = new Date(new Date().getTime() - secondsback * 1000).toISOString();
 
         // Fetch the API endpoints data
-        const apiData = await fetchApiEndpoint(apikey, tenant, namespace, lbName, startTime, endTime);
+        const apiData = await fetchApiEndpoint(apikey, tenant, parent_tenant, namespace, lbName, startTime, endTime);
 
         // Convert the JSON data to CSV format
         const csvData = jsonToCSV(apiData);
@@ -2272,13 +2310,20 @@ function jsonToCSV(data) {
 }
 
 
-async function fetchApiEndpoint(apikey, tenant, namespace, lbname, startTime, endTime) {
+async function fetchApiEndpoint(apikey, tenant, parent_tenant = null, namespace, lbname, startTime, endTime) {
     // Default time handling
     const now = new Date();
     const endTimeFinal = endTime || now.toISOString();
     const startTimeFinal = startTime || new Date(now.getTime() - 168 * 60 * 60 * 1000).toISOString();
 
-    const url = `https://${tenant}.${XCBASEURL}/api/ml/data/namespaces/${namespace}/virtual_hosts/ves-io-http-loadbalancer-${lbname}/api_endpoints?api_endpoint_info_request=1&start_time=${startTimeFinal}&end_time=${endTimeFinal}`;
+    let url;
+
+    if (parent_tenant) {
+        url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/ml/data/namespaces/${namespace}/virtual_hosts/ves-io-http-loadbalancer-${lbname}/api_endpoints?api_endpoint_info_request=1&start_time=${startTimeFinal}&end_time=${endTimeFinal}`;
+    } else {
+        url = `https://${tenant}.${XCBASEURL}/api/ml/data/namespaces/${namespace}/virtual_hosts/ves-io-http-loadbalancer-${lbname}/api_endpoints?api_endpoint_info_request=1&start_time=${startTimeFinal}&end_time=${endTimeFinal}`;
+    }
+
 
     try {
         const response = await axios.get(url, {
@@ -2301,8 +2346,8 @@ async function fetchApiEndpoint(apikey, tenant, namespace, lbname, startTime, en
 async function execCopyWafExclusion(req, sourceTenant, sourceNamespace, sourceLbName, destinationTenant, destinationNamespace, destinationLbName) {
     try {
         // Fetch API keys for read and write operations from the request
-        const readApiKey = getCorrectApiKey(req, sourceTenant, sourceNamespace, 'read');
-        const writeApiKey = getCorrectApiKey(req, destinationTenant, destinationNamespace, 'write');
+        const { readApiKey, source_parent_tenant } = getCorrectApiKey(req, sourceTenant, sourceNamespace, 'read');
+        const { writeApiKey, destination_parent_tenant } = getCorrectApiKey(req, destinationTenant, destinationNamespace, 'write');
 
 
 
@@ -2314,8 +2359,8 @@ async function execCopyWafExclusion(req, sourceTenant, sourceNamespace, sourceLb
         }
 
         // Fetch JSON data for source and destination
-        const sourceData = await fetchConfig(readApiKey, sourceTenant, sourceNamespace, 'http_loadbalancers', sourceLbName);
-        const destinationData = await fetchConfig(writeApiKey, destinationTenant, destinationNamespace, 'http_loadbalancers', destinationLbName);
+        const sourceData = await fetchConfig(readApiKey, sourceTenant, source_parent_tenant, sourceNamespace, 'http_loadbalancers', sourceLbName);
+        const destinationData = await fetchConfig(writeApiKey, destinationTenant, destination_parent_tenant, destinationNamespace, 'http_loadbalancers', destinationLbName);
 
         // Check and extract "waf_exclusion_rules" from source JSON
         if (!sourceData.spec || !sourceData.spec.waf_exclusion_rules) {
@@ -2328,7 +2373,7 @@ async function execCopyWafExclusion(req, sourceTenant, sourceNamespace, sourceLb
         destinationData.spec.waf_exclusion_rules = wafExclusionRules;
         log(LogLevel.DEBUG, ('destinationData:', destinationData));
         // Update destination configuration
-        await updateConfig(writeApiKey, destinationTenant, destinationNamespace, 'http_loadbalancers', destinationLbName, destinationData);
+        await updateConfig(writeApiKey, destinationTenant, destination_parent_tenant, destinationNamespace, 'http_loadbalancers', destinationLbName, destinationData);
 
         log(LogLevel.INFO, (`WAF exclusion rules successfully copied from ${sourceLbName} to ${destinationLbName}`));
     } catch (error) {
@@ -2341,12 +2386,12 @@ async function execCopyWafExclusion(req, sourceTenant, sourceNamespace, sourceLb
 async function getSetsList(req, tenant, namespace) {
     try {
         // Get the correct API key for the tenant and namespace
-        const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+        const { apikey, parent_tenant } = getCorrectApiKey(req, tenant, namespace, 'read');
 
         // Fetch IP prefix sets and BGP ASN sets in parallel
         const [ipPrefixSets, bgpAsnSets] = await Promise.all([
-            fetchConfigItems(apikey, tenant, namespace, 'ip_prefix_sets'),
-            fetchConfigItems(apikey, tenant, namespace, 'bgp_asn_sets')
+            fetchConfigItems(apikey, tenant, parent_tenant, namespace, 'ip_prefix_sets'),
+            fetchConfigItems(apikey, tenant, parent_tenant, namespace, 'bgp_asn_sets')
         ]);
 
         // Build the resulting JSON object
@@ -2365,7 +2410,7 @@ async function getSetsList(req, tenant, namespace) {
 
 
 async function getBackup(req, tenant, namespace, backupShared = false) {
-    const apikey = getCorrectApiKey(req, tenant, namespace, 'read');
+    const { apikey, parent_tenant } = getCorrectApiKey(req, tenant, namespace, 'read');
 
     const objectTypes = ['http_loadbalancers', 'tcp_loadbalancers', 'app_firewalls', 'origin_pools', 'healthchecks', 'ip_prefix_sets', 'bgp_asn_sets', 'service_policys', 'rate_limiter_policys', 'routes'];
 
@@ -2374,7 +2419,7 @@ async function getBackup(req, tenant, namespace, backupShared = false) {
 
     // Process items for the namespace including shared items if they are fetched by default
     log(LogLevel.INFO, ('Fetching backup for namespace:', tenant, namespace));
-    await execBackup(apikey, tenant, namespace, objectTypes, manifest, files, backupShared);
+    await execBackup(apikey, tenant, parent_tenant, namespace, objectTypes, manifest, files, backupShared);
 
     // Use JSZip or similar library to package files and manifest into a ZIP
     const zip = new JSZip();
@@ -2386,10 +2431,10 @@ async function getBackup(req, tenant, namespace, backupShared = false) {
     return zipContent;
 }
 
-async function execBackup(apikey, tenant, namespace, types, manifest, files, backupShared) {
+async function execBackup(apikey, tenant, parent_tenant = null, namespace, types, manifest, files, backupShared) {
     for (const type of types) {
         log(LogLevel.VERBOSE, ('Fetching backup for type:', tenant, namespace, type));
-        const items = await fetchConfigItems(apikey, tenant, namespace, type);
+        const items = await fetchConfigItems(apikey, tenant, parent_tenant, namespace, type);
         for (const item of items) {
             if (!backupShared && item.namespace === 'shared') {
                 continue; // Skip shared items if backupShared is false
@@ -2398,7 +2443,7 @@ async function execBackup(apikey, tenant, namespace, types, manifest, files, bac
                 continue; // Skip system items
             }
             log(LogLevel.VERBOSE, ('Fetching backup for item:', tenant, item.namespace, type, item.name));
-            const config = await fetchConfig(apikey, tenant, item.namespace, type, item.name);
+            const config = await fetchConfig(apikey, tenant, parent_tenant, item.namespace, type, item.name);
             const fileContent = JSON.stringify(config);
             files.push({ name: `${tenant}_${item.namespace}_${type}_${item.name}.json`, content: fileContent });
 
@@ -2432,7 +2477,7 @@ async function execBackup(apikey, tenant, namespace, types, manifest, files, bac
  * @param {string} privateKeyPath - The path to the private key file.
  * @returns {Promise<void>} - A Promise that resolves when the certificate is uploaded successfully.
  */
-async function uploadCertificate(tenant, apiKey, namespace, certName, certUrlPath, privateKeyPath) {
+async function uploadCertificate(apiKey, tenant, parent_tenant = null, namespace, certName, certUrlPath, privateKeyPath) {
     try {
         // Read certificate and private key files and encode them as Base64
         const certBase64 = fs.readFileSync(certUrlPath, 'base64'); // Read certificate file and encode as Base64
@@ -2455,7 +2500,13 @@ async function uploadCertificate(tenant, apiKey, namespace, certName, certUrlPat
         };
 
         // Prepare the URL
-        const url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/certificates`; // Set the URL
+        let url;
+        if (parent_tenant) {
+            url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/config/namespaces/${namespace}/certificates/${certName}`; // Set the URL
+        } else {
+            url = `https://${tenant}.${XCBASEURL}/api/config/namespaces/${namespace}/certificates/${certName}`; // Set the URL
+        }
+
 
         // Prepare the headers
         const headers = {

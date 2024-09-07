@@ -118,7 +118,7 @@ $(document).ready(function () {
     const currentPage = localStorage.getItem('currentPage') || 'default';
     applySavedTheme()
     loadContent(currentPage);
-    //checkCookie();
+
     populateTenantSelect();
 });
 
@@ -149,21 +149,7 @@ function getCookie(name) {
 
 
 
-/**
- * Checks if the "xchelperapi" cookie is valid. If not, it loads the API keys page.
- */
-function checkCookie() {
-    // Get the value of the "xchelperapi" cookie
-    let apiCookie = getCookie("apiKeys");
 
-    // If the cookie is invalid or not present, load the API keys page
-    if (!apiCookie) {
-        //if (!apiCookie || !isValidCookie(apiCookie)) {    
-        //alert("Please set your API keys first!");
-        loadContent('apisetup');
-
-    }
-}
 
 function isValidCookie(cookie) {
     // Placeholder function - replace with actual validation logic
@@ -3288,7 +3274,7 @@ $(document).on('click', '#testapikeySubmit', function () {
 });
 
 // Function to make a POST request to test the API key
-async function testApiKey(apiKey, tenant) {
+async function testApiKey(apiKey, tenant, parent_tenant = null) {
     try {
         const response = await fetch('/api/v1/testApikey', {
             method: 'POST',
@@ -3297,7 +3283,8 @@ async function testApiKey(apiKey, tenant) {
             },
             body: JSON.stringify({
                 tenant: tenant,
-                encryptedKey: apiKey
+                encryptedKey: apiKey,
+                parent_tenant: parent_tenant
             })
         });
         const data = await response.json();
@@ -3313,6 +3300,9 @@ async function populatetestApiKeys() {
     document.getElementById('testapikey-loaded').style.display = 'none';
 
     const apiKeys = JSON.parse(decodeURIComponent(getCookie('apiKeys')) || '[]');
+    const delegatedApiKeys = JSON.parse(decodeURIComponent(getCookie('delegated_apiKeys')) || '[]');
+
+    // Test primary tenants
     for (const key of apiKeys) {
         if (key['apikey-state'] === 'disabled') {
             document.getElementById('testapikey-results').innerHTML += `<p>API Key for tenant ${key['tenant-name']} is disabled and was not tested.</p>`;
@@ -3321,9 +3311,23 @@ async function populatetestApiKeys() {
         const result = await testApiKey(key['apikey'], key['tenant-name']);
         document.getElementById('testapikey-results').innerHTML += `<p>API Key for tenant ${key['tenant-name']} tested: ${result ? 'Success' : 'Failed'}.</p>`;
     }
+
+    // Test delegated child tenants
+    for (const key of delegatedApiKeys) {
+        if (key['apikey-state'] === 'disabled') {
+            document.getElementById('testapikey-results').innerHTML += `<p>API Key for parent tenant ${key['tenant-name']} is disabled and was not tested.</p>`;
+            continue;
+        }
+        for (const childTenant of key['selected-tenants']) {
+            const result = await testApiKey(key['apikey'], childTenant, key['tenant-name']);
+            document.getElementById('testapikey-results').innerHTML += `<p>API Key for child tenant ${childTenant} under parent tenant ${key['tenant-name']} tested: ${result ? 'Success' : 'Failed'}.</p>`;
+        }
+    }
+
     document.getElementById('testapikey-loading').style.display = 'none';
     document.getElementById('testapikey-loaded').style.display = 'block';
 }
+
 
 
 
