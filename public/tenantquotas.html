@@ -1,0 +1,92 @@
+<h1 class="roboto-medium">Tenant Quota</h1>
+<br> <br><br>
+<div class="float-end input-group" style="width: 101px">
+
+  <button id="refreshPathLatency" type="button" class="btn btn-outline-primary">
+    <i class="bi bi-arrow-clockwise"></i> Refresh
+  </button>
+</div>
+
+
+<div id="inventory-loading" class="float-start input-group" style="width: 225px">
+  <button class="btn btn-primary" type="button" disabled>
+    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+    <span role="status">Inventory Loading ...</span>
+  </button>
+</div>
+<div id="inventory-loaded" class="float-start input-group" style="width: 225px">
+  <button class="btn btn-primary" type="button" disabled>
+    <i class="bi bi-check-circle-fill"></i>
+    <span role="status">Inventory Loaded </span>
+  </button>
+</div>
+<br><br><br>
+
+<div class="card">
+  <div class="card-header">
+    <h6>Quota Details</h6>
+  </div>
+  <div class="card-body">
+    <h6 class="card-title">Process</h6>
+    This section will extract the various types on tenant quotas and display them in a table sorted by percentage.<br>
+    <br><br>
+    Search can be used to filter results.
+  </div>
+</div>
+
+<br />
+<div class="float-start input-group">
+  <select id="quotas-tenant" class="form-control form-select"></select>
+  <button id="quotasSubmit" type="button" class="btn btn-success" disabled>
+    <i class="bi bi-arrow-down-square"></i> Submit
+  </button>
+</div>
+<br />
+<br />
+<br />
+<br />
+<div class="float-start input-group" style="">
+  <select id="pathlatency-secondsback" class="form-control form-select" style="max-width: 150px"
+    data-style="btn-primary">
+    <option value="86400" selected>Last 24hrs</option>
+    <option value="43200">Last 12hrs</option>
+    <option value="21600">Last 6hrs</option>
+    <option value="10800">Last 3hrs</option>
+    <option value="3600">Last 1hr</option>
+  </select>
+
+  <select id="pathlatency-maxlogs" class="form-control form-select" style="max-width: 150px" data-style="btn-primary">
+    <option value="20000">20k</option>
+    <option value="10000">10k</option>
+    <option value="5000">5k</option>
+    <option value="1500" selected>1.5k</option>
+  </select>
+
+  <select id="pathlatency-topx" class="form-control form-select" style="max-width: 150px" data-style="btn-primary">
+    <option value="10">Top 10</option>
+    <option value="25" selected>Top 25</option>
+    <option value="50">Top 50</option>
+  </select>
+
+</div>
+
+
+<br><br><br><br>
+<table id="quotas-table" class="table table-quotas">
+
+  <thead>
+    <tr>
+      <th>Status</th>
+      <th>Name</th>
+      <th>Description</th>
+      <th>Quota Type</th>
+      <th>Percentage</th>
+      <th>Current</th>
+      <th>Limit</th>
+    </tr>
+  </thead>
+  <tbody id="quotas-table-body">
+
+  </tbody>
+</table>
+<div id="quotas-results"></div>

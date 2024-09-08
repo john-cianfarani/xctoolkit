@@ -25,6 +25,7 @@ const {
     fetchWhoami,
     getManagedTenantsList,
     getTenantAge,
+    getQuota,
     getNSDetails,
     getTenantUsers,
     getSecurityEvents,
@@ -201,6 +202,22 @@ app.post('/api/v1/getTenantUsers', async (req, res) => {
         res.json({ success: true, userDetails });
     } catch (error) {
         console.error('Error in /api/v1/getTenantUsers endpoint:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/api/v1/getTenantQuota', async (req, res) => {
+    try {
+        // Extract the request body
+        const { tenant, limit } = req.body;
+        //console.log("API - getTenantQuota: ", tenant, limit);
+
+        const quotaDetails = await getQuota(req, tenant);
+
+        //console.log("API - getTenantQuota: ", quotaDetails);
+        res.json({ success: true, quotaDetails });
+    } catch (error) {
+        console.error('Error in /api/v1/getTenantQuota endpoint:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

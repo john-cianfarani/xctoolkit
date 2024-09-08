@@ -81,6 +81,13 @@ const pageConfig = {
             console.log('Log pathlatency page specific function executed.');
         }
     },
+    quotas: {
+        url: 'tenantquotas.html',
+        func: function () {
+            populateQuotas()
+            console.log('Log Quotas page specific function executed.');
+        }
+    },
     wafexclusion: {
         url: 'wafexclusion.html',
         func: function () {
@@ -2466,6 +2473,105 @@ $(document).on('click', '#downloadAPIEndpoints', function () {
 });
 
 
+// Quotas
+
+function populateQuotas() {
+
+    document.getElementById('inventory-loading').style.display = 'block';
+    document.getElementById('inventory-loaded').style.display = 'none';
+
+    const tenantSelect = document.getElementById('quotas-tenant');
+    document.getElementById('quotasSubmit').disabled = true;
+    getApiInventory(false, true).then(inventory => {
+        const tenantOptions = ['<option value="" selected>-- Select Tenant --</option>'];
+        Object.keys(inventory.inventory).forEach(tenant => {
+            tenantOptions.push(`<option value="${tenant}">${tenant}</option>`);
+        });
+
+        tenantSelect.innerHTML = tenantOptions.join('');
+        const button = document.getElementById('quotasSubmit');
+        button.disabled = false; // Disable button initially
+    }).catch(error => {
+        console.error("Failed to fetch quotas:", error);
+
+    })
+
+    document.getElementById('inventory-loaded').style.display = 'block';
+    document.getElementById('inventory-loading').style.display = 'none';
+
+};
+
+
+
+$(document).on('click', '#quotasSubmit', function () {
+    populateQuotasRequest();
+});
+
+
+// async function populateQuotasRequest(forcerefresh = false) {
+//     const tenant = document.getElementById('quotas-tenant').value;
+//     const search = document.getElementById('quotas-search').value;
+
+
+//     if (!tenant) {
+//         alert('Tenant selection required.');
+//         return;
+//     }
+
+//     const requestData = {
+//         tenant,
+//         search,
+//     };
+
+//     const cacheKey = `quotas_${tenant}`;
+//     const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
+
+//     let quotasData = cacheGetData(cacheKey, maxAgeInSeconds);
+//     if (!forcerefresh && quotasData) {
+//         console.log("Using cached data for quotas");
+//     } else {
+//         try {
+//             const response = await fetch('/api/v1/getTenantQuota', {
+//                 method: 'POST',
+//                 headers: { 'Content-Type': 'application/json' },
+//                 body: JSON.stringify(requestData)
+//             });
+//             if (!response.ok) throw new Error('Network response was not ok');
+//             const data = await response.json();
+//             if (!data.success) throw new Error('Failed to fetch quotas: ' + data.message);
+
+//             quotasData = data.quotaDetails;
+//             cacheSetData(cacheKey, quotasData); // Cache the new data
+//         } catch (error) {
+//             console.error('Error fetching quotas:', error);
+//             alert('Failed to fetch quotas: ' + error.message);
+//             return;
+//         }
+//     }
+
+//     // Format data and render template
+//     const formattedLogs = quotasData.map(log => ({
+//         req_path: log.req_path,
+//         transactions: formatGenericNumber(log.transactions),
+//         avgRspSize: formatGenericNumber(log.avgRspSize),
+//         totalRspSize: formatGenericNumber(log.totalRspSize),
+//         avgRttDownstream: formatLatency(log.avgRttDownstream),
+//         avgRttUpstream: formatLatency(log.avgRttUpstream),
+//         avgOriginLatency: formatLatency(log.avgOriginLatency),
+//         avgLastDownstreamTxByte: formatLatency(log.avgLastDownstreamTxByte),
+//         avgDurationWithDataTxDelay: formatLatency(log.avgDurationWithDataTxDelay)
+//     }));
+
+//     try {
+//         const template = await getTemplate('quotas_row', false);
+//         const renderedHTML = Mustache.render(template, { loadBalancers: formattedLogs });
+//         document.getElementById('quotas-table-body').innerHTML = renderedHTML;
+//         // $('#pathlatency-results').append('<pre>' + JSON.stringify(logsData, null, 2) + '</pre>');
+//     } catch (error) {
+//         console.error('Failed to load template or render HTML:', error);
+//         alert('Failed to process template: ' + error.message);
+//     }
+// }
 
 // Path Latency
 
@@ -2485,71 +2591,6 @@ $(document).on('click', '#pathlatencySubmit', function () {
     populateLatencyLogsRequest();
 });
 
-// function populateLatencyLogsRequest(forcerefresh = false) {
-//     const tenant = document.getElementById('pathlatency-tenant').value;
-//     const namespace = document.getElementById('pathlatency-namespace').value;
-//     const lbname = document.getElementById('pathlatency-loadbalancer').value;
-//     const secondsback = document.getElementById('pathlatency-secondsback').value;
-//     const maxlogs = document.getElementById('pathlatency-maxlogs').value;
-//     const topx = document.getElementById('pathlatency-topx').value;
-
-//     if (!tenant || !namespace || !lbname || !secondsback || !maxlogs || !topx) {
-//         alert('All fields are required.');
-//         return;
-//     }
-
-//     const cacheKey = `latencyLogs_${tenant}_${namespace}_${lbname}_${secondsback}_${maxlogs}_${topx}`;
-//     const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
-
-//     // Check cache first if not force refresh
-//     if (!forcerefresh) {
-//         const cachedLogs = cacheGetData(cacheKey, maxAgeInSeconds);
-//         if (cachedLogs !== null) {
-//             console.log("Using cached data for latency logs");
-//             //document.getElementById('pathlatency-results').innerHTML = `<pre>${JSON.stringify(cachedLogs, null, 2)}</pre>`;
-//             $('#pathlatency-results').append('<pre>' + JSON.stringify(cachedLogs, null, 2) + '</pre>');
-//             return;
-//         }
-//     }
-
-//     const requestData = {
-//         tenant,
-//         namespace,
-//         lbname,
-//         secondsback: parseInt(secondsback),
-//         maxlogs: parseInt(maxlogs),
-//         topx: parseInt(topx)
-//     };
-
-//     console.log("Sending request data:", JSON.stringify(requestData));
-
-//     fetch('/api/v1/getLatencyLogs', {
-//         method: 'POST',
-//         headers: {
-//             'Content-Type': 'application/json'
-//         },
-//         body: JSON.stringify(requestData)
-//     })
-//         .then(response => {
-//             if (!response.ok) {
-//                 throw new Error('Network response was not ok');
-//             }
-//             return response.json();
-//         })
-//         .then(data => {
-//             if (!data.success) {
-//                 throw new Error('Failed to fetch latency logs: ' + data.message);
-//             }
-//             console.log("Latency logs received:", data.logs);
-//             cacheSetData(cacheKey, data.logs); // Cache the new data
-//             //document.getElementById('pathlatency-results').innerHTML = `<pre>${JSON.stringify(data.logs, null, 2)}</pre>`;
-//             $('#pathlatency-results').append('<pre>' + JSON.stringify(data.logs, null, 2) + '</pre>');
-//         })
-//         .catch(error => {
-//             console.error('Error fetching latency logs:', error);
-//             alert('Failed to fetch latency logs: ' + error.message);
-//         });
-// }
 
 
 

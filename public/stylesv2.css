@@ -404,6 +404,11 @@ table.collapse.in {
     display: inline-block;
 }
 
+#quotas-tenant {
+    width: 300px;
+    max-width: 300px;
+}
+
 /* Fonts */
 .roboto-thin,
 .roboto-light,

@@ -939,6 +939,99 @@ async function fetchHealthchecks(apikey, tenant, parent_tenant = null, namespace
 }
 
 
+async function fetchQuota(apikey, tenant, parent_tenant = null) {
+    let url;
+
+    if (parent_tenant) {
+        url = `https://${parent_tenant}.${XCBASEURL}/managed_tenant/${tenant}/api/web/namespaces/system/quota/usage`;
+    } else {
+        url = `https://${tenant}.${XCBASEURL}/api/web/namespaces/system/quota/usage`;
+    }
+
+    try {
+        const response = await axios.get(url, {
+            headers: headers(tenant, apikey)
+        });
+
+        // Process the response data into a simplified structure
+        return processQuotaData(response.data);
+    } catch (error) {
+        console.error('Error fetching quota data:', error);
+        throw error;
+    }
+}
+
+function processQuotaData(data) {
+    const results = [];
+
+    // Define general quota sections that have a similar structure
+    const quotaSections = ['quota_usage', 'float_quota_usage', 'objects', 'resources'];
+    quotaSections.forEach(section => {
+        if (data[section]) {
+            Object.keys(data[section]).forEach(key => {
+                const entry = data[section][key];
+                let percentage = "N/A";  // Default to "N/A"
+
+                // Calculate percentage only if neither maximum nor current are -1
+                if (entry.limit && entry.usage && entry.limit.maximum !== -1 && entry.usage.current !== -1) {
+                    percentage = `${(entry.usage.current / entry.limit.maximum * 100).toFixed(2)}%`;
+                }
+
+                results.push({
+                    type: section,
+                    name: key,
+                    maximum: entry.limit.maximum,
+                    current: entry.usage.current,
+                    display_name: entry.display_name || "",
+                    description: entry.description || "",
+                    percentage: percentage
+                });
+            });
+        }
+    });
+
+    // Handle the 'apis' section with a different structure
+    if (data.apis) {
+        Object.keys(data.apis).forEach(key => {
+            const api = data.apis[key];
+            results.push({
+                type: 'apis',
+                name: key,
+                limit: api.api_limit ? api.api_limit.rate : "N/A",
+                usage: api.usage ? api.usage.current : "N/A",
+                rate: api.api_limit ? api.api_limit.rate : "N/A",
+                burst: api.api_limit ? api.api_limit.burst : "N/A",
+                unit: api.api_limit ? api.api_limit.unit : "N/A",
+                display_name: api.display_name || "",
+                description: api.description || "",
+                percentage: null // Percentage is not applicable for APIs
+            });
+        });
+    }
+
+    return results;
+}
+
+
+async function getQuota(req, tenant) {
+    try {
+        // Retrieve both apikey and parent_tenant
+        const { apikey, parent_tenant } = getCorrectApiKey(req, tenant, 'read');
+
+        // Call fetchQuota to retrieve the quota details for the tenant
+
+        const quota = await fetchQuota(apikey, tenant, parent_tenant); // Added parent_tenant if needed
+
+        log(LogLevel.DEBUG, ` - User Details for Tenant: ${tenant}, Quota: ${JSON.stringify(quota)}`);
+
+        return quota; // Return
+    } catch (error) {
+        console.error(`Error fetching quota details for tenant ${tenant}:`, error);
+        throw error;  // Propagate the error to be handled by the caller
+    }
+}
+
+
 
 /**
  * Fetches the stats of HTTP and TCP load balancers in the specified tenant.
@@ -2881,6 +2974,7 @@ module.exports = {
     fetchSecurityEvents,
     fetchLogs,
     fetchWhoami,
+    fetchQuota,
     getManagedTenantsList,
     getTenantAge,
     getNSDetails,
@@ -2897,6 +2991,7 @@ module.exports = {
     putConfig,
     getConfig,
     getWhoami,
+    getQuota,
     uploadCertificate,
     generateCertificate,
     encryptApiKeys,
