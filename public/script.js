@@ -1891,10 +1891,11 @@ function populateOverviewTenant(tenantName, inventory, stats, tenantages) {
             console.log("Users fetched for tenant:", tenantName, users);
 
             let preparedUsers = users.map(user => ({
-                name: user.fullname || ' ',
-                email: '(' + user.email + ')' || ' ',
-                lastLoginTime: user.lastlogin ? convertDateTime(user.lastlogin) : ' '
+                name: (user.fullname || ' ').slice(0, 25),  // Truncates to the first 25 characters or uses a blank space
+                email: '(' + (user.email || ' ').slice(0, 25) + ')',  // Truncates email and adds parentheses
+                lastLoginTime: user.lastlogin ? convertDateTime(user.lastlogin) : ' '  // Converts the datetime or uses a blank space
             }));
+
 
             while (preparedUsers.length < 5) {
                 preparedUsers.push({ name: ' ', email: ' ', lastLoginTime: ' ' });
@@ -1999,7 +2000,7 @@ function populateOverviewRow(inventory, stats, tenantName, namespace, lbName) {
     }
 
     const lbStats = ((stats[tenantName] || {})[namespace] || {})[lbName] || {};
-    console.log("Stats fetched for LB Row:", lbStats);
+    //console.log("Stats fetched for LB Row:", lbStats);
 
     const lbData = (((inventory.inventory[tenantName] || {})[namespace] || {}).http_loadbalancers || {})[lbName];
     if (!lbData) {
@@ -2028,7 +2029,7 @@ function populateOverviewRow(inventory, stats, tenantName, namespace, lbName) {
         totalLatency: formatLatency(lbStats.HTTP_RESPONSE_LATENCY)
     };
 
-    console.log("Processed LB Row Data:", rowData);
+    //console.log("Processed LB Row Data:", rowData);
 
     // Fetch the row template
     return getTemplate('overview_row', false)

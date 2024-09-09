@@ -2443,8 +2443,12 @@ async function fetchApiEndpoint(apikey, tenant, parent_tenant = null, namespace,
 async function execCopyWafExclusion(req, sourceTenant, sourceNamespace, sourceLbName, destinationTenant, destinationNamespace, destinationLbName) {
     try {
         // Fetch API keys for read and write operations from the request
-        const { readApiKey, source_parent_tenant } = getCorrectApiKey(req, sourceTenant, sourceNamespace, 'read');
-        const { writeApiKey, destination_parent_tenant } = getCorrectApiKey(req, destinationTenant, destinationNamespace, 'write');
+        // For read key
+        const { apikey: readApiKey, parent_tenant: source_parent_tenant } = getCorrectApiKey(req, sourceTenant, sourceNamespace, 'read');
+
+        // For write key
+        const { apikey: writeApiKey, parent_tenant: destination_parent_tenant } = getCorrectApiKey(req, destinationTenant, destinationNamespace, 'write');
+
 
 
 

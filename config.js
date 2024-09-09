@@ -5,7 +5,7 @@ const config = {
     logLevel: process.env.LOG_LEVEL || '2', // 0 - off, 1 - always on, 2 - info (default), 3 - verbose, 4 - debug,
     apiRetry: parseInt(process.env.API_RETRY, 10) || 4, // Set API retry count for failed API calls increase if many tenants are added and queries are failing
     apiBackoffJitter: parseFloat(process.env.API_BACKOFF_JITTER, 10) || 500, // Set API backoff jitter delay in milliseconds.  If API calls are increase if many tenants are added and queries are failing
-    apiBatchSize: parseInt(process.env.API_BATCH_SIZE, 10) || 6, // Set API batch size for batched API calls
+    apiBatchSize: parseInt(process.env.API_BATCH_SIZE, 10) || 6, // Set API batch size for batched API calls (getStats only so far)
 
     server: {
         host: process.env.SERVER_HOST || 'localhost',
