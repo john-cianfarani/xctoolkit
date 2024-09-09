@@ -21,6 +21,14 @@ Please note that XC Toolkit is provided "AS-IS" without warranties of any kind, 
 
 Current features of the toolkit are as follows:
 
+v1.1
+- Delegated Access - Add tenants which have access delegated via another tenant. Allows the ability to easily add multiple tenants via one API key.
+- Quota List - List quote elements per tenant, sorted by percentage consumed. Search also available.
+- Improved retry logic with exponential backoff. Allows for more tenants to be added.
+- Batching of API calls. Currently only getStats is batched, as this seemed to be one of the heaviest calls on to the XC platform.
+- Collapse All and Expand All added to Overview.
+- Minor bug fixes and general logic updates.
+
 v1.0 
  - Stateless architecture -  No API Keys or cached data is intentionally stored serverside.  All sensitive data is stored on the client side browser.  API Keys are further stored encrypted.
  - Multi-Tenant Overview - View multiple tenant and namespaces, as well as enabled features in a single pane of glass dashboard.
@@ -65,6 +73,21 @@ npm install
 npm start
 ```
 The web ui should now be accessible on http://127.0.0.1:3080 or https://127.0.0.1:3443
+
+## Updates
+
+To update a Node.js based installation, docker currently has to be rebuilt.
+
+Enter the original install directory.
+```sh
+cd xctoolkit
+
+git pull
+
+npm install
+
+npm start
+```
 
 ### Docker
 
