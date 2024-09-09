@@ -179,6 +179,7 @@ body {
 }
 
 /* Custom table for Overview page */
+.table-quotas,
 .table-pathlatency,
 .table-custom {
     border-collapse: collapse;
@@ -187,6 +188,8 @@ body {
     table-layout: fixed;
 }
 
+.table-quotas th,
+.table-quotas td,
 .table-pathlatency th,
 .table-pathlatency td,
 .table-custom th,
@@ -201,17 +204,20 @@ body {
     background-color: #f5f5f5;
 }
 
+.table-quotas thead th,
 .table-pathlatency thead th,
 .table-custom thead th {
     background-color: var(--bg-color-main);
     color: var(--text-color-primary);
 }
 
+.table-quotas thead,
 .table-pathlatency thead,
 .table-custom thead {
     border: 1px solid var(--border-color-dark);
 }
 
+.table-quotas tr,
 .table-pathlatency tr,
 .table-custom tbody tr,
 .table-custom tbody tr.collapsing,
@@ -404,6 +410,7 @@ table.collapse.in {
     display: inline-block;
 }
 
+#quotas-search,
 #quotas-tenant {
     width: 300px;
     max-width: 300px;

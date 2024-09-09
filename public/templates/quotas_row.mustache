@@ -1,15 +1,10 @@
-    {{#loadBalancers}}
+{{#loadBalancers}}
+<tr class="quotas-row">
+    <td>{{{status}}}</td>
+    <td>{{name}} &nbsp;&nbsp; {{#description}}<i class="bi bi-info-circle" title="{{description}}"></i>{{/description}} </td>
+    <td>{{type}}</td>
+    <td>{{limit}}</td>
+    <td>{{current}}</td>
+</tr>
+{{/loadBalancers}}
 
-    <tr  class="pathlatency-row">
-        <td>{{req_path}}</td>
-        <td>{{transactions}}</td>
-        <td>{{avgRspSize}}</td>
-        <td>{{totalRspSize}}</td>        
-        <td>{{avgRttDownstream}}</td>
-        <td>{{avgRttUpstream}}</td>
-        <td>{{avgOriginLatency}}</td>
-        <td>{{avgLastDownstreamTxByte}}</td>
-        <td>{{avgDurationWithDataTxDelay}}</td>
-    </tr>
-
-    {{/loadBalancers}}

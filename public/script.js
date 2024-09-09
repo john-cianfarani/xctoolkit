@@ -24,6 +24,13 @@ const pageConfig = {
             // Add home page specific logic here
         }
     },
+    changelog: {
+        url: 'changelog.html',
+        func: function () {
+            console.log('Changelog page specific function executed.');
+            // Add home page specific logic here
+        }
+    },
     apisetup: {
         url: 'api-keys.html',
         func: function () {
@@ -671,6 +678,24 @@ function stopTimer() {
         clearInterval(countdownTimer);
         console.log('Timer stopped');
     }
+}
+
+function expandAll() {
+    document.querySelectorAll('.collapse.mainrow-collapse').forEach(function (collapseElement) {
+        var bsCollapse = new bootstrap.Collapse(collapseElement, {
+            toggle: false
+        });
+        bsCollapse.show();
+    });
+}
+
+function collapseAll() {
+    document.querySelectorAll('.collapse.mainrow-collapse').forEach(function (collapseElement) {
+        var bsCollapse = new bootstrap.Collapse(collapseElement, {
+            toggle: false
+        });
+        bsCollapse.hide();
+    });
 }
 
 function processTenantAge(tenantAges, tenantName) {
@@ -1662,6 +1687,7 @@ $(document).on('click', '#submit-delegated-api-keys', function (event) {
                 console.log('Server response:', response);
                 if (response.success) {
                     alert("API keys set successfully!");
+                    cacheClear();
                     loadContent('delegatedapisetup');
                 } else {
                     alert("Failed to set API keys.");
@@ -1692,6 +1718,7 @@ $(document).on('click', '#step1-delegated-form', function () {
     document.getElementById('card-step1').style.display = 'block';
     document.getElementById('card-step2').style.display = 'none';
     document.getElementById('delegated-tenants-form').style.display = 'none';
+    document.getElementById('submit-selected-delegated-tenants').style.display = 'none';
 });
 
 $(document).on('click', '#step2-delegated-tenants', function () {
@@ -1825,25 +1852,37 @@ function populateOverviewTenant(tenantName, inventory, stats, tenantages) {
     const summaryData = inventory.summary[tenantName]; // Summary data for the tenant
     const ageData = processTenantAge(tenantages, tenantName);
 
-
     // Fetch API keys from cookies
     const apiKeys = JSON.parse(decodeURIComponent(getCookie('apiKeys')) || '[]');
-    // Determine the relevant API key for the current row
-    const apiKeyDetails = apiKeys.find(key => key['tenant-name'] === tenantName);
-    console.log("Relevant API Key Details:", apiKeyDetails);
+    const delegatedApiKeys = JSON.parse(decodeURIComponent(getCookie('delegated_apiKeys')) || '[]');
 
-    // Check for delegated state and name
-    let delegatedState = false;
+    // Initialize variables to determine the userUrl and whether the tenant is delegated
+    let userUrl = '';
     let delegatedName = '';
-    let userUrl = '';  // For building the url link for the user list either default or managed
+    let delegatedState = false;
 
-    if (apiKeyDetails && apiKeyDetails['delegated-state'] === 'enabled') {
-        delegatedState = true;
-        delegatedName = apiKeyDetails['delegated-name'];
-        userUrl = `https://${delegatedName}.console.ves.volterra.io/managed_tenant/${tenantName}`; // Set URL for delegated state
-    } else {
-        userUrl = `https://${tenantName}.console.ves.volterra.io`; // Set URL for non-delegated state
+    // First, check delegated_apiKeys to see if the current tenant is a selected-tenant in any entry
+    for (const key of delegatedApiKeys) {
+        if (key['selected-tenants'].includes(tenantName)) {
+            delegatedName = key['tenant-name']; // Set the parent tenant's name if a match is found
+            delegatedState = true;
+            userUrl = `https://${delegatedName}.console.ves.volterra.io/managed_tenant/${tenantName}`;
+            break; // Exit the loop since we've found the relevant entry
+        }
     }
+
+    // If no delegated parent found in delegated_apiKeys, check apiKeys
+    if (!delegatedName) {
+        const apiKeyDetails = apiKeys.find(key => key['tenant-name'] === tenantName);
+        if (apiKeyDetails && apiKeyDetails['delegated-state'] === 'enabled') {
+            delegatedName = apiKeyDetails['delegated-name'];
+            delegatedState = true;
+            userUrl = `https://${delegatedName}.console.ves.volterra.io/managed_tenant/${tenantName}`;
+        } else {
+            userUrl = `https://${tenantName}.console.ves.volterra.io`; // Default URL for non-delegated state
+        }
+    }
+
 
     // Fetch user data and pad it if necessary
     return getApiTenantUsers(tenantName, 5, false)
@@ -1934,18 +1973,29 @@ function populateOverviewRow(inventory, stats, tenantName, namespace, lbName) {
 
     // Fetch API keys from cookies
     const apiKeys = JSON.parse(decodeURIComponent(getCookie('apiKeys')) || '[]');
-    console.log("API Keys:", apiKeys);
+    const delegatedApiKeys = JSON.parse(decodeURIComponent(getCookie('delegated_apiKeys')) || '[]');
 
-    // Determine the relevant API key for the current row
-    const apiKeyDetails = apiKeys.find(key => key['tenant-name'] === tenantName && (key['namespace-name'] === namespace || key['namespace-type'] === 'all'));
-    console.log("Relevant API Key Details:", apiKeyDetails);
-
-    // Check for delegated state and name
+    // Initialize variables to determine if the tenant is delegated
     let delegatedState = false;
     let delegatedName = '';
-    if (apiKeyDetails && apiKeyDetails['delegated-state'] === 'enabled') {
-        delegatedState = true;
-        delegatedName = apiKeyDetails['delegated-name'];
+
+    // First, check if this tenant is a selected tenant in any delegatedApiKey
+    for (const key of delegatedApiKeys) {
+        if (key['selected-tenants'].includes(tenantName)) {
+            delegatedState = true;
+            delegatedName = key['tenant-name'];
+            break; // Exit the loop since we've found the relevant entry
+        }
+    }
+
+    // If no delegated state found in delegated_apiKeys, check apiKeys
+    if (!delegatedState) {
+        const apiKeyDetails = apiKeys.find(key => key['tenant-name'] === tenantName && (key['namespace-name'] === namespace || key['namespace-type'] === 'all'));
+        console.log("Relevant API Key Details:", apiKeyDetails);
+        if (apiKeyDetails && apiKeyDetails['delegated-state'] === 'enabled') {
+            delegatedState = true;
+            delegatedName = apiKeyDetails['delegated-name'];
+        }
     }
 
     const lbStats = ((stats[tenantName] || {})[namespace] || {})[lbName] || {};
@@ -2508,70 +2558,94 @@ $(document).on('click', '#quotasSubmit', function () {
 });
 
 
-// async function populateQuotasRequest(forcerefresh = false) {
-//     const tenant = document.getElementById('quotas-tenant').value;
-//     const search = document.getElementById('quotas-search').value;
+async function populateQuotasRequest(forcerefresh = false) {
+    document.getElementById('quotas-table-body').innerHTML = '';
+    const tenant = document.getElementById('quotas-tenant').value;
+    const search = document.getElementById('quotas-search').value;
+
+    if (!tenant) {
+        alert('Tenant selection required.');
+        return;
+    }
+
+    const requestData = {
+        tenant,
+        search,
+    };
+
+    const cacheKey = `dataQuotas_${tenant}`;
+    const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
+
+    let quotasData = cacheGetData(cacheKey, maxAgeInSeconds);
+    if (!forcerefresh && quotasData) {
+        console.log("Using cached data for quotas");
+    } else {
+        try {
+            const response = await fetch('/api/v1/getTenantQuota', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            });
+            if (!response.ok) throw new Error('Network response was not ok');
+            const data = await response.json();
+            if (!data.success) throw new Error('Failed to fetch quotas: ' + data.message);
+
+            quotasData = data.quotaDetails.filter(quota => quota.type !== 'apis' && quota.type !== 'objects' && quota.type !== 'resources')
+                .map(quota => ({
+                    name: quota.name,
+                    description: quota.description || '',
+                    percentage: (quota.current === -1 || quota.maximum === -1) ? 0 : quota.percentage,
+                    current: quota.current,
+                    limit: quota.maximum,
+                    type: quota.type || 'Unknown',
+                }));
+
+            cacheSetData(cacheKey, quotasData); // Cache the new data
+        } catch (error) {
+            console.error('Error fetching quotas:', error);
+            alert('Failed to fetch quotas: ' + error.message);
+            return;
+        }
+    }
+
+    // Apply search filtering after caching
+    if (search && search.trim()) {
+        const regex = new RegExp(search.trim(), 'i'); // Case-insensitive search
+        quotasData = quotasData.filter(quota => regex.test(quota.name));
+    }
+
+    const formattedQuotas = quotasData.map(quota => {
+        let statusColor = 'bg-success'; // Default color
+        const percentageValue = parseFloat(quota.percentage); // Convert string to float for comparison
+
+        if (percentageValue >= 90) {
+            statusColor = 'bg-danger';
+        } else if (percentageValue >= 60) {
+            statusColor = 'bg-warning text-dark';
+        }
+
+        return {
+            ...quota,
+            status: `<h5><span class='badge ${statusColor}'>${percentageValue}%</span></h5>`,
+            percentage: percentageValue // Storing numerical percentage for sorting
+        };
+    });
+
+    // Sort the quotas by percentage in descending order
+    formattedQuotas.sort((a, b) => b.percentage - a.percentage);
+
+    try {
+        const template = await getTemplate('quotas_row', false);
+        console.log("Formatted Quotas Data:", formattedQuotas);
+        const renderedHTML = Mustache.render(template, { loadBalancers: formattedQuotas });
+        document.getElementById('quotas-table-body').innerHTML = renderedHTML;
+    } catch (error) {
+        console.error('Failed to load template or render HTML:', error);
+        alert('Failed to process template: ' + error.message);
+    }
+}
 
 
-//     if (!tenant) {
-//         alert('Tenant selection required.');
-//         return;
-//     }
-
-//     const requestData = {
-//         tenant,
-//         search,
-//     };
-
-//     const cacheKey = `quotas_${tenant}`;
-//     const maxAgeInSeconds = 60 * 60; // Cache for 60 minutes
-
-//     let quotasData = cacheGetData(cacheKey, maxAgeInSeconds);
-//     if (!forcerefresh && quotasData) {
-//         console.log("Using cached data for quotas");
-//     } else {
-//         try {
-//             const response = await fetch('/api/v1/getTenantQuota', {
-//                 method: 'POST',
-//                 headers: { 'Content-Type': 'application/json' },
-//                 body: JSON.stringify(requestData)
-//             });
-//             if (!response.ok) throw new Error('Network response was not ok');
-//             const data = await response.json();
-//             if (!data.success) throw new Error('Failed to fetch quotas: ' + data.message);
-
-//             quotasData = data.quotaDetails;
-//             cacheSetData(cacheKey, quotasData); // Cache the new data
-//         } catch (error) {
-//             console.error('Error fetching quotas:', error);
-//             alert('Failed to fetch quotas: ' + error.message);
-//             return;
-//         }
-//     }
-
-//     // Format data and render template
-//     const formattedLogs = quotasData.map(log => ({
-//         req_path: log.req_path,
-//         transactions: formatGenericNumber(log.transactions),
-//         avgRspSize: formatGenericNumber(log.avgRspSize),
-//         totalRspSize: formatGenericNumber(log.totalRspSize),
-//         avgRttDownstream: formatLatency(log.avgRttDownstream),
-//         avgRttUpstream: formatLatency(log.avgRttUpstream),
-//         avgOriginLatency: formatLatency(log.avgOriginLatency),
-//         avgLastDownstreamTxByte: formatLatency(log.avgLastDownstreamTxByte),
-//         avgDurationWithDataTxDelay: formatLatency(log.avgDurationWithDataTxDelay)
-//     }));
-
-//     try {
-//         const template = await getTemplate('quotas_row', false);
-//         const renderedHTML = Mustache.render(template, { loadBalancers: formattedLogs });
-//         document.getElementById('quotas-table-body').innerHTML = renderedHTML;
-//         // $('#pathlatency-results').append('<pre>' + JSON.stringify(logsData, null, 2) + '</pre>');
-//     } catch (error) {
-//         console.error('Failed to load template or render HTML:', error);
-//         alert('Failed to process template: ' + error.message);
-//     }
-// }
 
 // Path Latency
 
@@ -3371,8 +3445,17 @@ async function populatetestApiKeys() {
 
 
 
+$(document).on('click', '#collapseAll', function () {
+    console.log('Collapsing all');
+    collapseAll();
+});
 
+$(document).on('click', '#expandAll', function () {
+    console.log('Expanding all');
+    expandAll();
+});
 // Refresh
+
 
 $(document).on('click', '#refreshOverviewStats', function () {
     cacheClear('dataStats_');
@@ -3392,6 +3475,11 @@ $(document).on('change', '#overviewSecondsBack', function () {
 $(document).on('click', '#refreshPathLatency', function () {
     cacheClear('dataInventory');
     populatePathLatency();
+});
+
+$(document).on('click', '#refreshQuotas', function () {
+    cacheClear('dataQuotas');
+    populateQuotas();
 });
 
 $(document).on('click', '#refreshLogExport', function () {

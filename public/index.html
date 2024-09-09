@@ -26,7 +26,11 @@
 <body class="">
   <div id="navigation-panel" class="col-md-3">
     <div id="logo" class="text-center">
-      <div class="logo"><img id='logoimg' src="/images/xctoolkit_logo.png" alt="Logo" /></div>
+      <div class="logo">
+        <a class="nav-link" href="#" id="api-keys-link" onclick="loadContent('default')">
+          <img id='logoimg' src="/images/xctoolkit_logo.png" alt="Logo" />
+        </a>
+      </div>
     </div>
     <div id="service-target">
       <select id="service-tenant" class="form-control mb-3">
@@ -91,7 +95,7 @@
     <div id="topbar" class="">
 
       <div class="float-end">
-        <a class="nav-link" href="#" id="api-keys-link" onclick="loadContent('default')">
+        <a class="nav-link" href="#" id="api-keys-link" onclick="loadContent('changelog')">
           <div style="font-size: x-small;">&nbsp;&nbsp;&nbsp;&nbsp;v1.1</div>
         </a>
       </div>

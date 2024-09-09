@@ -161,7 +161,7 @@ app.post('/api/v1/getTenantAge', async (req, res) => {
         const { inventory } = req.body;
 
         // Call the getTenantAge function to retrieve the age data for tenants
-        const tenantAges = await getTenantAge(req, inventory);
+        const tenantAges = await getTenantAge(req);
 
         // Respond with the tenant ages data
         res.json({ success: true, tenantAges });

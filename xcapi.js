@@ -44,7 +44,7 @@ axiosRetry(axios, {
     shouldResetTimeout: true, // Reset the timeout on each retry
     retryCondition: (error) => {
         // Retry on network errors or certain HTTP status codes
-        const retryStatusCodes = [429, 500, 502, 503, 504];
+        const retryStatusCodes = [403, 429, 500, 502, 503, 504];
         return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
             (error.response && retryStatusCodes.includes(error.response.status));
     },
@@ -63,8 +63,8 @@ axiosRetry(axios, {
 
 // Custom delay function with jitter
 function exponentialBackoffWithJitter(retryCount) {
-    const baseDelay = 100; // Base delay in milliseconds
-    const maxJitter = config.apiBackoffJitter || 100; // Maximum jitter to add
+    const baseDelay = 1000; // Base delay in milliseconds
+    const maxJitter = config.apiBackoffJitter || 200; // Maximum jitter to add
 
     // Calculate exponential backoff
     const exponentialDelay = Math.pow(2, retryCount) * baseDelay;
@@ -327,7 +327,7 @@ async function getManagedTenantsList(req) {
     return results;
 }
 
-async function getTenantAge(req, inventory) {
+async function getTenantAge(req) {
     try {
         // Step 1: Retrieve and decrypt API keys from the cookie
         const decryptedApiKeys = getDecryptedApiKeys(req);
@@ -974,7 +974,7 @@ function processQuotaData(data) {
 
                 // Calculate percentage only if neither maximum nor current are -1
                 if (entry.limit && entry.usage && entry.limit.maximum !== -1 && entry.usage.current !== -1) {
-                    percentage = `${(entry.usage.current / entry.limit.maximum * 100).toFixed(2)}%`;
+                    percentage = `${(entry.usage.current / entry.limit.maximum * 100).toFixed(0)}`;
                 }
 
                 results.push({
@@ -2049,7 +2049,7 @@ async function getStats(req, inventory, secondsback, lbname = null) {
         const statsPromises = Object.values(uniqueApiKeys).map(apiKey => {
             const allnsapi = apiKey['apikey-rights'] === 'allns';
             const namespace = allnsapi ? null : apiKey['namespace-name'];
-            return fetchStats(apiKey['apikey'], apiKey['tenant-name'], null, allnsapi, namespace, secondsback, lbname);
+            return () => fetchStats(apiKey['apikey'], apiKey['tenant-name'], null, allnsapi, namespace, secondsback, lbname);
         });
 
         // Step 4: Handle delegated tenants separately to keep the logic distinct
@@ -2058,27 +2058,31 @@ async function getStats(req, inventory, secondsback, lbname = null) {
             if (delegatedApiKey['selected-tenants']) {
                 delegatedApiKey['selected-tenants'].forEach(selectedTenant => {
                     statsPromises.push(
-                        fetchStats(delegatedApiKey['apikey'], selectedTenant, delegatedApiKey['tenant-name'], true, null, secondsback, lbname)
+                        () => fetchStats(delegatedApiKey['apikey'], selectedTenant, delegatedApiKey['tenant-name'], true, null, secondsback, lbname)
                     );
                 });
             }
         });
 
-        // Step 5: Fetch all stats in parallel using Promise.all
-        const stats = await Promise.all(statsPromises);
+        // Step 5: Fetch all stats in batches to avoid overwhelming the server
+        const BATCH_SIZE = config.apiBatchSize || 5; // Adjust batch size based on your server's capacity
+        let mergedStats = {};
+        for (let i = 0; i < statsPromises.length; i += BATCH_SIZE) {
+            const batchPromises = statsPromises.slice(i, i + BATCH_SIZE).map(p => p());
+            const stats = await Promise.all(batchPromises);
+            stats.forEach(stat => {
+                mergedStats = mergeDeep(mergedStats, stat);
+            });
+        }
 
         // Step 6: Merge all fetched stats into one
-        let mergedStats = {};
-        stats.forEach(stat => {
-            mergedStats = mergeDeep(mergedStats, stat);
-        });
-
         return mergedStats; // Return the combined stats
     } catch (error) {
         console.error('Error fetching stats:', error);
         throw error;
     }
 }
+
 
 
 

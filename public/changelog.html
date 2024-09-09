@@ -1,0 +1,80 @@
+<br> <br><br>
+<h1 class="roboto-medium">Changelog</h1>
+<br> <br><br>
+<div id="default-container">
+    <div class="card">
+        <div class="card-header">
+            <h6>v1.1 - 2024-09-09</h6>
+        </div>
+        <div class="card-body">
+            <h6 class="card-title">Features</h6>
+            This version focuses on adding delegated access as the main feature. Most calls needed to be re-worked to
+            support this.
+
+
+            <br><br>
+
+
+            <ul>
+                <li>Delegated Access - Add tenants which have access delegated via another tenant. Allows the ability to
+                    easily add multiple tenants via one API key.</li>
+                <li>Quota List - List quote elements per tenant, sorted by percentage consumed. Search also available.
+                </li>
+                <li>Improved retry logic with exponential backoff. Allows for more tenants to be added.</li>
+                <li>Batching of API calls. Currently only getStats is batched, as this seemed to be one of the heaviest
+                    calls on to the XC platform.</li>
+                <li>Collapse All and Expand All added to Overview.</li>
+                <li>Minor bug fixes and general logic updates.</li>
+            </ul>
+
+
+        </div>
+    </div>
+
+    <br>
+    <div class="card">
+        <div class="card-header">
+            <h6>v1.0 - 2024-08-09</h6>
+        </div>
+        <div class="card-body">
+            <h6 class="card-title">Initial release version.</h6>
+
+
+            XC Toolkit provides with a variety of functions to help you on your journey with F5's Distributed Cloud
+            Platform.
+
+            This toolkit provides options to enhance your visibility of deployed Load Balancers across multiple tenants
+            and
+            namespaces.
+
+            Additional tools are available to help with extracting data and managing configuration.
+
+            XC Toolkit itself is a standalone Node.js application that is designed to be run either locally or within a
+            docker container.
+
+            Please note that XC Toolkit is provided "AS-IS" without warranties of any kind, either expressed or implied.
+
+            <br><br>
+
+
+            <ul>
+                <li>Stateless architecture - No API Keys or cached data is intentionally stored serverside. All
+                    sensitive data is stored on the client side browser. API Keys are further stored encrypted.</li>
+                <li>Docker Support</li>
+                <li>Dark mode support.</li>
+                <li>Multi-Tenant Overview - View multiple tenant and namespaces, as well as enabled features in a single
+                    pane of glass dashboard.</li>
+                <li>Per Path Latency Breakdown - Visualize various latency metrics on a per endpoint basis.</li>
+                <li>Export Access and Security Logs - Export extended amount of log files.</li>
+                <li>Export API Endpoints - Export to a CSV file a list of all discovered API endpoints.</li>
+                <li>Copy WAF Exclusion Rules - Copy WAF exclusion rules from one Load Balancer to another.</li>
+                <li>Editor for IP Prefix / BGP ASN Sets</li>
+                <li>Backup - Backup namespace configuration to a zip file.</li>
+
+
+            </ul>
+
+
+        </div>
+    </div>
+</div>
