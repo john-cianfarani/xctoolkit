@@ -98,7 +98,7 @@ This assumes you have docker installed and running on the host.
     
     cd xctoolkit
 
-    docker build -f docker/Dockerfile . -t xctoolkit:latest
+    docker build -f docker/dockerfile . -t xctoolkit:latest
 ```    
 
 Once completed the docker container should be added to your list of docker images.
