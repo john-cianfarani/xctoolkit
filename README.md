@@ -39,6 +39,7 @@ v1.0
  - Editor for IP Prefix / BGP ASN Sets
  - Backup
 
+---
 
 ## Installation
 
@@ -74,6 +75,8 @@ npm start
 ```
 The web ui should now be accessible on http://127.0.0.1:3080 or https://127.0.0.1:3443
 
+---
+
 ## Updates
 
 To update a Node.js based installation, docker currently has to be rebuilt.
@@ -89,6 +92,7 @@ npm install
 npm start
 ```
 
+---
 ### Docker
 
 ### MacOS/Linux
@@ -114,7 +118,60 @@ After confirmation the docker container can be started with the following comman
 
 ```sh
     docker run -p 3080:3080 -p 3443:3443 -d xctoolkit
-```    
+```
+
+---
+
+### Advanced Parameters
+
+This section details adjustable parameters that can be configured either directly in `config.js` or by setting environment variables.
+
+#### Environmental Variables
+
+- **`KEY`**: Sets the encryption key for protecting API keys.
+- **`SERVER_HOST`**: Specifies the server hostname. Default: `localhost`.
+- **`ENABLE_HTTP`**: Enables or disables HTTP. Accepts `true` or `false`. Default: `true`.
+- **`HTTP_PORT`**: Specifies the port for the HTTP server. Default: `3080`.
+- **`ENABLE_HTTPS`**: Enables or disables HTTPS. Accepts `true` or `false`. Default: `true`.
+- **`HTTPS_PORT`**: Specifies the port for the HTTPS server. Default: `3443`.
+- **`HTTPS_PRIVATE_KEY`**: Path to the HTTPS private key file. Automatically generated on the first run. Default: `./certs/key.pem`.
+- **`HTTPS_CERTIFICATE`**: Path to the HTTPS certificate file. Automatically generated on the first run. Default: `./certs/cert.pem`.
+- **`API_RETRY`**: Sets the retry count for failed API calls. Increase this if adding many tenants causes queries to fail. Default: `4`.
+- **`API_BACKOFF_JITTER`**: Sets the backoff jitter delay for API retries, measured in milliseconds. Default: `500`.
+- **`API_BATCH_SIZE`**: Sets the batch size for batched API calls (currently only applies to `getStats`). Default: `6`.
+- **`LOG_LEVEL`**: Adjusts the logging level within the application for troubleshooting. Values range from 0 (off) to 4 (debug). Default: `2` (info).
+
+---
+
+### API Key Security
+
+Efforts are focused on ensuring the security of API keys:
+
+- **Storage**: API keys are encrypted using AES-256-CBC and stored client-side in cookies, never on the server.
+- **Encryption Key**: At startup, the server checks for an encryption key in the `KEY` environment variable or in `./encryption.txt`. If not found, a random key is generated and stored in `./encryption.txt`.
+- **Data Flow**:
+  - **Submission**: Users submit their API key via the web interface.
+  - **Encryption**: The key is encrypted and returned to the user's browser as a cookie.  apiKeys and delegated_apiKeys
+  - **Usage**: For operations requiring API key access, the encrypted cookie is sent to the server for decryption.
+
+![API Key Security Workflow](/public/screenshots/apikey-security-callflow.png)
+
+---
+
+### Application Screenshots
+
+
+<img src="/public/screenshots/overview.png" width="750">
+
+
+<img src="/public/screenshots/backup.png" width="750">
+
+
+<img src="/public/screenshots/quota.png" width="750">
+
+---
+
+
 
 
 
