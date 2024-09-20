@@ -1862,12 +1862,14 @@ function populateOverviewTenant(tenantName, inventory, stats, tenantages) {
     let delegatedState = false;
 
     // First, check delegated_apiKeys to see if the current tenant is a selected-tenant in any entry
-    for (const key of delegatedApiKeys) {
-        if (key['selected-tenants'].includes(tenantName)) {
-            delegatedName = key['tenant-name']; // Set the parent tenant's name if a match is found
-            delegatedState = true;
-            userUrl = `https://${delegatedName}.console.ves.volterra.io/managed_tenant/${tenantName}`;
-            break; // Exit the loop since we've found the relevant entry
+    if (delegatedApiKeys) {
+        for (const key of delegatedApiKeys) {
+            if (key['selected-tenants'].includes(tenantName)) {
+                delegatedName = key['tenant-name']; // Set the parent tenant's name if a match is found
+                delegatedState = true;
+                userUrl = `https://${delegatedName}.console.ves.volterra.io/managed_tenant/${tenantName}`;
+                break; // Exit the loop since we've found the relevant entry
+            }
         }
     }
 
@@ -1981,14 +1983,15 @@ function populateOverviewRow(inventory, stats, tenantName, namespace, lbName) {
     let delegatedName = '';
 
     // First, check if this tenant is a selected tenant in any delegatedApiKey
-    for (const key of delegatedApiKeys) {
-        if (key['selected-tenants'].includes(tenantName)) {
-            delegatedState = true;
-            delegatedName = key['tenant-name'];
-            break; // Exit the loop since we've found the relevant entry
+    if (delegatedApiKeys) {
+        for (const key of delegatedApiKeys) {
+            if (key['selected-tenants'].includes(tenantName)) {
+                delegatedState = true;
+                delegatedName = key['tenant-name'];
+                break; // Exit the loop since we've found the relevant entry
+            }
         }
     }
-
     // If no delegated state found in delegated_apiKeys, check apiKeys
     if (!delegatedState) {
         const apiKeyDetails = apiKeys.find(key => key['tenant-name'] === tenantName && (key['namespace-name'] === namespace || key['namespace-type'] === 'all'));
